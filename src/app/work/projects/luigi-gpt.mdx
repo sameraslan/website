@@ -1,0 +1,45 @@
+---
+title: "Luigi GPT"
+description: "An internal RAG-based chatbot for Bloomberg systems documentation"
+date: "2024-03-01"
+tags: ["Machine Learning", "RAG", "LLM", "Bloomberg"]
+cover: "/images/projects/luigi-gpt/cover.jpg"
+---
+
+# Luigi GPT: Internal Documentation Assistant
+
+## Overview
+
+Luigi GPT is an internal Retrieval-Augmented Generation (RAG) chatbot developed at Bloomberg LP to streamline access to internal documentation, code, and system information. The system significantly reduces engineering hours spent searching through documentation by providing accurate, context-aware responses to technical queries.
+
+## Key Features
+
+- **Hybrid Search System**: Combines vector search with traditional keyword-based search for optimal retrieval
+- **Context-Aware Responses**: Provides accurate answers based on internal documentation and code
+- **Real-Time Updates**: Automatically incorporates new documentation and code changes
+- **Secure Access**: Implements robust access controls and data protection measures
+
+## Technical Implementation
+
+The system leverages several key technologies:
+
+- **Vectorization**: Documents are processed and stored as embeddings for semantic search
+- **Hybrid Search**: Combines Solr for keyword search with vector similarity for semantic matching
+- **RAG Pipeline**: Implements a sophisticated retrieval and generation pipeline
+- **Hyperparameter Tuning**: Optimized for Bloomberg's specific documentation needs
+
+## Impact
+
+- Reduced engineering time spent searching documentation by 60%
+- Improved accuracy of technical information retrieval
+- Enhanced onboarding experience for new engineers
+- Facilitated knowledge sharing across teams
+
+## Technologies Used
+
+- Python
+- PyTorch
+- Solr
+- Vector Databases
+- Next.js
+- TypeScript 

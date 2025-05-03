@@ -1,16 +1,16 @@
 import { Logo } from "@/once-ui/components";
 
 const person = {
-  firstName: "Selene",
-  lastName: "Yu",
+  firstName: "Samer",
+  lastName: "Aslan",
   get name() {
     return `${this.firstName} ${this.lastName}`;
   },
-  role: "Design Engineer",
+  role: "Software Engineer",
   avatar: "/images/avatar.jpg",
-  email: "example@gmail.com",
-  location: "Asia/Jakarta", // Expecting the IANA time zone identifier, e.g., 'Europe/Vienna'
-  languages: ["English", "Bahasa"], // optional: Leave the array empty if you don't want to display languages
+  email: "samer.aslan@gmail.com",
+  location: "America/New_York",
+  languages: ["English", "Arabic", "French", "Mandarin"],
 };
 
 const newsletter = {
@@ -18,29 +18,22 @@ const newsletter = {
   title: <>Subscribe to {person.firstName}'s Newsletter</>,
   description: (
     <>
-      I occasionally write about design, technology, and share thoughts on the intersection of
-      creativity and engineering.
+      I occasionally write about software engineering, machine learning, and share thoughts on the intersection of
+      technology and human experience.
     </>
   ),
 };
 
 const social = [
-  // Links are automatically displayed.
-  // Import new icons in /once-ui/icons.ts
   {
     name: "GitHub",
     icon: "github",
-    link: "https://github.com/once-ui-system/nextjs-starter",
+    link: "https://github.com/sameraslan",
   },
   {
     name: "LinkedIn",
     icon: "linkedin",
-    link: "https://www.linkedin.com/company/once-ui/",
-  },
-  {
-    name: "X",
-    icon: "x",
-    link: "",
+    link: "https://www.linkedin.com/in/sameraslan",
   },
   {
     name: "Email",
@@ -54,17 +47,16 @@ const home = {
   image: "/images/og/home.jpg",
   label: "Home",
   title: `${person.name}'s Portfolio`,
-  description: `Portfolio website showcasing my work as a ${person.role}`,
-  headline: <>Building bridges between design and code</>,
+  description: `Portfolio website showcasing my work as a ${person.role} specializing in full-stack development and machine learning`,
+  headline: <>Samer Aslan</>,
   featured: {
     display: true,
-    title: <>Recent project: <strong className="ml-4">Once UI</strong></>,
-    href: "/work/building-once-ui-a-customizable-design-system",
+    title: <>Recent project: <strong className="ml-4">Luigi GPT</strong></>,
+    href: "/work/luigi-gpt",
   },
   subline: (
     <>
-      I'm Selene, a design engineer at <Logo icon={false} style={{ display: "inline-flex", top: "0.25em", marginLeft: "-0.25em" }}/>, where I craft intuitive
-      <br /> user experiences. After hours, I build my own projects.
+      I'm Samer. I write code, listen to music, and ponder about the random things.
     </>
   ),
 };
@@ -83,59 +75,72 @@ const about = {
   },
   calendar: {
     display: true,
-    link: "https://cal.com",
+    link: "https://cal.com/sameraslan",
   },
   intro: {
     display: true,
     title: "Introduction",
     description: (
       <>
-        Selene is a Jakarta-based design engineer with a passion for transforming complex challenges
-        into simple, elegant design solutions. Her work spans digital interfaces, interactive
-        experiences, and the convergence of design and technology.
+        Hi, I'm Samer, a Software Engineer with experience in full-stack development and machine learning. 
+        I'm passionate about applying my engineering and software knowledge to develop innovative solutions 
+        that create meaningful and positive experiences for people.
+
+        My non-tech interests span across multiple disciplines, including:
+        - Human psychology and behavior
+        - The brain and its role in sensation and perception
+        - Art, with a particular focus on music and its influence on cognition
+        - The intersection of nutrition and human well-being
+
+        I'm especially excited about how these diverse fields can intersect with technology to enhance the human experience.
       </>
     ),
   },
   work: {
-    display: true, // set to false to hide this section
+    display: true,
     title: "Work Experience",
     experiences: [
       {
-        company: "FLY",
-        timeframe: "2022 - Present",
-        role: "Senior Design Engineer",
+        company: "Bloomberg LP",
+        timeframe: "Feb 2024 - Present",
+        role: "Software Engineer",
         achievements: [
           <>
-            Redesigned the UI/UX for the FLY platform, resulting in a 20% increase in user
-            engagement and 30% faster load times.
+            Revamped the data ingestion pipeline for Bloomberg currencies, 5x'ing throughput for 300,000+ terminal users
           </>,
           <>
-            Spearheaded the integration of AI tools into design workflows, enabling designers to
-            iterate 50% faster.
+            Led the development of a price config platform for 250+ daily users, working closely with product for delivery
+          </>,
+          <>
+            Built LLM guardrails for Bloomberg Law, ensuring chatbot interactions are safe for 100,000+ attorneys
           </>,
         ],
-        images: [
-          // optional: leave the array empty if you don't want to display images
-          {
-            src: "/images/projects/project-01/cover-01.jpg",
-            alt: "Once UI Project",
-            width: 16,
-            height: 9,
-          },
-        ],
+        images: [],
       },
       {
-        company: "Creativ3",
-        timeframe: "2018 - 2022",
-        role: "Lead Designer",
+        company: "JHU Center for Language and Speech Processing",
+        timeframe: "May 2023 - Jan 2024",
+        role: "Machine Learning Researcher",
         achievements: [
           <>
-            Developed a design system that unified the brand across multiple platforms, improving
-            design consistency by 40%.
+            Produced DiaLong, a novel dataset of long dialogues, and a memory evaluation framework for LLMs
           </>,
           <>
-            Led a cross-functional team to launch a new product line, contributing to a 15% increase
-            in overall company revenue.
+            Created an enhanced memory model using summarization to improve LLM performance on established metrics
+          </>,
+        ],
+        images: [],
+      },
+      {
+        company: "JHU Dynamic Perception Lab",
+        timeframe: "Jan 2023 - Dec 2023",
+        role: "Machine Learning Researcher",
+        achievements: [
+          <>
+            Developed ML models mimicking human multisensory perception for temporal alignment of audio-visual stimuli
+          </>,
+          <>
+            Designed a novel loss function, improving temporal alignment of visual and auditory stimuli, mimicking perception
           </>,
         ],
         images: [],
@@ -143,54 +148,32 @@ const about = {
     ],
   },
   studies: {
-    display: true, // set to false to hide this section
-    title: "Studies",
+    display: true,
+    title: "Education",
     institutions: [
       {
-        name: "University of Jakarta",
-        description: <>Studied software engineering.</>,
+        name: "Johns Hopkins University",
+        description: <>Master's in Computer Science, GPA 4.0/4.0</>,
       },
       {
-        name: "Build the Future",
-        description: <>Studied online marketing and personal branding.</>,
+        name: "Johns Hopkins University",
+        description: <>Bachelor's in Computer Science, Computer Engineering, & Cognitive Science</>,
       },
     ],
   },
   technical: {
-    display: true, // set to false to hide this section
-    title: "Technical skills",
+    display: true,
+    title: "Technical Skills",
     skills: [
       {
-        title: "Figma",
-        description: <>Able to prototype in Figma with Once UI with unnatural speed.</>,
-        // optional: leave the array empty if you don't want to display images
-        images: [
-          {
-            src: "/images/projects/project-01/cover-02.jpg",
-            alt: "Project image",
-            width: 16,
-            height: 9,
-          },
-          {
-            src: "/images/projects/project-01/cover-03.jpg",
-            alt: "Project image",
-            width: 16,
-            height: 9,
-          },
-        ],
+        title: "Programming Languages",
+        description: <>Python, JavaScript/TypeScript, C, C++, Java, SQL, HTML, CSS, MATLAB, Dart</>,
+        images: [],
       },
       {
-        title: "Next.js",
-        description: <>Building next gen apps with Next.js + Once UI + Supabase.</>,
-        // optional: leave the array empty if you don't want to display images
-        images: [
-          {
-            src: "/images/projects/project-01/cover-04.jpg",
-            alt: "Project image",
-            width: 16,
-            height: 9,
-          },
-        ],
+        title: "Frameworks & Tools",
+        description: <>PyTorch, Hugging Face, React, Next.js, Node.js, Docker, Flask, PostgreSQL, scikit-learn, Stable Diffusion, PyTest, Prisma, Flutter</>,
+        images: [],
       },
     ],
   },
