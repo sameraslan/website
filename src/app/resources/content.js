@@ -56,7 +56,7 @@ const home = {
   },
   subline: (
     <>
-      I'm Samer. I write code, listen to music, and ponder about the random things.
+      I'm Samer. I write code, listen to music, and ponder about random things.
     </>
   ),
 };
