@@ -1,11 +1,14 @@
-export default function Home() {
+import { loadListening } from '@/lib/music-data';
+import { MusicMapHero } from '@/components/music-map/MusicMapHero';
+import { MusicMapCaption } from '@/components/music-map/MusicMapCaption';
+import { siteConfig } from '@/lib/site-config';
+
+export default async function Home() {
+  const data = await loadListening();
   return (
-    <main className="p-16 space-y-6">
-      <h1 className="text-h1 font-serif text-ink">samer aslan</h1>
-      <p className="text-body text-ink-muted max-w-text">
-        type test — the body should be Fraunces, this paragraph should be muted ink on linen paper.
-      </p>
-      <p className="text-small font-mono text-sage">mono / sage / small — JetBrains Mono.</p>
-    </main>
+    <section className="w-full">
+      <MusicMapHero data={data} />
+      <MusicMapCaption text={siteConfig.tagline} />
+    </section>
   );
 }
