@@ -1,0 +1,18 @@
+[
+  { "id": "1", "title": "Avalon",                      "artist": "Roxy Music",     "year": 1982, "x": 0.18, "y": 0.32, "cluster": "amber",      "coverUrl": "" },
+  { "id": "2", "title": "Selected Ambient Works",      "artist": "Aphex Twin",     "year": 1992, "x": 0.62, "y": 0.21, "cluster": "forest",     "coverUrl": "" },
+  { "id": "3", "title": "Pink Moon",                   "artist": "Nick Drake",     "year": 1972, "x": 0.27, "y": 0.71, "cluster": "olive",      "coverUrl": "" },
+  { "id": "4", "title": "Channel Orange",              "artist": "Frank Ocean",    "year": 2012, "x": 0.55, "y": 0.55, "cluster": "terracotta", "coverUrl": "" },
+  { "id": "5", "title": "OK Computer",                 "artist": "Radiohead",      "year": 1997, "x": 0.71, "y": 0.42, "cluster": "slate",      "coverUrl": "" },
+  { "id": "6", "title": "Kind of Blue",                "artist": "Miles Davis",    "year": 1959, "x": 0.38, "y": 0.28, "cluster": "amber",      "coverUrl": "" },
+  { "id": "7", "title": "In Rainbows",                 "artist": "Radiohead",      "year": 2007, "x": 0.66, "y": 0.34, "cluster": "slate",      "coverUrl": "" },
+  { "id": "8", "title": "To Pimp a Butterfly",         "artist": "Kendrick Lamar", "year": 2015, "x": 0.79, "y": 0.62, "cluster": "terracotta", "coverUrl": "" },
+  { "id": "9", "title": "Discovery",                   "artist": "Daft Punk",      "year": 2001, "x": 0.82, "y": 0.28, "cluster": "forest",     "coverUrl": "" },
+  { "id": "10","title": "For Emma, Forever Ago",       "artist": "Bon Iver",       "year": 2007, "x": 0.22, "y": 0.55, "cluster": "olive",      "coverUrl": "" },
+  { "id": "11","title": "Sound of Silver",             "artist": "LCD Soundsystem","year": 2007, "x": 0.74, "y": 0.74, "cluster": "oxblood",    "coverUrl": "" },
+  { "id": "12","title": "Funeral",                     "artist": "Arcade Fire",    "year": 2004, "x": 0.48, "y": 0.78, "cluster": "plum",       "coverUrl": "" },
+  { "id": "13","title": "Currents",                    "artist": "Tame Impala",    "year": 2015, "x": 0.45, "y": 0.42, "cluster": "plum",       "coverUrl": "" },
+  { "id": "14","title": "Songs in the Key of Life",    "artist": "Stevie Wonder",  "year": 1976, "x": 0.32, "y": 0.45, "cluster": "terracotta", "coverUrl": "" },
+  { "id": "15","title": "Music for Airports",          "artist": "Brian Eno",      "year": 1978, "x": 0.51, "y": 0.18, "cluster": "sage",       "coverUrl": "" },
+  { "id": "16","title": "The Köln Concert",            "artist": "Keith Jarrett",  "year": 1975, "x": 0.42, "y": 0.62, "cluster": "amber",      "coverUrl": "" }
+]
