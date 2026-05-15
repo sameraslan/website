@@ -29,7 +29,7 @@ export default async function MusicPage() {
           their genre labels are far apart.
         </p>
         <p>
-          Color encodes a cluster — a rough mood / texture category. The clusters aren't strict genres; they
+          Color encodes a cluster — a rough mood / texture category. The clusters aren&apos;t strict genres; they
           emerge from the audio.
         </p>
         <p>

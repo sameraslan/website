@@ -10,7 +10,7 @@ export default function AboutPage() {
       <AboutHeader />
       <div className="space-y-6 text-body">
         <p>
-          I'm passionate about blending cutting-edge AI and machine learning research with engineering to
+          I&apos;m passionate about blending cutting-edge AI and machine learning research with engineering to
           develop innovative solutions that create meaningful and positive experiences for people.
         </p>
         <p>
@@ -19,7 +19,7 @@ export default function AboutPage() {
           nutrition and human well-being.
         </p>
         <p>
-          I'm always open to speaking with others who share similar interests or are working on related
+          I&apos;m always open to speaking with others who share similar interests or are working on related
           projects — feel free to reach out.
         </p>
       </div>

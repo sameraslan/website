@@ -18,7 +18,7 @@ export default function MiscPage() {
       <section className="mb-12">
         <h2 className="font-serif text-h2 mb-4">books</h2>
         <p className="text-body text-ink-muted">
-          A running list of books I'd recommend, with a one-line note each. Coming soon.
+          A running list of books I&apos;d recommend, with a one-line note each. Coming soon.
         </p>
       </section>
 
@@ -32,7 +32,7 @@ export default function MiscPage() {
       <section>
         <h2 className="font-serif text-h2 mb-4">links</h2>
         <p className="text-body text-ink-muted">
-          Things I've come back to. Coming soon.
+          Things I&apos;ve come back to. Coming soon.
         </p>
       </section>
     </PageShell>

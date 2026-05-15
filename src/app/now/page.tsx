@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { PageShell } from '@/components/layout/PageShell';
 
 export const metadata = { title: 'now — samer aslan' };
@@ -8,12 +9,12 @@ export default function NowPage() {
   return (
     <PageShell width="text">
       <h1 className="font-serif text-h1 mb-2">now</h1>
-      <p className="font-mono text-tiny text-ink-dim mb-10">a /now page · what I'm focused on these days</p>
+      <p className="font-mono text-tiny text-ink-dim mb-10">a /now page · what I&apos;m focused on these days</p>
 
       <div className="space-y-6 text-body">
         <p>
           Working at Bloomberg as a software engineer. Most of my day is in the equities space — the projects
-          I can talk about publicly will end up on <a href="/projects" className="text-sage hover:text-sage-deep">projects</a>.
+          I can talk about publicly will end up on <Link href="/projects" className="text-sage hover:text-sage-deep">projects</Link>.
         </p>
         <p>
           Reading more about how perception works in the brain — particularly around audio and cross-modal
