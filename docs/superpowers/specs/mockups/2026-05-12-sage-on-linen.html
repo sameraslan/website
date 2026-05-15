@@ -1,0 +1,281 @@
+<h2>More warm directions</h2>
+<p class="subtitle">All four are variations on Theme A — cream paper, restrained, music-map hero. Differences are palette, accent, and typeface. Click the closest, or call out specific bits (the type, the accent color, the cluster color, etc.) that you want kept or dropped.</p>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=EB+Garamond:wght@400;500;600&family=Fraunces:wght@400;500;600;700&family=Spectral:wght@400;500;600&display=swap');
+
+  .tcard {
+    border: 1px solid var(--border, #2a2a2a);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .tcard:hover { transform: translateY(-3px); border-color: var(--accent, #888); }
+  .tcard.selected { border-color: #4f8cff; box-shadow: 0 0 0 2px #4f8cff inset; }
+  .tcard-body { padding: 14px 18px 16px; }
+  .tcard-tag { font-size: 11px; opacity: 0.55; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.12em; }
+  .tcard-name { font-weight: 700; margin: 0 0 6px; font-size: 16px; }
+  .tcard-desc { font-size: 13px; margin: 0; opacity: 0.85; line-height: 1.55; }
+  .tcard-vis { height: 380px; padding: 22px 24px; position: relative; overflow: hidden; }
+
+  /* shared layout pieces */
+  .layout { display: grid; grid-template-columns: 100px 1fr; gap: 22px; height: 100%; }
+  .nav { font-size: 13px; line-height: 1.95; padding-top: 26px; }
+  .nav .gap { height: 10px; }
+  .viz { position: relative; padding-top: 8px; }
+  .caption { text-align: center; font-size: 11.5px; font-style: italic; margin-top: 8px; }
+  .album {
+    position: absolute;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  }
+  .cluster {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(20px);
+    opacity: 0.42;
+    pointer-events: none;
+  }
+  .copy { font-size: 9.5px; font-style: italic; margin-top: 28px; }
+
+  /* ============= 1: Sage on Linen ============= */
+  .v1 { background: #f6f0e1; color: #2d2a22; font-family: 'Fraunces', Georgia, serif; }
+  .v1 .nav .me { color: #5b7855; font-weight: 600; }
+  .v1 .nav .dim { color: #b3ab94; }
+  .v1 .nav .copy { color: #b3ab94; }
+  .v1 .album { border: 1px solid rgba(0,0,0,0.12); }
+  .v1 .caption { color: #6b6852; }
+
+  /* ============= 2: Sand & Terracotta ============= */
+  .v2 { background: #f3e3cc; color: #3a2614; font-family: 'EB Garamond', Georgia, serif; }
+  .v2 .nav .me { color: #b6532a; font-weight: 600; }
+  .v2 .nav .dim { color: #c2a679; }
+  .v2 .nav .copy { color: #c2a679; }
+  .v2 .album { border: 1px solid rgba(0,0,0,0.15); }
+  .v2 .caption { color: #7c5530; }
+
+  /* ============= 3: Linen & Ink (cool accent) ============= */
+  .v3 { background: #f8f3e6; color: #1a1a1a; font-family: 'Cormorant Garamond', Georgia, serif; }
+  .v3 .nav { font-size: 14px; }
+  .v3 .nav .me { color: #3a5a78; font-weight: 600; }
+  .v3 .nav .dim { color: #a8a08c; }
+  .v3 .nav .copy { color: #a8a08c; }
+  .v3 .album { border: 1px solid rgba(0,0,0,0.18); }
+  .v3 .caption { color: #4a4738; }
+
+  /* ============= 4: Aged Journal ============= */
+  .v4 {
+    background:
+      radial-gradient(ellipse at 80% 20%, rgba(140,100,40,0.06), transparent 60%),
+      radial-gradient(ellipse at 10% 90%, rgba(80,40,20,0.05), transparent 55%),
+      #f0e6cc;
+    color: #3a2a18;
+    font-family: 'Spectral', Georgia, serif;
+  }
+  .v4 .nav .me { color: #8a2e36; font-weight: 600; }
+  .v4 .nav .dim { color: #b8a988; }
+  .v4 .nav .copy { color: #b8a988; }
+  .v4 .album { border: 1px solid rgba(40,20,10,0.2); }
+  .v4 .caption { color: #6e5a2e; }
+</style>
+
+<div class="cards" style="grid-template-columns: 1fr; display: grid; gap: 18px;">
+
+  <!-- ============= 1: Sage on Linen ============= -->
+  <div class="tcard" data-choice="sage" onclick="toggleSelect(this)">
+    <div class="tcard-vis v1">
+      <div class="layout">
+        <div class="nav">
+          <div class="me">samer aslan</div>
+          <div class="gap"></div>
+          <div>about</div>
+          <div>research</div>
+          <div>writings</div>
+          <div>music</div>
+          <div>misc.</div>
+          <div class="gap"></div>
+          <div class="dim">contact</div>
+          <div>email</div>
+          <div>github</div>
+          <div>linkedin</div>
+          <div class="copy">© 2026<br>samer aslan</div>
+        </div>
+        <div class="viz">
+          <div class="cluster" style="background:#5b7855;width:170px;height:150px;top:12%;left:12%"></div>
+          <div class="cluster" style="background:#7c8255;width:150px;height:120px;top:48%;left:30%"></div>
+          <div class="cluster" style="background:#3a6655;width:170px;height:130px;top:22%;left:55%"></div>
+          <div class="cluster" style="background:#a8945c;width:140px;height:120px;top:58%;left:68%"></div>
+
+          <div class="album" style="width:22px;height:22px;background:#5b7855;top:18%;left:18%"></div>
+          <div class="album" style="width:18px;height:18px;background:#7a8e60;top:24%;left:24%"></div>
+          <div class="album" style="width:26px;height:26px;background:#4a6644;top:12%;left:28%"></div>
+          <div class="album" style="width:20px;height:20px;background:#8a9558;top:55%;left:30%"></div>
+          <div class="album" style="width:24px;height:24px;background:#7c8255;top:62%;left:38%"></div>
+          <div class="album" style="width:20px;height:20px;background:#3a6655;top:30%;left:60%"></div>
+          <div class="album" style="width:28px;height:28px;background:#2c5544;top:26%;left:68%"></div>
+          <div class="album" style="width:18px;height:18px;background:#5a8273;top:38%;left:58%"></div>
+          <div class="album" style="width:22px;height:22px;background:#a8945c;top:62%;left:72%"></div>
+          <div class="album" style="width:18px;height:18px;background:#b8a06c;top:70%;left:66%"></div>
+          <div class="album" style="width:24px;height:24px;background:#947a3e;top:55%;left:80%"></div>
+
+          <div class="caption">a map of my listening — proximity by sound, color by mood</div>
+        </div>
+      </div>
+    </div>
+    <div class="tcard-body">
+      <p class="tcard-tag">Variation 1</p>
+      <p class="tcard-name">Sage on Linen</p>
+      <p class="tcard-desc">Same cream warmth, but the accent is a desaturated sage green and the type is Fraunces (modern serif with a little personality). Calmer, more botanical. Reads like a quiet morning.</p>
+    </div>
+  </div>
+
+  <!-- ============= 2: Sand & Terracotta ============= -->
+  <div class="tcard" data-choice="terracotta" onclick="toggleSelect(this)">
+    <div class="tcard-vis v2">
+      <div class="layout">
+        <div class="nav">
+          <div class="me">samer aslan</div>
+          <div class="gap"></div>
+          <div>about</div>
+          <div>research</div>
+          <div>writings</div>
+          <div>music</div>
+          <div>misc.</div>
+          <div class="gap"></div>
+          <div class="dim">contact</div>
+          <div>email</div>
+          <div>github</div>
+          <div>linkedin</div>
+          <div class="copy">© 2026<br>samer aslan</div>
+        </div>
+        <div class="viz">
+          <div class="cluster" style="background:#b6532a;width:170px;height:150px;top:12%;left:12%"></div>
+          <div class="cluster" style="background:#c47545;width:150px;height:120px;top:48%;left:30%"></div>
+          <div class="cluster" style="background:#7c5530;width:170px;height:130px;top:22%;left:55%"></div>
+          <div class="cluster" style="background:#a87838;width:140px;height:120px;top:58%;left:68%"></div>
+
+          <div class="album" style="width:22px;height:22px;background:#b6532a;top:18%;left:18%"></div>
+          <div class="album" style="width:18px;height:18px;background:#8e3a1f;top:24%;left:24%"></div>
+          <div class="album" style="width:26px;height:26px;background:#c97548;top:12%;left:28%"></div>
+          <div class="album" style="width:20px;height:20px;background:#9e5a32;top:55%;left:30%"></div>
+          <div class="album" style="width:24px;height:24px;background:#c47545;top:62%;left:38%"></div>
+          <div class="album" style="width:20px;height:20px;background:#7c5530;top:30%;left:60%"></div>
+          <div class="album" style="width:28px;height:28px;background:#5a3a18;top:26%;left:68%"></div>
+          <div class="album" style="width:18px;height:18px;background:#a87838;top:38%;left:58%"></div>
+          <div class="album" style="width:22px;height:22px;background:#d59560;top:62%;left:72%"></div>
+          <div class="album" style="width:18px;height:18px;background:#b88452;top:70%;left:66%"></div>
+          <div class="album" style="width:24px;height:24px;background:#945a30;top:55%;left:80%"></div>
+
+          <div class="caption">a map of my listening — proximity by sound, color by mood</div>
+        </div>
+      </div>
+    </div>
+    <div class="tcard-body">
+      <p class="tcard-tag">Variation 2</p>
+      <p class="tcard-name">Sand &amp; Terracotta</p>
+      <p class="tcard-desc">Warmer sand background, deep umber type, terracotta accent. Desert/Mediterranean palette. Most saturated of the four — the warmest in feel.</p>
+    </div>
+  </div>
+
+  <!-- ============= 3: Linen & Ink (cool accent) ============= -->
+  <div class="tcard" data-choice="linenink" onclick="toggleSelect(this)">
+    <div class="tcard-vis v3">
+      <div class="layout">
+        <div class="nav">
+          <div class="me">samer aslan</div>
+          <div class="gap"></div>
+          <div>about</div>
+          <div>research</div>
+          <div>writings</div>
+          <div>music</div>
+          <div>misc.</div>
+          <div class="gap"></div>
+          <div class="dim">contact</div>
+          <div>email</div>
+          <div>github</div>
+          <div>linkedin</div>
+          <div class="copy">© 2026<br>samer aslan</div>
+        </div>
+        <div class="viz">
+          <div class="cluster" style="background:#3a5a78;width:170px;height:150px;top:12%;left:12%;opacity:0.35"></div>
+          <div class="cluster" style="background:#6a7a8a;width:150px;height:120px;top:48%;left:30%;opacity:0.3"></div>
+          <div class="cluster" style="background:#8a5a3a;width:170px;height:130px;top:22%;left:55%;opacity:0.3"></div>
+          <div class="cluster" style="background:#7a6e58;width:140px;height:120px;top:58%;left:68%;opacity:0.3"></div>
+
+          <div class="album" style="width:22px;height:22px;background:#3a5a78;top:18%;left:18%"></div>
+          <div class="album" style="width:18px;height:18px;background:#5a7a98;top:24%;left:24%"></div>
+          <div class="album" style="width:26px;height:26px;background:#2c4565;top:12%;left:28%"></div>
+          <div class="album" style="width:20px;height:20px;background:#6a7a8a;top:55%;left:30%"></div>
+          <div class="album" style="width:24px;height:24px;background:#4a5a6a;top:62%;left:38%"></div>
+          <div class="album" style="width:20px;height:20px;background:#8a5a3a;top:30%;left:60%"></div>
+          <div class="album" style="width:28px;height:28px;background:#6a4528;top:26%;left:68%"></div>
+          <div class="album" style="width:18px;height:18px;background:#a87a5a;top:38%;left:58%"></div>
+          <div class="album" style="width:22px;height:22px;background:#7a6e58;top:62%;left:72%"></div>
+          <div class="album" style="width:18px;height:18px;background:#5a5040;top:70%;left:66%"></div>
+          <div class="album" style="width:24px;height:24px;background:#3a3528;top:55%;left:80%"></div>
+
+          <div class="caption">a map of my listening — proximity by sound, color by mood</div>
+        </div>
+      </div>
+    </div>
+    <div class="tcard-body">
+      <p class="tcard-tag">Variation 3</p>
+      <p class="tcard-name">Linen &amp; Ink</p>
+      <p class="tcard-desc">Pale linen background, true ink type, one cool dusty-blue accent. Type is Cormorant Garamond (more elegant, displayy). The classic warm-paper-with-cool-accent combo. Editorial, calm, very "tasteful magazine".</p>
+    </div>
+  </div>
+
+  <!-- ============= 4: Aged Journal ============= -->
+  <div class="tcard" data-choice="journal" onclick="toggleSelect(this)">
+    <div class="tcard-vis v4">
+      <div class="layout">
+        <div class="nav">
+          <div class="me">samer aslan</div>
+          <div class="gap"></div>
+          <div>about</div>
+          <div>research</div>
+          <div>writings</div>
+          <div>music</div>
+          <div>misc.</div>
+          <div class="gap"></div>
+          <div class="dim">contact</div>
+          <div>email</div>
+          <div>github</div>
+          <div>linkedin</div>
+          <div class="copy">© 2026<br>samer aslan</div>
+        </div>
+        <div class="viz">
+          <div class="cluster" style="background:#8a2e36;width:170px;height:150px;top:12%;left:12%;opacity:0.35"></div>
+          <div class="cluster" style="background:#7a6a32;width:150px;height:120px;top:48%;left:30%;opacity:0.35"></div>
+          <div class="cluster" style="background:#5a4628;width:170px;height:130px;top:22%;left:55%;opacity:0.35"></div>
+          <div class="cluster" style="background:#a87838;width:140px;height:120px;top:58%;left:68%;opacity:0.32"></div>
+
+          <div class="album" style="width:22px;height:22px;background:#8a2e36;top:18%;left:18%"></div>
+          <div class="album" style="width:18px;height:18px;background:#a84048;top:24%;left:24%"></div>
+          <div class="album" style="width:26px;height:26px;background:#6a1e26;top:12%;left:28%"></div>
+          <div class="album" style="width:20px;height:20px;background:#7a6a32;top:55%;left:30%"></div>
+          <div class="album" style="width:24px;height:24px;background:#5a4a1c;top:62%;left:38%"></div>
+          <div class="album" style="width:20px;height:20px;background:#5a4628;top:30%;left:60%"></div>
+          <div class="album" style="width:28px;height:28px;background:#3a2818;top:26%;left:68%"></div>
+          <div class="album" style="width:18px;height:18px;background:#7a5e3a;top:38%;left:58%"></div>
+          <div class="album" style="width:22px;height:22px;background:#a87838;top:62%;left:72%"></div>
+          <div class="album" style="width:18px;height:18px;background:#9a6e2e;top:70%;left:66%"></div>
+          <div class="album" style="width:24px;height:24px;background:#6e4e1a;top:55%;left:80%"></div>
+
+          <div class="caption">a map of my listening — proximity by sound, color by mood</div>
+        </div>
+      </div>
+    </div>
+    <div class="tcard-body">
+      <p class="tcard-tag">Variation 4</p>
+      <p class="tcard-name">Aged Journal</p>
+      <p class="tcard-desc">Slightly aged cream with faint paper-stain gradients, deep sepia type, restrained burgundy + olive accents. Reads like a 19th-century scientific journal. Most "old book" feeling — leans into your researcher side without being precious.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top: 24px; font-size: 13px;">If two of these have elements you like (e.g. "Variation 3's type with Variation 1's accent"), say so — we can blend.</p>

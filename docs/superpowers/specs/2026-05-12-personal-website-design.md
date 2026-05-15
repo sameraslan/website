@@ -15,6 +15,13 @@ The site signals "engineer + researcher who takes craft seriously" without ever 
 
 **Not** corporate portfolio, digital garden, 3D experience, dark mode, or a generic Tailwind UI starter.
 
+### Approved mockups
+
+These are the visual references the implementation must match:
+
+- [`mockups/2026-05-12-sage-on-linen.html`](mockups/2026-05-12-sage-on-linen.html) — the approved "Sage on Linen" theme (color palette, type, layout density). Implementation should visually diff against this.
+- [`mockups/2026-05-12-boran-inspiration.html`](mockups/2026-05-12-boran-inspiration.html) — Boran-style hero layout reference (sidebar + full-canvas viz pattern). Inspiration, not a direct copy — our viz is an album proximity map, not a signal plot.
+
 ## 2. Visual system
 
 ### Color tokens
@@ -281,6 +288,16 @@ order: 1
 ---
 ```
 
+### Documentation deliverable
+
+Implementation is not complete until the site is documented. Required:
+
+- **`README.md`** — top-level overview: stack, how to run locally, how to deploy, where content lives, where the music-map component plugs in.
+- **`docs/architecture.md`** — how the site is structured: layout shell, routing, content model (MDX + TSX), styling tokens, music-map integration contract, where the parallel-session viz code lands when it ships.
+- **`docs/content-authoring.md`** — how to add a new project or research entry (MDX frontmatter fields, where files live, what the hero image should look like), and how to update `/now`, `/about`, `/misc`.
+
+The writing-plans skill must include explicit steps for producing these docs as part of the implementation, not as an afterthought.
+
 ## 7. Out of scope
 
 - Blog / `/writings` page (deferred).
@@ -296,7 +313,7 @@ order: 1
 
 When implementing, verify by:
 
-1. Visual diff against approved mockups (the "Sage on Linen" theme).
+1. Visual diff against the approved mockups in [`mockups/`](mockups/) — specifically `2026-05-12-sage-on-linen.html` for theme/density and `2026-05-12-boran-inspiration.html` for hero-layout pattern.
 2. Manual walk-through of each route: renders, sidebar active state correct, mobile nav stacks correctly.
 3. Music-map placeholder renders with reasonable fixture data; swap-in path documented for parallel session.
 4. MDX project + research detail pages render with frontmatter pulled correctly.
