@@ -1,0 +1,20 @@
+---
+title: "BinSight"
+subtitle: "Lightweight vision-based waste sorting"
+year: 2023
+role: "Hackathon project"
+stack: ["Python", "PyTorch", "Computer vision", "Edge inference"]
+links:
+  github: "https://github.com/sameraslan/BinSight"
+order: 2
+---
+
+A small computer vision system that classifies waste items at the bin so they end up in the right stream. Built to run on cheap hardware — the constraint was honest deployability, not benchmark scores.
+
+## Approach
+
+A compact CNN fine-tuned on a curated waste-image set, quantized for inference on a small board. The interesting work is at the seams: image capture under bad lighting, fast classification, a hardware path that doesn't require a person to maintain it.
+
+## Why
+
+Recycling streams fail when contamination crosses thresholds set by sorting facilities. A small classifier at the bin catches the wrong items before they enter the stream — cheaper than fixing it downstream.
