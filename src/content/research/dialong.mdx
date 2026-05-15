@@ -1,0 +1,25 @@
+---
+title: "DiaLong"
+subtitle: "Benchmarking reminiscence in long-context dialogues"
+year: 2024
+role: "Researcher"
+affiliation: "JHU CLSP"
+stack: ["Python", "PyTorch", "HuggingFace"]
+links:
+  github: "https://github.com/sameraslan/DiaLong"
+order: 1
+---
+
+A benchmark for testing whether long-context language models actually *remember* — not just whether they can be cued to retrieve. Reminiscence is harder than retrieval: it's the model raising prior dialogue context on its own when relevant, without being asked to.
+
+## Why this benchmark
+
+Existing long-context evals measure retrieval: drop a needle in a haystack, ask for it back. That tells you the context window works. It doesn't tell you the model uses prior context the way a human conversational partner would — surfacing earlier topics, callbacks, contradictions — when nothing in the prompt explicitly asks.
+
+## What we measure
+
+Multi-turn dialogues where the natural follow-up requires the model to bring back something said many turns earlier *unprompted*. Scoring is human-validated against held-out conversational patterns.
+
+## Status
+
+Code at [github.com/sameraslan/DiaLong](https://github.com/sameraslan/DiaLong).

@@ -1,0 +1,25 @@
+---
+title: "PerceptAlign"
+subtitle: "Real-time temporal alignment for audio generation from silent video"
+year: 2025
+role: "Researcher"
+affiliation: "JHU Dynamic Perception Lab"
+stack: ["Python", "PyTorch", "Multimodal", "Audio"]
+links:
+  github: "https://github.com/sameraslan/PerceptAlign"
+order: 2
+---
+
+A system for generating audio that's temporally aligned to silent video — in real time. The interesting subproblem isn't generation quality but synchronization: the predicted audio has to land *with* the visual event, not after it.
+
+## Approach
+
+A latency-aware decoder conditioned on visual stream features, trained against an alignment loss that penalizes asynchrony separately from acoustic plausibility. Online inference uses a short look-ahead window calibrated to the visual frame rate.
+
+## Why this matters
+
+Most video-to-audio work optimizes for plausibility offline. Real-time alignment is the bottleneck for any application where a human watches the output as it generates — accessibility tools, prototyping, live captioning of sound for the hearing-impaired.
+
+## Status
+
+Code at [github.com/sameraslan/PerceptAlign](https://github.com/sameraslan/PerceptAlign).
