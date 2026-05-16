@@ -1,8 +1,23 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { PageTitle } from '@/components/content/PageTitle';
 import { ArtCover } from '@/components/content/ArtCover';
 import { ALBUMS, FILMS, BOOKS, type ArtItem } from '@/lib/art-data';
 
 export const metadata = { title: 'art — samer aslan' };
+
+const PUBLIC_DIR = path.join(process.cwd(), 'public');
+
+function resolveImage(item: ArtItem): ArtItem {
+  if (item.image && existsSync(path.join(PUBLIC_DIR, item.image))) {
+    return item;
+  }
+  return { ...item, image: undefined };
+}
+
+const albums = ALBUMS.map(resolveImage);
+const films = FILMS.map(resolveImage);
+const books = BOOKS.map(resolveImage);
 
 function Grid({
   items,
@@ -56,17 +71,17 @@ export default function ArtPage() {
 
       <section className="mt-2">
         <SectionHeader title="albums" kicker="listening" />
-        <Grid items={ALBUMS} ratio="square" />
+        <Grid items={albums} ratio="square" />
       </section>
 
       <section className="mt-14">
         <SectionHeader title="films" kicker="watching" />
-        <Grid items={FILMS} ratio="poster" />
+        <Grid items={films} ratio="poster" />
       </section>
 
       <section className="mt-14">
         <SectionHeader title="books" kicker="reading" />
-        <Grid items={BOOKS} ratio="poster" narrow />
+        <Grid items={books} ratio="poster" narrow />
       </section>
     </section>
   );
