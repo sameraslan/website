@@ -15,7 +15,7 @@ export default function ArtPage() {
 
       <p className="font-serif italic text-ink-muted text-[1.05rem] max-w-[60ch] m-0 mb-10">
         a small shelf of records, films, and books that keep coming back. a
-        longer ledger lives on rym, letterboxd, and goodreads; this is the
+        longer ledger lives on rateyourmusic and goodreads; this is the
         condensed version.
       </p>
 
