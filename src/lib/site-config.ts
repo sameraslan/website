@@ -14,7 +14,6 @@ export const siteConfig = {
     { label: 'research', href: '/research' },
     { label: 'music',    href: '/music' },
     { label: 'art',      href: '/art' },
-    { label: 'now',      href: '/now' },
   ] as NavItem[],
   external: [
     { label: 'email',    href: 'mailto:samer.aslan.second@gmail.com' },

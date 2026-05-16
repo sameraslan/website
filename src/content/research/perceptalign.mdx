@@ -3,22 +3,22 @@ title: "PerceptAlign"
 subtitle: "Real-time temporal alignment for audio generation from silent video"
 year: 2025
 role: "Researcher"
-affiliation: "JHU Dynamic Perception Lab"
-stack: ["Python", "PyTorch", "Multimodal", "Audio"]
+affiliation: "Johns Hopkins"
+stack: ["PyTorch", "Transformers", "Spectrograms"]
 links:
   github: "https://github.com/sameraslan/PerceptAlign"
 order: 2
 ---
 
-A system for generating audio that's temporally aligned to silent video — in real time. The interesting subproblem isn't generation quality but synchronization: the predicted audio has to land *with* the visual event, not after it.
+A model that generates audio for a silent video and lands the sound when the event happens on screen, not a few hundred milliseconds late. The hard part isn't acoustic plausibility, it's synchronization.
 
 ## Approach
 
-A latency-aware decoder conditioned on visual stream features, trained against an alignment loss that penalizes asynchrony separately from acoustic plausibility. Online inference uses a short look-ahead window calibrated to the visual frame rate.
+A transformer that conditions on visual stream features and predicts spectrogram frames, trained with a Perceptual Alignment Loss (PAL) that penalizes timing drift independently from acoustic quality. Inference runs online with a short look-ahead window calibrated to the video frame rate.
 
-## Why this matters
+## Why it matters
 
-Most video-to-audio work optimizes for plausibility offline. Real-time alignment is the bottleneck for any application where a human watches the output as it generates — accessibility tools, prototyping, live captioning of sound for the hearing-impaired.
+Most video-to-audio work optimizes offline plausibility. Real-time alignment is the constraint that actually makes the output usable when a human is watching: accessibility tools, prototyping, captioning sound for hearing-impaired viewers.
 
 ## Status
 

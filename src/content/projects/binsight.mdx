@@ -1,20 +1,25 @@
 ---
 title: "BinSight"
-subtitle: "Lightweight vision-based waste sorting"
+subtitle: "Vision-based waste sorting that runs at the bin"
 year: 2023
-role: "Hackathon project"
-stack: ["Python", "PyTorch", "Computer vision", "Edge inference"]
+role: "Co-creator"
+affiliation: "Johns Hopkins University"
+stack: ["EfficientNet-B2", "PyTorch", "Flask", "React", "Next.js", "Chakra UI", "Raspberry Pi"]
 links:
   github: "https://github.com/sameraslan/BinSight"
 order: 2
 ---
 
-A small computer vision system that classifies waste items at the bin so they end up in the right stream. Built to run on cheap hardware — the constraint was honest deployability, not benchmark scores.
+A low-cost waste sorter that looks at what you're about to throw out and tells you which stream it belongs in. The point is to catch contamination at the bin, before the wrong item taints a whole batch downstream.
 
 ## Approach
 
-A compact CNN fine-tuned on a curated waste-image set, quantized for inference on a small board. The interesting work is at the seams: image capture under bad lighting, fast classification, a hardware path that doesn't require a person to maintain it.
+An EfficientNet-B2 classifier fine-tuned on a mix of TACO, TrashNet, and CompostNet. A Flask service runs inference and talks to a small Next.js frontend (React, Chakra UI). The whole thing sits on a Raspberry Pi at the bin, so capture and classification happen locally with no round-trip to the cloud.
 
-## Why
+## What was actually hard
 
-Recycling streams fail when contamination crosses thresholds set by sorting facilities. A small classifier at the bin catches the wrong items before they enter the stream — cheaper than fixing it downstream.
+Lighting at a real campus bin is not the lighting in any dataset. Most of the engineering was getting the capture path and the model behaving under that drift, not chasing accuracy on a clean test set. We deployed on-site at Johns Hopkins to see how it held up against real users.
+
+## Status
+
+Code at [github.com/sameraslan/BinSight](https://github.com/sameraslan/BinSight).

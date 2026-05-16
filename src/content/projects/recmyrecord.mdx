@@ -1,23 +1,23 @@
 ---
 title: "RecMyRecord"
-subtitle: "Mood- and audio-based album recommender for cross-genre discovery"
+subtitle: "Mood and audio-based album recommendations across genres"
 year: 2024
 role: "Solo"
-stack: ["Next.js", "Python", "Audio features", "Embeddings"]
+stack: ["React", "Next.js", "Chakra UI", "Flask", "KNN", "Vercel", "Heroku"]
 links:
   site: "https://www.recmyrecord.com"
 order: 1
 ---
 
-A recommender that looks at how an album *sounds* rather than what tag it sits under. The idea: my favorite albums often share sonic qualities that genre labels obscure, so a system that listens to the audio directly should surface cross-genre matches a tag-based recommender never would.
+A recommender that looks at how an album sounds and how it feels, not which genre tag it carries. The hypothesis: my favorite albums share sonic and mood properties that genre labels paper over, and a system listening for those properties directly should surface cross-genre matches a tag-based recommender never would.
 
 ## Approach
 
-Each album is embedded from audio features and surface metadata. Queries return albums whose embeddings sit closest to the input — but the UI also exposes the *direction* of recommendation, so you can ask for "more like this but slower," "more like this but warmer," and so on.
+Each album sits in a feature space built from audio characteristics and mood descriptors. A KNN lookup returns the nearest albums to whatever you give it as a seed. Next.js and Chakra UI for the frontend, a Flask service for the recommender, deployed on Vercel and Heroku.
 
 ## What's interesting
 
-The cross-genre hits. A jazz record that pairs with an ambient electronic record because both move at the same pulse with the same dynamic range — that connection isn't in any tag, but it's in the audio.
+The cross-genre hits. A jazz record pairing with an ambient electronic record because both move at the same pulse with the same dynamic range. That connection isn't in any tag.
 
 ## Status
 

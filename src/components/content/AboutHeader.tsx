@@ -1,11 +1,10 @@
 import Image from 'next/image';
-import Link from 'next/link';
 
 export function AboutHeader() {
   return (
     <div className="grid gap-10 sm:grid-cols-[1fr_220px] sm:gap-12 max-w-[880px]">
       <div
-        className="font-serif text-[1.03rem] leading-[1.6] [column-gap:3rem] sm:[column-count:2]"
+        className="font-serif text-[1.03rem] leading-[1.6]"
         style={{ textWrap: 'pretty' as never }}
       >
         <p className="m-0">
@@ -19,33 +18,24 @@ export function AboutHeader() {
               paddingTop: '0.25rem',
             }}
           >
-            S
+            I
           </span>
-          oftware engineer at Bloomberg, based in New York. Studied computer
-          science, computer engineering, and cognitive science at Johns Hopkins.
-          I speak English, Türkçe, and Español, passably.
+          blend AI/ML research with engineering, and care about shipping work
+          that&apos;s useful to the people on the other end of it.
         </p>
-        <p className="mt-3.5">
-          I build things that sit between engineering and the humanities:
-          perception, music cognition, language, the small ways behavior changes
-          when interfaces change. AI/ML research with the engineering required
-          to make it actually run on something.
-        </p>
-        <p className="mt-3.5">
-          Outside of work: psychology, perception, music cognition (obviously),
-          art, and food as it relates to how you actually feel during a day. I
-          keep a quiet field journal of all of the above.
-        </p>
-        <p className="mt-3.5">
-          If any of this overlaps with what you’re thinking about (research, a
-          project, an idea you can’t shake),{' '}
-          <Link
-            href="mailto:samer.aslan.second@gmail.com"
-            className="text-moss border-b border-rule-soft hover:border-moss"
-          >
-            write me
-          </Link>
-          . I write back.
+
+        <p className="mt-4 m-0">Other things I think about a lot:</p>
+        <ul className="mt-2 mb-0 pl-5 list-disc marker:text-ink-dim space-y-1">
+          <li>human psychology and behavior</li>
+          <li>the brain, and its role in sensation and perception</li>
+          <li>art, especially music and how it shapes cognition</li>
+          <li>nutrition, and how it ties into how you feel through a day</li>
+        </ul>
+
+        <p className="mt-4">
+          I&apos;m always glad to hear from people working on or thinking about
+          any of this. The email icon in the footer reaches me directly. I
+          write back.
         </p>
       </div>
 
