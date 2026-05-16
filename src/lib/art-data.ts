@@ -19,10 +19,10 @@ export const ALBUMS: ArtItem[] = [
 export const FILMS: ArtItem[] = [
   { title: '12 Angry Men',          secondary: 'Sidney Lumet',         year: 1957, image: '/images/art/films/12-angry-men.jpg' },
   { title: 'The Battle of Algiers', secondary: 'Gillo Pontecorvo',     year: 1966, image: '/images/art/films/battle-of-algiers.jpg' },
-  { title: 'Seven Samurai',         secondary: 'Akira Kurosawa',       year: 1954, image: '/images/art/films/seven-samurai.jpg' },
+  { title: 'High and Low',          secondary: 'Akira Kurosawa',       year: 1963, image: '/images/art/films/high-and-low.jpg' },
   { title: 'Harakiri',              secondary: 'Masaki Kobayashi',     year: 1962, image: '/images/art/films/harakiri.jpg' },
   { title: 'Mulholland Dr.',        secondary: 'David Lynch',          year: 2001, image: '/images/art/films/mulholland-dr.jpg' },
-  { title: 'There Will Be Blood',   secondary: 'Paul Thomas Anderson', year: 2007, image: '/images/art/films/there-will-be-blood.jpg' },
+  { title: 'No Country for Old Men', secondary: 'Joel & Ethan Coen',   year: 2007, image: '/images/art/films/no-country-for-old-men.jpg' },
   { title: 'The Grand Budapest Hotel', secondary: 'Wes Anderson',      year: 2014, image: '/images/art/films/grand-budapest-hotel.jpg' },
 ];
 

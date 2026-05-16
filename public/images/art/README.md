@@ -29,10 +29,10 @@ Next.js will optimize automatically.
 ### films/
 - 12-angry-men.jpg
 - battle-of-algiers.jpg
-- seven-samurai.jpg
+- high-and-low.jpg
 - harakiri.jpg
 - mulholland-dr.jpg
-- there-will-be-blood.jpg
+- no-country-for-old-men.jpg
 - grand-budapest-hotel.jpg
 
 ### books/
