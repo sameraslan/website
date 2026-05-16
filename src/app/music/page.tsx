@@ -1,51 +1,38 @@
-import { loadListening } from '@/lib/music-data';
-import { MusicMap } from '@/components/music-map/MusicMap';
-import { MusicMapCaption } from '@/components/music-map/MusicMapCaption';
+import { MusicMapHero } from '@/components/music-map/MusicMapHero';
 import { CrossLinkCard } from '@/components/content/CrossLinkCard';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageTitle } from '@/components/content/PageTitle';
 
 export const metadata = { title: 'music — samer aslan' };
 
-export default async function MusicPage() {
-  const data = await loadListening();
-
+export default function MusicPage() {
   return (
-    <PageShell width="prose">
-      <h1 className="font-serif text-h1 text-sage mb-2">music</h1>
-      <p className="text-ink-muted mb-10">
-        a map of my listening — proximity by sound, color by mood
-      </p>
+    <section>
+      <PageTitle>music</PageTitle>
 
-      <div className="w-full mb-2">
-        <MusicMap width={680} height={420} data={data} />
+      <div className="pb-5 border-b border-rule">
+        <MusicMapHero aspect={2.28} density={128} />
       </div>
-      <MusicMapCaption text="hover an album to see what's near it" />
 
-      <section className="mt-16 space-y-6 text-body">
-        <h2 className="font-serif text-h2">how the map is built</h2>
-        <p>
-          Each album is positioned by how it sounds, not by what genre tag it carries. Audio features and
-          surface metadata feed an embedding; nearby points are albums that share sonic qualities even when
-          their genre labels are far apart.
-        </p>
-        <p>
-          Color encodes a cluster — a rough mood / texture category. The clusters aren&apos;t strict genres; they
-          emerge from the audio.
-        </p>
-        <p>
-          The data is just a JSON file on this site. The viz itself is a separate component that will keep
-          improving as I add albums and refine the embedding.
-        </p>
-      </section>
-
-      <section className="mt-16">
+      <div className="mt-6 grid gap-10 md:grid-cols-[1.6fr_1fr]">
+        <div className="max-w-[60ch]">
+          <h2 className="font-display italic font-medium text-[1.5rem] mb-1.5">
+            How it’s built.
+          </h2>
+          <p className="font-serif text-[0.97rem] leading-[1.6] text-ink">
+            Every album is positioned by how it sounds, not what genre tag it
+            has. Audio features and a light pass over surface metadata feed an
+            embedding; nearby points share sonic qualities even when their
+            labels are far apart. Color encodes a loose mood/texture cluster:
+            eight regions, hand-tuned.
+          </p>
+        </div>
         <CrossLinkCard
           href="https://www.recmyrecord.com"
           external
           title="RecMyRecord"
-          description="If this idea — finding music by how it sounds rather than how it's tagged — interests you, RecMyRecord is the full version: an album recommender built on the same intuition."
+          description="this map is the sketch. the recommender is what to do with it."
         />
-      </section>
-    </PageShell>
+      </div>
+    </section>
   );
 }

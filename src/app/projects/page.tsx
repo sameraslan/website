@@ -1,26 +1,27 @@
 import { loadEntries } from '@/lib/content';
-import { ProjectCard } from '@/components/content/ProjectCard';
-import { PageShell } from '@/components/layout/PageShell';
+import { EntryRow } from '@/components/content/EntryRow';
+import { PageTitle } from '@/components/content/PageTitle';
 
 export const metadata = { title: 'projects — samer aslan' };
 
 export default async function ProjectsPage() {
   const entries = await loadEntries('projects');
   return (
-    <PageShell width="list">
-      <h1 className="font-serif text-h1 text-sage mb-2">projects</h1>
-      <p className="text-ink-muted mb-10">
-        Personal projects. Work projects (Bloomberg) added when shareable.
-      </p>
-      {entries.length === 0 ? (
-        <p className="text-ink-dim italic">No projects yet.</p>
-      ) : (
-        <div>
-          {entries.map((e) => (
-            <ProjectCard key={e.slug} entry={e} href={`/projects/${e.slug}`} />
-          ))}
+    <section>
+      <PageTitle>projects</PageTitle>
+      <div>
+        {entries.map((e) => (
+          <EntryRow
+            key={e.slug}
+            entry={e}
+            href={`/projects/${e.slug}`}
+            kind="project"
+          />
+        ))}
+        <div className="py-6 border-b border-rule-soft font-serif italic text-ink-muted opacity-60 text-[1.05rem]">
+          forthcoming. bloomberg things, when they’re shareable.
         </div>
-      )}
-    </PageShell>
+      </div>
+    </section>
   );
 }

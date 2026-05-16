@@ -1,13 +1,20 @@
 import Link from 'next/link';
-import { PageShell } from '@/components/layout/PageShell';
 
 export default function NotFound() {
   return (
-    <PageShell width="text">
-      <h1 className="font-serif text-h1 text-sage mb-4">not found</h1>
-      <p className="text-ink-muted">
-        no page at that path. <Link href="/" className="text-sage hover:text-sage-deep">go home</Link>.
+    <section className="flex flex-col justify-center min-h-[60vh]">
+      <h1 className="font-display font-normal leading-[0.9] -tracking-[0.035em] text-[3.5rem] sm:text-[6.5rem] m-0">
+        no page <span className="italic text-moss">at that path.</span>
+      </h1>
+      <p className="font-serif text-[1.25rem] text-ink-muted mt-4 mb-6 max-w-[36ch]">
+        either i moved it, or you typed it.
       </p>
-    </PageShell>
+      <Link
+        href="/"
+        className="font-serif italic text-[1.15rem] text-moss border-b border-moss pb-0.5 self-start"
+      >
+        ← go home
+      </Link>
+    </section>
   );
 }

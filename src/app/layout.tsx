@@ -1,7 +1,7 @@
 import './globals.css';
-import { newsreader, jetbrainsMono } from '@/lib/fonts';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { MobileNav } from '@/components/layout/MobileNav';
+import { newsreader, cormorant, ibmPlexMono } from '@/lib/fonts';
+import { SiteHeader } from '@/components/layout/SiteHeader';
+import { SiteFooter } from '@/components/layout/SiteFooter';
 import { siteConfig } from '@/lib/site-config';
 
 export const metadata = {
@@ -11,15 +11,18 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${newsreader.variable} ${jetbrainsMono.variable}`}>
-      <body className="bg-paper text-ink antialiased">
-        <div className="min-h-screen px-8 md:px-16 pt-14 pb-8 md:flex md:gap-20">
-          <Sidebar />
-          <main className="flex-1 min-w-0">
-            <MobileNav />
+    <html
+      lang="en"
+      className={`${newsreader.variable} ${cormorant.variable} ${ibmPlexMono.variable}`}
+    >
+      <body className="bg-paper text-ink antialiased min-h-screen flex flex-col">
+        <SiteHeader />
+        <main className="flex-1">
+          <div className="mx-auto max-w-page px-6 sm:px-10 md:px-16 py-10">
             {children}
-          </main>
-        </div>
+          </div>
+        </main>
+        <SiteFooter />
       </body>
     </html>
   );
