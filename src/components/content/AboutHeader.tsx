@@ -20,22 +20,24 @@ export function AboutHeader() {
           >
             I
           </span>
-          blend AI/ML research with engineering, and care about shipping work
-          that&apos;s useful to the people on the other end of it.
+          &apos;m passionate about blending cutting-edge AI and machine learning
+          research with engineering to develop innovative solutions that create
+          meaningful and positive experiences for people.
         </p>
 
-        <p className="mt-4 m-0">Other things I think about a lot:</p>
+        <p className="mt-4 m-0">My non-tech interests include:</p>
         <ul className="mt-2 mb-0 pl-5 list-disc marker:text-ink-dim space-y-1">
-          <li>human psychology and behavior</li>
-          <li>the brain, and its role in sensation and perception</li>
-          <li>art, especially music and how it shapes cognition</li>
-          <li>nutrition, and how it ties into how you feel through a day</li>
+          <li>Human psychology and behavior</li>
+          <li>The brain and its role in sensation and perception</li>
+          <li>Art, especially music and its influence on cognition</li>
+          <li>The intersection of nutrition and human well-being</li>
         </ul>
 
         <p className="mt-4">
-          I&apos;m always glad to hear from people working on or thinking about
-          any of this. The email icon in the footer reaches me directly. I
-          write back.
+          I&apos;m especially excited about how these fields can intersect with
+          technology to enhance the human experience. I&apos;m always open to
+          speaking with others who share similar interests or are working on
+          related projects—feel free to reach out!
         </p>
       </div>
 
