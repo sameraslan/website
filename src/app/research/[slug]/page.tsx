@@ -3,7 +3,6 @@ import { MDXRemote } from 'next-mdx-remote/rsc';
 import { loadEntries, loadEntry } from '@/lib/content';
 import { EntryDetailHeader } from '@/components/content/EntryDetailHeader';
 import { RelatedAside } from '@/components/content/RelatedAside';
-import { MusicMapHero } from '@/components/music-map/MusicMapHero';
 
 export async function generateStaticParams() {
   const entries = await loadEntries('research');
@@ -37,10 +36,6 @@ export default async function ResearchDetail({
   return (
     <article>
       <EntryDetailHeader entry={entry} kind="research" backHref="/research" backLabel="research" />
-
-      <div className="mt-6 py-4 border-y border-rule">
-        <MusicMapHero aspect={4.6} density={60} withLabels={false} />
-      </div>
 
       <div className="grid gap-10 mt-7 md:grid-cols-[1fr_260px]">
         <div className="prose-mdx max-w-[60ch]">

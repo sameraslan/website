@@ -1,4 +1,4 @@
-import { MusicMapHero } from '@/components/music-map/MusicMapHero';
+import MusicMapClient from '@/components/music-map/MusicMapClient';
 import { CrossLinkCard } from '@/components/content/CrossLinkCard';
 import { PageTitle } from '@/components/content/PageTitle';
 
@@ -10,7 +10,9 @@ export default function MusicPage() {
       <PageTitle>music</PageTitle>
 
       <div className="pb-5 border-b border-rule">
-        <MusicMapHero aspect={2.28} density={128} />
+        <section className="w-full aspect-[2/1] relative">
+          <MusicMapClient />
+        </section>
       </div>
 
       <div className="mt-6 grid gap-10 md:grid-cols-[1.6fr_1fr]">

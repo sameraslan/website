@@ -19,12 +19,18 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@floating-ui/react-dom": "^2.1.2",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
     "clsx": "^2.1.1",
+    "fuse.js": "^7.3.0",
     "gray-matter": "^4.0.3",
     "next": "^16.2.6",
     "next-mdx-remote": "^6.0.0",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "three": "^0.169.0",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.0",
@@ -33,6 +39,7 @@
     "@types/node": "^25.8.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.178.1",
     "@vitejs/plugin-react": "^6.0.2",
     "autoprefixer": "^10.5.0",
     "eslint": "^9.39.4",
