@@ -8,7 +8,7 @@ const LAST_UPDATED = '2026-05-15';
 export default function NowPage() {
   return (
     <PageShell width="text">
-      <h1 className="font-serif text-h1 mb-2">now</h1>
+      <h1 className="font-serif text-h1 text-sage mb-2">now</h1>
       <p className="font-mono text-tiny text-ink-dim mb-10">a /now page · what I&apos;m focused on these days</p>
 
       <div className="space-y-6 text-body">

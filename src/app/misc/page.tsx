@@ -5,7 +5,7 @@ export const metadata = { title: 'misc — samer aslan' };
 export default function MiscPage() {
   return (
     <PageShell width="text">
-      <h1 className="font-serif text-h1 mb-8">misc</h1>
+      <h1 className="font-serif text-h1 text-sage mb-8">misc</h1>
 
       <section className="mb-12">
         <h2 className="font-serif text-h2 mb-4">brain & cognition</h2>

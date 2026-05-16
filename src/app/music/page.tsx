@@ -11,7 +11,7 @@ export default async function MusicPage() {
 
   return (
     <PageShell width="prose">
-      <h1 className="font-serif text-h1 mb-2">music</h1>
+      <h1 className="font-serif text-h1 text-sage mb-2">music</h1>
       <p className="text-ink-muted mb-10">
         a map of my listening — proximity by sound, color by mood
       </p>

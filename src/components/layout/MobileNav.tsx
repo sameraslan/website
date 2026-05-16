@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import { siteConfig } from '@/lib/site-config';
+import { SocialIcons } from './SocialIcons';
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -43,20 +44,8 @@ export function MobileNav() {
 
 export function MobileExternalLinks() {
   return (
-    <ul className="md:hidden flex flex-wrap gap-x-3 mt-16 pt-8 border-t border-rule text-small font-serif">
-      {siteConfig.external.map((item, i) => (
-        <li key={item.href} className="flex items-center gap-x-3">
-          {i > 0 && <span aria-hidden className="text-ink-dim">·</span>}
-          <a
-            href={item.href}
-            target={item.href.startsWith('http') ? '_blank' : undefined}
-            rel={item.href.startsWith('http') ? 'noreferrer' : undefined}
-            className="text-ink hover:text-sage-deep"
-          >
-            {item.label}
-          </a>
-        </li>
-      ))}
-    </ul>
+    <div className="md:hidden mt-16 pt-8 border-t border-rule">
+      <SocialIcons size={20} />
+    </div>
   );
 }

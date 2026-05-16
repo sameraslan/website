@@ -6,8 +6,8 @@
   --color-ink: #2d2a22;
   --color-ink-muted: #6b6852;
   --color-ink-dim: #b3ab94;
-  --color-sage: #5b7855;
-  --color-sage-deep: #3e5a3a;
+  --color-sage: #3e7a3e;
+  --color-sage-deep: #2c5a2c;
   --color-rule: #d8d0bd;
 }
 
@@ -16,7 +16,7 @@
   body {
     background: var(--color-paper);
     color: var(--color-ink);
-    font-family: var(--font-fraunces), Georgia, serif;
+    font-family: var(--font-newsreader), Georgia, serif;
     font-size: 1.0625rem;
     line-height: 1.6;
   }
@@ -30,8 +30,8 @@
 @layer components {
   .prose-mdx { font-size: 1.0625rem; line-height: 1.7; }
   .prose-mdx > * + * { margin-top: 1.25rem; }
-  .prose-mdx h2 { font-family: var(--font-fraunces); font-size: 1.75rem; margin-top: 2.5rem; }
-  .prose-mdx h3 { font-family: var(--font-fraunces); font-size: 1.25rem; margin-top: 2rem; }
+  .prose-mdx h2 { font-family: var(--font-newsreader); font-size: 1.75rem; margin-top: 2.5rem; }
+  .prose-mdx h3 { font-family: var(--font-newsreader); font-size: 1.25rem; margin-top: 2rem; }
   .prose-mdx a  { color: var(--color-sage); }
   .prose-mdx a:hover { color: var(--color-sage-deep); }
   .prose-mdx code { font-family: var(--font-jetbrains-mono); font-size: 0.95em; background: var(--color-paper-soft); padding: 0.1em 0.35em; border-radius: 3px; }

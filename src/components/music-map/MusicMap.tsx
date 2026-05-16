@@ -60,7 +60,7 @@ export function MusicMap({ className, width, height, data = [] }: MusicMapProps)
             <text
               x={cx + r + 4}
               y={cy + 4}
-              fontFamily="var(--font-fraunces), serif"
+              fontFamily="var(--font-newsreader), serif"
               fontSize={11}
               fill="#2d2a22"
             >

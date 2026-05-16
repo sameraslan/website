@@ -1,10 +1,10 @@
-import { Fraunces, JetBrains_Mono } from 'next/font/google';
+import { JetBrains_Mono, Newsreader } from 'next/font/google';
 
-export const fraunces = Fraunces({
+export const newsreader = Newsreader({
   subsets: ['latin'],
   axes: ['opsz'],
   display: 'swap',
-  variable: '--font-fraunces',
+  variable: '--font-newsreader',
 });
 
 export const jetbrainsMono = JetBrains_Mono({

@@ -8,7 +8,7 @@ export default async function ResearchPage() {
   const entries = await loadEntries('research');
   return (
     <PageShell width="list">
-      <h1 className="font-serif text-h1 mb-2">research</h1>
+      <h1 className="font-serif text-h1 text-sage mb-2">research</h1>
       <p className="text-ink-muted mb-10">
         Academic work, mostly at JHU. Neuro-AI, language models, perception.
       </p>

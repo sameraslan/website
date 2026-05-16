@@ -8,7 +8,7 @@ export default async function ProjectsPage() {
   const entries = await loadEntries('projects');
   return (
     <PageShell width="list">
-      <h1 className="font-serif text-h1 mb-2">projects</h1>
+      <h1 className="font-serif text-h1 text-sage mb-2">projects</h1>
       <p className="text-ink-muted mb-10">
         Personal projects. Work projects (Bloomberg) added when shareable.
       </p>

@@ -6,7 +6,7 @@ export const metadata = { title: 'about — samer aslan' };
 export default function AboutPage() {
   return (
     <PageShell width="text">
-      <h1 className="font-serif text-h1 mb-8">about</h1>
+      <h1 className="font-serif text-h1 text-sage mb-8">about</h1>
       <AboutHeader />
       <div className="space-y-6 text-body">
         <p>

@@ -10,12 +10,12 @@ const config: Config = {
         ink: '#2d2a22',
         'ink-muted': '#6b6852',
         'ink-dim': '#b3ab94',
-        sage: '#5b7855',
-        'sage-deep': '#3e5a3a',
+        sage: '#3e7a3e',
+        'sage-deep': '#2c5a2c',
         rule: '#d8d0bd',
       },
       fontFamily: {
-        serif: ['var(--font-fraunces)', 'Georgia', 'serif'],
+        serif: ['var(--font-newsreader)', 'Georgia', 'serif'],
         mono: ['var(--font-jetbrains-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       fontSize: {

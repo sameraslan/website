@@ -34,7 +34,7 @@ export default async function ResearchDetail({
         ← research
       </Link>
       <header className="mt-4 mb-10">
-        <h1 className="font-serif text-h1 mb-2">{entry.title}</h1>
+        <h1 className="font-serif text-h1 text-sage mb-2">{entry.title}</h1>
         {entry.subtitle && (
           <p className="text-body text-ink-muted">{entry.subtitle}</p>
         )}
