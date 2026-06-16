@@ -1,0 +1,13 @@
+---
+title: "Reasoners or Translators?"
+subtitle: "Contamination-aware evaluation and neuro-symbolic robustness in tax law"
+year: 2026
+role: "Researcher"
+affiliation: "Bloomberg LP"
+stack: ["Neuro-symbolic reasoning", "Legal reasoning", "Formal logic"]
+links:
+  paper: "https://arxiv.org/abs/2605.16052"
+order: 1
+---
+
+This study asks whether large language models reason over tax statute or reproduce answers seen during training, and tests them against neuro-symbolic systems where the model translates a case into Prolog and a solver carries out the inference rather than answering in natural language. It builds on SARA, the StAtutory Reasoning Assessment dataset, which pairs natural language statutes and cases with human-coded Prolog for deciding entailment and computing tax owed: the LLM converts a fact pattern into Prolog facts, those facts join SARA's statute knowledge base and a query like owes_tax(alice, 2015, X), and the solver binds X to 14,000. To separate reasoning from memorization, it adds contamination quizzes that check whether a model can pick the verbatim SARA instance out of meaning-preserving perturbations, and SARA+, new splits that change the numbers in the rules and cases and paraphrase the text so each problem keeps its structure while its answer changes. On SARA+ the direct LLM calls that answer without Prolog lose accuracy while the pipeline that hands deduction to Prolog stays stable, which traces much of the earlier high scores to benchmark exposure and leaves statutory tax reasoning favoring neuro-symbolic methods over standalone LLMs.

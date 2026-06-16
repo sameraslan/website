@@ -1,0 +1,24 @@
+---
+title: "RecMyRecord"
+subtitle: "Mood and audio-based album recommendations across genres"
+year: 2024
+role: "Solo"
+stack: ["React", "Next.js", "Chakra UI", "Flask", "KNN", "Vercel", "Heroku"]
+links:
+  site: "https://www.recmyrecord.com"
+order: 1
+---
+
+RecMyRecord is a content-based album recommender: it ranks albums by how they sound rather than by who has played them. Most recommenders instead work from co-occurrence, recommending the albums frequently played by the same listeners, which captures listening behavior more than musical content.
+
+## How it works
+
+Each of RateYourMusic's top 5,000 albums becomes a feature vector of audio attributes (valence, danceability, energy) and mood descriptors weighted by how often listeners apply them. Given a seed album, the recommender returns its nearest neighbors in that space. The frontend is built in React and Next.js, a Flask service computes the neighbors, and the app runs on Vercel and Heroku.
+
+## Why it's interesting
+
+Because similarity is measured over sound and mood instead of genre or listening history, neighbors often cross genres. Alice Coltrane's Journey in Satchidananda and Nucleus's Elastic Rock sit close together despite being filed under spiritual jazz and jazz-rock, because they share a pace and energy their genre tags don't capture.
+
+## Status
+
+RecMyRecord is live at [recmyrecord.com](https://www.recmyrecord.com), and the [music map](/music) on this site lays out the same kind of features visually.

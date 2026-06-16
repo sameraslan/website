@@ -1,18 +1,15 @@
-import mdx from "@next/mdx";
+import { fileURLToPath } from 'url';
 
-const withMDX = mdx({
-  extension: /\.mdx?$/,
-  options: {},
-});
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  pageExtensions: ["ts", "tsx", "md", "mdx"],
-  transpilePackages: ["next-mdx-remote"],
-  sassOptions: {
-    compiler: "modern",
-    silenceDeprecations: ["legacy-js-api"],
+  reactStrictMode: true,
+  // Hide the Next.js dev indicator badge (the logo in the bottom-left corner).
+  devIndicators: false,
+  turbopack: {
+    root: __dirname,
   },
 };
 
-export default withMDX(nextConfig);
+export default nextConfig;

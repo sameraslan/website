@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+  body {
+    margin: 0;
+    background: #fdfcf8;
+    color: #1a1a1a;
+    font-family: 'EB Garamond', Garamond, 'Times New Roman', serif;
+    font-feature-settings: "lnum", "kern";
+    min-height: 100vh;
+    padding: 56px 64px 32px;
+    box-sizing: border-box;
+  }
+
+  .page {
+    display: grid;
+    grid-template-columns: 170px 1fr;
+    gap: 80px;
+    align-items: start;
+    min-height: calc(100vh - 88px);
+  }
+
+  /* Sidebar */
+  nav.side {
+    font-size: 17.5px;
+    line-height: 1.85;
+    letter-spacing: 0.005em;
+    padding-top: 70px;
+  }
+  nav.side .item { color: #1a1a1a; font-weight: 600; }
+  nav.side .item.active { color: #6a90b9; }
+  nav.side .item.dim { color: #b3b3b3; font-weight: 500; }
+  nav.side .item.ext { color: #1a1a1a; font-weight: 600; }
+  nav.side .spacer { height: 18px; }
+  nav.side .copy { margin-top: 60px; font-size: 11.5px; color: #aaaaaa; line-height: 1.45; font-style: italic; }
+
+  /* Hero / Viz */
+  .hero { padding-top: 30px; }
+  .viz-wrap { position: relative; }
+
+  /* Placeholder music viz — clean SVG */
+  svg.musicviz { width: 100%; height: 460px; display: block; }
+  .caption {
+    text-align: center;
+    font-size: 15px;
+    color: #2b2b2b;
+    margin-top: 36px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .caption .br {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    color: #555;
+    font-weight: 400;
+  }
+
+  .legend {
+    position: absolute; right: 10px; bottom: 8px;
+    font-size: 12px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    color: #555;
+    display: flex; gap: 18px;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .sw { width: 16px; height: 2px; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <nav class="side">
+    <div class="item active">samer aslan</div>
+    <div class="spacer"></div>
+    <div class="item">about</div>
+    <div class="item">research</div>
+    <div class="item">writings</div>
+    <div class="item">misc.</div>
+    <div class="spacer"></div>
+    <div class="item dim">contact</div>
+    <div class="item ext">email</div>
+    <div class="item ext">linkedin</div>
+    <div class="item ext">github</div>
+    <div class="copy">© 2026<br>samer aslan</div>
+  </nav>
+
+  <main class="hero">
+    <div class="viz-wrap">
+
+      <svg class="musicviz" viewBox="0 0 1100 460" preserveAspectRatio="xMidYMid meet">
+        <!-- Soft confidence band (mimicking 95% CI) -->
+        <defs>
+          <linearGradient id="bandGrad" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#cfe1ec" stop-opacity="0.85"/>
+            <stop offset="100%" stop-color="#cfe1ec" stop-opacity="0.85"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Dashed midline -->
+        <line x1="40" y1="230" x2="1080" y2="230" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="4 6"/>
+
+        <!-- Confidence band -->
+        <path fill="#d6e6ee" stroke="none" opacity="0.7" d="
+          M 40 200
+          C 100 100, 160 320, 220 180
+          C 280 60, 340 360, 400 200
+          C 460 80, 520 340, 580 210
+          C 640 100, 700 320, 760 180
+          C 820 60, 880 350, 940 200
+          C 1000 80, 1050 300, 1080 220
+          L 1080 250
+          C 1050 360, 1000 140, 940 270
+          C 880 410, 820 130, 760 250
+          C 700 380, 640 170, 580 280
+          C 520 410, 460 150, 400 270
+          C 340 420, 280 130, 220 250
+          C 160 380, 100 170, 40 260
+          Z
+        "/>
+
+        <!-- Noisy decoded line (deep red) — represents the music signal -->
+        <path fill="none" stroke="#a23a3f" stroke-width="1.4" stroke-linejoin="round" d="
+          M 40 230
+          L 55 215 L 70 245 L 85 200 L 100 260 L 115 195 L 130 270
+          L 145 180 L 160 250 L 175 165 L 190 240 L 205 150 L 220 215
+          L 235 180 L 250 245 L 265 165 L 280 230 L 295 195 L 310 260
+          L 325 210 L 340 270 L 355 195 L 370 250 L 385 175 L 400 220
+          L 415 240 L 430 185 L 445 255 L 460 175 L 475 230 L 490 200
+          L 505 265 L 520 220 L 535 275 L 550 200 L 565 250 L 580 215
+          L 595 175 L 610 240 L 625 165 L 640 215 L 655 185 L 670 250
+          L 685 175 L 700 220 L 715 195 L 730 260 L 745 200 L 760 245
+          L 775 175 L 790 220 L 805 175 L 820 245 L 835 195 L 850 230
+          L 865 165 L 880 215 L 895 185 L 910 250 L 925 200 L 940 245
+          L 955 195 L 970 245 L 985 200 L 1000 255 L 1015 215 L 1030 270
+          L 1045 220 L 1060 250 L 1075 215
+        "/>
+
+        <!-- Smooth latent (sinusoid-ish, dark gray) — the underlying structure -->
+        <path fill="none" stroke="#2c2c2c" stroke-width="2.5" stroke-linecap="round" d="
+          M 40 230
+          C 130 110, 220 110, 310 230
+          C 400 350, 490 350, 580 230
+          C 670 110, 760 110, 850 230
+          C 940 350, 1030 350, 1080 250
+        "/>
+
+        <!-- Frequency band ticks at bottom -->
+        <g font-family="Helvetica Neue, Arial, sans-serif" font-size="9" fill="#888">
+          <line x1="40" y1="430" x2="1080" y2="430" stroke="#ddd" stroke-width="1"/>
+          <line x1="40" y1="430" x2="40" y2="436" stroke="#aaa"/>
+          <line x1="295" y1="430" x2="295" y2="436" stroke="#aaa"/>
+          <line x1="550" y1="430" x2="550" y2="436" stroke="#aaa"/>
+          <line x1="805" y1="430" x2="805" y2="436" stroke="#aaa"/>
+          <line x1="1060" y1="430" x2="1060" y2="436" stroke="#aaa"/>
+          <text x="40" y="450" text-anchor="start">0:00</text>
+          <text x="295" y="450" text-anchor="middle">0:48</text>
+          <text x="550" y="450" text-anchor="middle">1:36</text>
+          <text x="805" y="450" text-anchor="middle">2:24</text>
+          <text x="1060" y="450" text-anchor="end">3:12</text>
+        </g>
+      </svg>
+
+      <div class="legend">
+        <span><span class="sw" style="background:#2c2c2c"></span>latent</span>
+        <span><span class="sw" style="background:#a23a3f"></span>decoded</span>
+        <span><span class="sw" style="background:#cfe1ec"></span>95% CI</span>
+      </div>
+    </div>
+
+    <div class="caption">
+      a music latent — listening to <em>Avril 14th</em> · <span class="br">[t = 1:24]</span>
+    </div>
+  </main>
+
+</div>
+</body>
+</html>

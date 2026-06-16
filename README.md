@@ -1,94 +1,83 @@
-# **Magic Portfolio by Once UI**
+# samer aslan — personal site
 
-View the [demo here](https://demo.magic-portfolio.com).
+Source for [sameraslan.com](https://sameraslan.com). Next.js 16 + Tailwind 4 + MDX, statically rendered, deployed on Vercel.
 
-![Magic Portfolio](https://demo.magic-portfolio.com/images/og/home.jpg)
+## Stack
 
+- **Framework:** Next.js 16 (App Router), React 19, TypeScript
+- **Styles:** Tailwind 4 with custom theme tokens (see `tailwind.config.ts`)
+- **Type:** Fraunces (serif) + JetBrains Mono via `next/font/google`
+- **Content:** MDX via `next-mdx-remote/rsc` + `gray-matter` for frontmatter
+- **Tests:** Vitest + Testing Library
+- **Hosting:** Vercel
 
-# **Getting started**
+## Local development
 
-Magic Portfolio was built with [Once UI](https://once-ui.com) for [Next.js](https://nextjs.org). It requires Node.js v18.17+.
-
-**1. Clone the repository**
-```
-git clone https://github.com/once-ui-system/magic-portfolio.git
-```
-
-**2. Install dependencies**
-```
+```bash
 npm install
-```
-
-**3. Run dev server**
-```
 npm run dev
 ```
 
-**4. Edit config**
-```
-src/app/resources/config
-```
+Open http://localhost:3000.
 
-**5. Edit content**
-```
-src/app/resources/content
-```
+Other scripts:
 
-**6. Create blog posts / projects**
-```
-Add a new .mdx file to src/app/blog/posts or src/app/work/projects
+```bash
+npm run build   # production build
+npm run start   # serve production build
+npm run lint    # ESLint (next/core-web-vitals)
+npm test        # Vitest run
 ```
 
-# **Documentation**
+## Repo structure
 
-Docs available at: [docs.once-ui.com](https://docs.once-ui.com/docs/magic-portfolio/quick-start)
+```
+src/
+  app/                   route segments (App Router)
+  components/
+    layout/              Sidebar, MobileNav, PageShell
+    music-map/           MusicMap (placeholder), Caption, Hero
+    content/             ProjectCard, ResearchCard, AboutHeader, CrossLinkCard
+  content/
+    projects/*.mdx       project entries
+    research/*.mdx       research entries
+  lib/
+    site-config.ts       name, nav items, external links
+    content.ts           MDX loader + frontmatter parsing
+    music-data.ts        listening.json loader
+    fonts.ts             next/font wiring
+public/
+  data/listening.json    music-map data (also used by the parallel viz session)
+  data/covers/           album cover thumbnails
+  images/avatar.jpg      profile photo
+```
 
-# **Features**
+## Adding content
 
-## **Once UI**
-- All tokens, components & features of [Once UI](https://once-ui.com)
+See [`docs/content-authoring.md`](docs/content-authoring.md) for how to add a project, add research, or update `/about`, `/now`, `/misc`.
 
-## **SEO**
-- Automatic open-graph and X image generation with next/og
-- Automatic schema and metadata generation based on the content file
+## Music map integration
 
-## **Design**
-- Responsive layout optimized for all screen sizes
-- Timeless design without heavy animations and motion
-- Endless customization options through [data attributes](https://once-ui.com/docs/theming)
+The music visualization (`src/components/music-map/MusicMap.tsx`) is the integration point for a separately-built viz. The current implementation is a placeholder SVG. The component contract is:
 
-## **Content**
-- Render sections conditionally based on the content file
-- Enable or disable pages for blog, work, gallery and about / CV
-- Generate and display social links automatically
-- Set up password protection for URLs
+```ts
+interface MusicMapProps {
+  className?: string;
+  width: number;
+  height: number;
+  data?: AlbumPoint[];
+  interactive?: boolean;
+  onHoverAlbum?: (album: AlbumPoint | null) => void;
+  onClickAlbum?: (album: AlbumPoint) => void;
+}
+```
 
-## **Localization**
-- A localized version of Magic Portfolio is available with the next-intl library
-- To use localization, switch to the 'i18n' branch
+Swap the placeholder by replacing the file. Data comes from `public/data/listening.json`. Detailed contract in [`docs/architecture.md`](docs/architecture.md).
 
-# **Authors**
+## Deployment
 
-Connect with us on Threads or LinkedIn.
+Pushes to the deployment branch deploy via Vercel. Preview deployments are created for every PR. No env vars required at launch.
 
-Lorant Toth: [Threads](https://www.threads.net/@lorant.one), [LinkedIn](https://www.linkedin.com/in/tothlorant/)  
-Zsofia Komaromi: [Threads](https://www.threads.net/@zsofia_kom), [LinkedIn](https://www.linkedin.com/in/zsofiakomaromi/)
+## License
 
-Localization added by [François Hernandez](https://github.com/francoishernandez)
-
-# **Get involved**
-
-- Join the [Design Engineers Club on Discord](https://discord.com/invite/5EyAQ4eNdS) and share your portfolio with us!
-- Report a [bug](https://github.com/once-ui-system/magic-portfolio/issues/new?labels=bug&template=bug_report.md).
-
-# **License**
-
-Distributed under the CC BY-NC 4.0 License.
-- Commercial usage is not allowed.
-- Attribution is required.
-- You can extend the license to commercial use by purchasing a [Once UI Pro](https://once-ui.com/pricing) license.
-
-See `LICENSE.txt` for more information.
-
-# **Deploy with Vercel**
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fonce-ui-system%2Fmagic-portfolio&project-name=portfolio&repository-name=portfolio&redirect-url=https%3A%2F%2Fgithub.com%2Fonce-ui-system%2Fmagic-portfolio&demo-title=Magic%20Portfolio&demo-description=Showcase%20your%20designers%20or%20developer%20portfolio&demo-url=https%3A%2F%2Fdemo.magic-portfolio.com&demo-image=%2F%2Fraw.githubusercontent.com%2Fonce-ui-system%2Fmagic-portfolio%2Fmain%2Fpublic%2Fimages%2Fog%2Fhome.jpg)
+MIT — see `LICENSE`.
