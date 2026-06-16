@@ -1,25 +1,25 @@
 ---
 title: "DiaLong"
 subtitle: "Benchmarking reminiscence in long-context dialogues"
-year: 2024
+year: 2023
 role: "Researcher"
 affiliation: "Johns Hopkins"
 stack: ["Python", "PyTorch", "HuggingFace", "LLM evaluation"]
 links:
   github: "https://github.com/sameraslan/DiaLong"
-order: 1
+order: 2
 ---
 
-A dataset and benchmark for testing whether long-context language models actually remember earlier turns of a conversation, not just whether they can be cued to fetch a needle from a haystack.
+DiaLong is a benchmark for whether long-context models retain a conversation rather than just locate a fact in it when prompted. Most long-context evaluations hide a single sentence in a long input and score whether the model retrieves it, which measures whether the context window functions but says little about recall once earlier turns fall outside that window.
 
-## Why this benchmark
+## How it works
 
-Most long-context evals measure retrieval: hide a sentence, ask for it back, score the recall. That tells you the context window works mechanically. It says nothing about whether a model will bring back something a human conversational partner would naturally bring back, a callback, a contradiction, an earlier preference, without being asked.
+The dataset is 100 human-written conversations built from MultiSessionChat, each split into four timed sessions between two speakers. A GPT-4 pipeline first rewrites each session for smoother transitions while preserving its content, then extends it to roughly 1,000 tokens, producing dialogues of about 3.7K tokens and 110 utterances on average. GPT-4 then generates roughly 198 true and false facts per conversation, where true facts are drawn strictly from explicitly stated content and false facts are deliberately constructed on-topic, each cited to the line that confirms or refutes it for manual verification. The memory task is true/false classification: the model sees a dialogue and 40 candidate facts per session and returns which it believes are true. Tasks are configured from one session up to eight, roughly 1,000 to 8,000 tokens, so that for a 4,000-token model the early sessions test recall within the context window and the later ones test recall after the relevant turns have been evicted.
 
-## What we measure
+## Why it's interesting
 
-Multi-turn dialogues where the natural next thing for the model to say requires it to surface earlier content on its own. We score with held-out conversational patterns and compare out-of-the-box LLMs against memory-augmented setups, which lets us isolate where each one fails.
+The benchmark separates a memory failure from a reasoning failure. GPT-4, GPT-3.5, and Claude all score well within context and drop sharply once dialogue is pushed out of the window, but GPT-4's precision stays high out of context because it reports uncertainty instead of guessing, which locates the failure in retention rather than comprehension. The Self-Controlled Memory augmentation from Liang et al. shows a smaller in-context to out-of-context drop than the base models, evidence that it retains some but not all of the earlier facts. Human annotators on Mechanical Turk reach 84.0 accuracy with no degradation as dialogues lengthen, only taking longer, which sets the gap that the augmented models do not close.
 
 ## Status
 
-Code and data at [github.com/sameraslan/DiaLong](https://github.com/sameraslan/DiaLong).
+Code and data are at [github.com/sameraslan/DiaLong](https://github.com/sameraslan/DiaLong).

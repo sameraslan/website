@@ -9,16 +9,16 @@ links:
 order: 1
 ---
 
-A recommender that looks at how an album sounds and how it feels, not which genre tag it carries. The hypothesis: my favorite albums share sonic and mood properties that genre labels paper over, and a system listening for those properties directly should surface cross-genre matches a tag-based recommender never would.
+RecMyRecord is a content-based album recommender: it ranks albums by how they sound rather than by who has played them. Most recommenders instead work from co-occurrence, recommending the albums frequently played by the same listeners, which captures listening behavior more than musical content.
 
-## Approach
+## How it works
 
-Each album sits in a feature space built from audio characteristics and mood descriptors. A KNN lookup returns the nearest albums to whatever you give it as a seed. Next.js and Chakra UI for the frontend, a Flask service for the recommender, deployed on Vercel and Heroku.
+Each of RateYourMusic's top 5,000 albums becomes a feature vector of audio attributes (valence, danceability, energy) and mood descriptors weighted by how often listeners apply them. Given a seed album, the recommender returns its nearest neighbors in that space. The frontend is built in React and Next.js, a Flask service computes the neighbors, and the app runs on Vercel and Heroku.
 
-## What's interesting
+## Why it's interesting
 
-The cross-genre hits. A jazz record pairing with an ambient electronic record because both move at the same pulse with the same dynamic range. That connection isn't in any tag.
+Because similarity is measured over sound and mood instead of genre or listening history, neighbors often cross genres. Alice Coltrane's Journey in Satchidananda and Nucleus's Elastic Rock sit close together despite being filed under spiritual jazz and jazz-rock, because they share a pace and energy their genre tags don't capture.
 
 ## Status
 
-Live at [recmyrecord.com](https://www.recmyrecord.com). Pairs thematically with the [music map](/music) on this site.
+RecMyRecord is live at [recmyrecord.com](https://www.recmyrecord.com), and the [music map](/music) on this site lays out the same kind of features visually.

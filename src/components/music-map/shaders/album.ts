@@ -43,8 +43,8 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
 
     vec2 toCursor = u_cursor - worldPos;
     float d = length(toCursor);
-    float pullRadius = 0.18;
-    float pullStrength = 0.06 * u_cursorActive;
+    float pullRadius = 0.12;
+    float pullStrength = 0.018 * u_cursorActive;
     float falloff = 1.0 - smoothstep(0.0, pullRadius, d);
     worldPos += normalize(toCursor + vec2(0.0001)) * (falloff * falloff * pullStrength);
 
@@ -61,7 +61,11 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
         v_dim = 0.7;
       }
     }
-    gl_PointSize = baseSize * scale * u_pixelRatio;
+    // Clamp at 240 device-px: most desktop GPUs cap GL_POINTS sprites around
+    // 256, so without this a high-DPR (3x) viewport at max zoom asks for a
+    // ~300px sprite and the driver silently culls the entire point — the
+    // user sees the focused album vanish into the paper background.
+    gl_PointSize = min(baseSize * scale * u_pixelRatio, 240.0);
     v_screenSize = gl_PointSize;
 
     v_atlasOrigin = a_atlasUV.xy;
@@ -121,8 +125,8 @@ export const ALBUM_FRAGMENT_SHADER = /* glsl */ `
     // Authored in sRGB; ShaderMaterial does not auto-apply the
     // linear->sRGB output conversion, so we write the literal hex
     // values straight to the framebuffer.
-    vec3 ink = vec3(0.176, 0.165, 0.133);   // #2d2a22
-    vec3 paper = vec3(0.965, 0.941, 0.882); // #f6f0e1
+    vec3 ink = vec3(0.137, 0.114, 0.078);   // #231d14
+    vec3 paper = vec3(0.980, 0.965, 0.926); // #faf6ec
     vec3 cluster = clusterColor(int(v_clusterId));
     vec3 dotColor = mix(ink, cluster, 0.3);
     vec3 col;

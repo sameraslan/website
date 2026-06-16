@@ -14,9 +14,8 @@ export default function ArtPage() {
       <PageTitle>art</PageTitle>
 
       <p className="font-serif italic text-ink-muted text-[1.05rem] max-w-[60ch] m-0 mb-10">
-        a small shelf of records, films, and books that keep coming back. a
-        longer ledger lives on rateyourmusic and goodreads; this is the
-        condensed version.
+        a small shelf of records, films, and books that I keep coming back to. a
+        longer list lives on rateyourmusic and goodreads.
       </p>
 
       <ArtTeaserRow

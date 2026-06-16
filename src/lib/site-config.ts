@@ -16,7 +16,7 @@ export const siteConfig = {
     { label: 'art',      href: '/art' },
   ] as NavItem[],
   external: [
-    { label: 'email',    href: 'mailto:samer.aslan.second@gmail.com' },
+    { label: 'email',    href: 'mailto:samer.aslan@gmail.com' },
     { label: 'github',   href: 'https://github.com/sameraslan' },
     { label: 'linkedin', href: 'https://www.linkedin.com/in/sameraslan/' },
   ] as NavItem[],

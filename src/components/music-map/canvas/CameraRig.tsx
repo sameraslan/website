@@ -7,7 +7,10 @@ import * as THREE from "three";
 import { useMapStore } from "../state/store";
 
 const MIN_ZOOM = 0.5;
-const MAX_ZOOM = 8.0;
+// Capped at 5 so a high-DPR viewport stays under the ~256 GL_POINTS sprite
+// limit (see album.ts gl_PointSize clamp). 5x lets you read a single cover
+// without losing the focused dot.
+const MAX_ZOOM = 5.0;
 const PAN_SENSITIVITY = 0.0025;
 const ZOOM_SENSITIVITY = 0.0015;
 const FRICTION = 0.92;

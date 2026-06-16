@@ -3,6 +3,12 @@ export function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - c, 3);
 }
 
+/** Symmetric ease: slow start, slow end. Reads as a gentle, even glide. */
+export function easeInOutCubic(t: number): number {
+  const c = Math.min(1, Math.max(0, t));
+  return c < 0.5 ? 4 * c * c * c : 1 - Math.pow(-2 * c + 2, 3) / 2;
+}
+
 /** sliderT ∈ [0, 1] mapped piecewise-linearly between three stops. */
 export function interpolatePosition(
   audio: readonly [number, number],

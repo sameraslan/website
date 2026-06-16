@@ -17,7 +17,7 @@ export function LoadingState() {
           width: 8,
           height: 8,
           borderRadius: 4,
-          background: "#2d2a22",
+          background: "#231d14",
           animation: "music-map-pulse 1.6s ease-in-out infinite",
         }}
       />

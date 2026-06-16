@@ -10,16 +10,13 @@ links:
 order: 2
 ---
 
-A low-cost waste sorter that looks at what you're about to throw out and tells you which stream it belongs in. The point is to catch contamination at the bin, before the wrong item taints a whole batch downstream.
+Johns Hopkins places recycling bins with several sorting categories across campus, but students frequently put items in the wrong bin, either from not knowing which category an item belongs to or from the time it takes to sort correctly in passing. We built BinSight to make that easier: it uses computer vision to identify an item from a camera image and assign it to one of four bins, trash, recycling, compost, or paper. The full pipeline runs locally on a $166 Raspberry Pi build.
 
-## Approach
+## How it works
 
-An EfficientNet-B2 classifier fine-tuned on a mix of TACO, TrashNet, and CompostNet. A Flask service runs inference and talks to a small Next.js frontend (React, Chakra UI). The whole thing sits on a Raspberry Pi at the bin, so capture and classification happen locally with no round-trip to the cloud.
+A Raspberry Pi Camera 3 feeds a live video stream into the frontend, where the user holds the item inside a bounding box. The frame selection runs a pixel-wise stability check: frames are sampled every 500ms, and once the image stays within a pixel-wise difference of 25 for 1500ms, the region inside the box is cropped and sent to the backend. A Flask service runs an EfficientNet-B2 classifier, trained in PyTorch and fine-tuned on a composite of the MJU-Waste, TrashNet, CompostNet, and Fruits and Vegetables Image Recognition datasets, which we manually re-split to match Johns Hopkins recycling rules into 1,982 compost, 1,570 trash, 590 recycling, and 571 paper images, with image augmentation to even out the differences between the naturalistic and web-scraped sources. The predicted bin is then shown back on the screen for the user.
+## Why it's interesting
 
-## What was actually hard
+In a user study with 15 students at Brody Learning Commons, students found BinSight easier and more straightforward to use than sorting items themselves, and rated it more helpful than the standard bin labels, 3.73 against 2.33 on a 5-point scale. The classifier reached 0.927 average accuracy across the four classes, so the ease of use did not trade off against putting items in the right bin.
 
-Lighting at a real campus bin is not the lighting in any dataset. Most of the engineering was getting the capture path and the model behaving under that drift, not chasing accuracy on a clean test set. We deployed on-site at Johns Hopkins to see how it held up against real users.
-
-## Status
-
-Code at [github.com/sameraslan/BinSight](https://github.com/sameraslan/BinSight).
+The code is on GitHub at [github.com/sameraslan/BinSight](https://github.com/sameraslan/BinSight).

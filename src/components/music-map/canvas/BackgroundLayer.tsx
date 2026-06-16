@@ -34,8 +34,8 @@ const FRAGMENT_SHADER = /* glsl */ `
     // Authored in sRGB; ShaderMaterial does not auto-apply the
     // linear->sRGB output conversion, so the literal hex values
     // are written straight to the framebuffer.
-    vec3 paper = vec3(0.965, 0.941, 0.882);  // #f6f0e1
-    vec3 rule = vec3(0.847, 0.816, 0.741);   // #d8d0bd
+    vec3 paper = vec3(0.980, 0.965, 0.926);  // #faf6ec
+    vec3 rule = vec3(0.882, 0.855, 0.792);   // #e1dac9
     float grain = noise(vUv * 600.0) * 0.04 - 0.02;
     vec3 col = paper + grain;
 

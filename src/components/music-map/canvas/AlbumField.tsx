@@ -152,5 +152,11 @@ export function AlbumField({
     };
   }, [geometry, material]);
 
-  return <points ref={points} geometry={geometry} material={material} />;
+  // Frustum-cull off: the geometry's only position attribute is the
+  // single 0-vertex stub for instanced draw, so Three's auto-computed
+  // bounding sphere has radius 0 at the origin. Any time the camera
+  // recentres off-origin (focus, off-center zoom), that sphere falls
+  // outside the frustum and Three skips the whole draw — every album
+  // disappears, including the focused one.
+  return <points ref={points} geometry={geometry} material={material} frustumCulled={false} />;
 }

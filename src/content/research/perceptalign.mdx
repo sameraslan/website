@@ -1,25 +1,25 @@
 ---
 title: "PerceptAlign"
 subtitle: "Real-time temporal alignment for audio generation from silent video"
-year: 2025
+year: 2023
 role: "Researcher"
 affiliation: "Johns Hopkins"
 stack: ["PyTorch", "Transformers", "Spectrograms"]
 links:
   github: "https://github.com/sameraslan/PerceptAlign"
-order: 2
+order: 3
 ---
 
-A model that generates audio for a silent video and lands the sound when the event happens on screen, not a few hundred milliseconds late. The hard part isn't acoustic plausibility, it's synchronization.
+PerceptAlign generates a soundtrack for a silent video and aligns each sound to the moment its on-screen event happens. Prior video-to-audio models, including SpecVQGAN, usually produce semantically relevant audio but misalign its timing, so the sound of a hammer can be right while the impact lands off the moment of contact. PerceptAlign adds a timing signal to the generation process itself rather than aligning audio to video after the fact.
 
-## Approach
+## How it works
 
-A transformer that conditions on visual stream features and predicts spectrogram frames, trained with a Perceptual Alignment Loss (PAL) that penalizes timing drift independently from acoustic quality. Inference runs online with a short look-ahead window calibrated to the video frame rate.
+The model builds on SpecVQGAN's codebook and transformer design. A VQGAN encodes and reconstructs mel spectrograms into a discrete codebook, and a transformer autoregressively samples codebook entries conditioned on visual features, which are optical flow frames from denseflow and RGB features from a BN-Inception network. The timing signal comes from a Perceptual Alignment Loss (PAL), inspired by the way the human brain recalibrates to audio-visual asynchrony. PAL upsamples the visual features by linear interpolation to match the spectrogram's temporal dimension (212 video frames against 848 audio frames), passes both through a local feature extractor of two Conv1D-BN-GELU blocks with L2 normalization, then computes a cross-correlation between the audio and visual embeddings across a window of offsets within each of S segments. The offsets are softmax-normalized with temperature τ and summed under a Gaussian-weighted temporal binding window, which tolerates slight misalignment while rewarding a zero offset, and PAL is the negative log of the mean weighted sum across segments. The total objective is a linear combination of codebook cross-entropy and PAL, LTL = α·LCE + β·LPAL, so fidelity and timing are scored separately and the model cannot trade one for the other. Generation runs in real time, carried over from SpecVQGAN's codebook sampling. The team evaluates timing with Dynamic Time Warping under a Euclidean distance, alongside KL divergence, Pearson correlation, and mean squared error.
 
-## Why it matters
+## Why it's interesting
 
-Most video-to-audio work optimizes offline plausibility. Real-time alignment is the constraint that actually makes the output usable when a human is watching: accessibility tools, prototyping, captioning sound for hearing-impaired viewers.
+PAL improves every reported metric over the SpecVQGAN baseline on both the synthetic FlashDot dataset, which pairs a flashing red dot with a 1kHz sine wave to isolate the timing task, and the open-domain VAS dataset. The hyperparameter behavior is concrete: a cross-correlation window of K = 10 works best on both datasets even though larger expected offsets seemed to call for a wider window, segmentation helps up to 32 segments for the 848-frame spectrograms and gives no further gain beyond that, and a τ between 1 and 3 with a 0.7-to-1.0 PAL-to-CE weighting balances the two losses.
 
 ## Status
 
-Code at [github.com/sameraslan/PerceptAlign](https://github.com/sameraslan/PerceptAlign).
+Code is at [github.com/sameraslan/PerceptAlign](https://github.com/sameraslan/PerceptAlign), and the repository includes the training, evaluation, and inference pipeline along with the FlashDot dataset generator for fine-tuning on other datasets.

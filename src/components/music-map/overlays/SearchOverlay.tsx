@@ -52,7 +52,7 @@ export function SearchOverlay() {
         width: 280,
         fontFamily: "ui-monospace, Menlo, monospace",
         fontSize: 12,
-        color: "#2d2a22",
+        color: "#231d14",
       }}
     >
       <input
@@ -69,8 +69,8 @@ export function SearchOverlay() {
         style={{
           width: "100%",
           padding: "8px 12px",
-          background: "rgba(246, 240, 225, 0.92)",
-          border: "1px solid #d8d0bd",
+          background: "rgba(250, 246, 236, 0.92)",
+          border: "1px solid #e1dac9",
           borderRadius: 4,
           fontFamily: "inherit",
           fontSize: "inherit",
@@ -85,8 +85,8 @@ export function SearchOverlay() {
             listStyle: "none",
             margin: "4px 0 0",
             padding: 0,
-            background: "#f6f0e1",
-            border: "1px solid #d8d0bd",
+            background: "#faf6ec",
+            border: "1px solid #e1dac9",
             borderRadius: 4,
           }}
         >
@@ -104,7 +104,7 @@ export function SearchOverlay() {
               style={{
                 padding: "6px 12px",
                 cursor: "pointer",
-                borderBottom: "1px solid #d8d0bd",
+                borderBottom: "1px solid #e1dac9",
               }}
             >
               <strong>{m.title}</strong> · {m.artist} · {m.year}

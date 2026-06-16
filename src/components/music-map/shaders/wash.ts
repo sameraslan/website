@@ -39,11 +39,11 @@ export const WASH_FRAGMENT_SHADER = /* glsl */ `
   varying vec2 v_uv;
   varying float v_radius;
 
-  // Paper color, matches BackgroundLayer (#f6f0e1). We multiply / blend the
+  // Paper color, matches BackgroundLayer (#faf6ec). We multiply / blend the
   // wash *into* paper inside the shader and output an opaque pixel — that
   // way no alpha channel is involved, so the wash never bleeds white
   // through the framebuffer (the regression we hit in Batch 1).
-  const vec3 paper = vec3(0.965, 0.941, 0.882);
+  const vec3 paper = vec3(0.980, 0.965, 0.926);
 
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);

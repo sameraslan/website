@@ -18,9 +18,6 @@ export default async function ProjectsPage() {
             kind="project"
           />
         ))}
-        <div className="py-6 border-b border-rule-soft font-serif italic text-ink-muted opacity-60 text-[1.05rem]">
-          forthcoming. bloomberg things, when they’re shareable.
-        </div>
       </div>
     </section>
   );

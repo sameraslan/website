@@ -58,9 +58,9 @@ export function Slider() {
         left: "50%",
         bottom: 24,
         transform: "translateX(-50%)",
-        background: "rgba(246, 240, 225, 0.92)",
+        background: "rgba(250, 246, 236, 0.92)",
         backdropFilter: "blur(8px)",
-        border: "1px solid #d8d0bd",
+        border: "1px solid #e1dac9",
         borderRadius: 999,
         padding: "10px 20px",
         display: "flex",
@@ -68,7 +68,7 @@ export function Slider() {
         gap: 14,
         fontFamily: "ui-monospace, Menlo, monospace",
         fontSize: 10,
-        color: "#6b6852",
+        color: "#6b5e47",
         letterSpacing: "0.12em",
         textTransform: "uppercase",
       }}
@@ -84,7 +84,7 @@ export function Slider() {
           // Visual track is a thin bar; the surrounding 24px box widens the
           // pointer hit area so playwright (and human) drags don't have to
           // hit a 3-px line.
-          background: "linear-gradient(to bottom, transparent 0, transparent calc(50% - 1px), #d8d0bd calc(50% - 1px), #d8d0bd calc(50% + 1px), transparent calc(50% + 1px))",
+          background: "linear-gradient(to bottom, transparent 0, transparent calc(50% - 1px), #e1dac9 calc(50% - 1px), #e1dac9 calc(50% + 1px), transparent calc(50% + 1px))",
           position: "relative",
           cursor: "pointer",
           touchAction: "none",
@@ -99,7 +99,7 @@ export function Slider() {
             width: 10,
             height: 10,
             borderRadius: 5,
-            background: "#2d2a22",
+            background: "#231d14",
             pointerEvents: "none",
           }}
         />

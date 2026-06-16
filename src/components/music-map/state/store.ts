@@ -23,22 +23,31 @@ export interface MapStore {
 
 const STORAGE_KEY = "music-map:state";
 
-function loadFromSession(): Partial<Pick<MapStore, "sliderT" | "focusedId">> {
+// Fresh sessions start biased 10% toward mood (0.6 on the audio→mood axis)
+// rather than dead-centre balanced.
+const DEFAULT_SLIDER_T = 0.6;
+
+// Only sliderT is persisted. focusedId is intentionally NOT restored: it is a
+// transient auto-tour artifact (the tour rewrites it every few seconds), so
+// restoring it would reopen the page centered on whatever album the tour
+// happened to land on last — often an edge album — leaving the cloud off in a
+// corner. The page must always open framed on the dense centre of the cloud.
+function loadFromSession(): Partial<Pick<MapStore, "sliderT">> {
   if (typeof window === "undefined") return {};
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     return {
-      sliderT: typeof parsed.sliderT === "number" ? parsed.sliderT : 0.5,
-      focusedId: typeof parsed.focusedId === "string" ? parsed.focusedId : null,
+      sliderT:
+        typeof parsed.sliderT === "number" ? parsed.sliderT : DEFAULT_SLIDER_T,
     };
   } catch {
     return {};
   }
 }
 
-function saveToSession(state: { sliderT: number; focusedId: string | null }) {
+function saveToSession(state: { sliderT: number }) {
   if (typeof window === "undefined") return;
   try {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -51,8 +60,8 @@ export const useMapStore = create<MapStore>()(
   subscribeWithSelector((set, get) => ({
     mode: "loading",
     data: null,
-    focusedId: loadFromSession().focusedId ?? null,
-    sliderT: loadFromSession().sliderT ?? 0.5,
+    focusedId: null,
+    sliderT: loadFromSession().sliderT ?? DEFAULT_SLIDER_T,
     lastInteraction: 0,
 
     setData: (data) => set({ data, mode: "idle" }),
@@ -60,12 +69,11 @@ export const useMapStore = create<MapStore>()(
     focus: (id) => {
       const next = id === null ? "idle" : "focus";
       set({ focusedId: id, mode: next });
-      saveToSession({ sliderT: get().sliderT, focusedId: id });
     },
     setSliderT: (t) => {
       const clamped = Math.max(0, Math.min(1, t));
       set({ sliderT: clamped });
-      saveToSession({ sliderT: clamped, focusedId: get().focusedId });
+      saveToSession({ sliderT: clamped });
     },
     registerInteraction: () => set({ lastInteraction: Date.now() }),
   })),

@@ -9,6 +9,7 @@ import { MobileFallback } from "./overlays/MobileFallback";
 import { SearchOverlay } from "./overlays/SearchOverlay";
 import { Slider } from "./overlays/Slider";
 import { Tooltip } from "./overlays/Tooltip";
+import { TuneHud } from "./overlays/TuneHud";
 import { useMapStore } from "./state/store";
 
 function isWebGLAvailable(): boolean {
@@ -35,6 +36,12 @@ export function MusicMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isNarrow, setIsNarrow] = useState(false);
   const [webglOk, setWebglOk] = useState(true);
+  // The slider + search are chrome, not content — reveal them only while the
+  // pointer is over the map (or while search has focus, so mid-typing the
+  // controls don't vanish if the cursor drifts off-canvas).
+  const [hovered, setHovered] = useState(false);
+  const [chromeFocused, setChromeFocused] = useState(false);
+  const chromeVisible = hovered || chromeFocused;
 
   useEffect(() => setWebglOk(isWebGLAvailable()), []);
 
@@ -68,11 +75,13 @@ export function MusicMap() {
   return (
     <div
       ref={containerRef}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         position: "relative",
         width: "100%",
         height: "100%",
-        background: "#f6f0e1",
+        background: "#faf6ec",
         overflow: "hidden",
       }}
     >
@@ -89,10 +98,10 @@ export function MusicMap() {
           top: 16px !important;
           z-index: 50;
           padding: 8px 12px;
-          background: #f6f0e1;
-          border: 1px solid #2d2a22;
+          background: #faf6ec;
+          border: 1px solid #231d14;
           border-radius: 4px;
-          color: #2d2a22;
+          color: #231d14;
           font-family: ui-monospace, Menlo, monospace;
           font-size: 12px;
           text-decoration: none;
@@ -118,9 +127,41 @@ export function MusicMap() {
       </a>
       {mode === "loading" && <LoadingState />}
       {data && <Scene />}
+      {/* Edge feather — a paper-colored gradient that is transparent through
+          the center and fades to solid #faf6ec at all four edges, so the
+          canvas dissolves into the page instead of ending at a hard border.
+          Sits above the canvas but below the chrome/tooltip (DOM order), and
+          ignores pointer input. */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          background: `
+            linear-gradient(to right, #faf6ec 0, rgba(250,246,236,0) 110px, rgba(250,246,236,0) calc(100% - 110px), #faf6ec 100%),
+            linear-gradient(to bottom, #faf6ec 0, rgba(250,246,236,0) 110px, rgba(250,246,236,0) calc(100% - 110px), #faf6ec 100%)
+          `,
+        }}
+      />
       <Tooltip containerRef={containerRef} />
-      <Slider />
-      <SearchOverlay />
+      <div
+        onFocusCapture={() => setChromeFocused(true)}
+        onBlurCapture={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            setChromeFocused(false);
+          }
+        }}
+        style={{
+          opacity: chromeVisible ? 1 : 0,
+          pointerEvents: chromeVisible ? "auto" : "none",
+          transition: "opacity 220ms ease",
+        }}
+      >
+        <Slider />
+        <SearchOverlay />
+      </div>
+      <TuneHud />
     </div>
   );
 }
