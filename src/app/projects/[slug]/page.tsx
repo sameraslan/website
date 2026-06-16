@@ -35,7 +35,7 @@ export default async function ProjectDetail({
 
   return (
     <article>
-      <EntryDetailHeader entry={entry} kind="project" backHref="/projects" backLabel="projects" />
+      <EntryDetailHeader entry={entry} kind="project" backHref="/projects" backLabel="side projects" />
 
       <div className="grid gap-10 mt-7 md:grid-cols-[1fr_260px]">
         <div className="prose-mdx max-w-[60ch]">
