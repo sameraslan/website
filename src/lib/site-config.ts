@@ -10,7 +10,7 @@ export const siteConfig = {
   },
   nav: [
     { label: 'about',    href: '/about' },
-    { label: 'projects', href: '/projects' },
+    { label: 'side projects', href: '/projects' },
     { label: 'research', href: '/research' },
     { label: 'music',    href: '/music' },
     { label: 'art',      href: '/art' },

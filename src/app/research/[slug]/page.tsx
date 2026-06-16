@@ -29,7 +29,7 @@ export default async function ResearchDetail({
   if (!entry) notFound();
 
   const related = [
-    { href: '/projects', title: 'projects', blurb: 'engineering side of the same questions.' },
+    { href: '/projects', title: 'side projects', blurb: 'engineering side of the same questions.' },
     { href: '/music', title: 'the music map', blurb: 'where some of this lands visually.' },
   ];
 
