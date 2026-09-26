@@ -2,14 +2,13 @@
 
 import { Canvas, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useState } from "react";
-import { OrthographicCamera } from "@react-three/drei";
 import * as THREE from "three";
 
+import { registerDebug } from "../state/debug";
 import { useMapStore } from "../state/store";
 import { AlbumField } from "./AlbumField";
 import { AmbientDrift } from "./AmbientDrift";
 import { useAtlasTextures } from "./AtlasManager";
-import { AutoTour } from "./AutoTour";
 import { CameraBounds } from "./CameraBounds";
 import { CameraRig } from "./CameraRig";
 import { CursorTracker } from "./CursorTracker";
@@ -17,26 +16,25 @@ import { FlyToFocus } from "./FlyToFocus";
 import { FocusController } from "./FocusController";
 import { ProjectionBridge } from "./ProjectionBridge";
 // import { RegionLabels } from "./RegionLabels"; // unmounted; centroids inaccurate
-// import { RegionWashes } from "./RegionWashes"; // unmounted; background matches
-// the site's flat paper (#faf6ec clear color) so the map reads as part of the page
+// Region washes deleted (see docs/superpowers/specs/2026-09-26-website-improvement-design.md
+// 4.5.7); the paper clear color matches the site so the map reads as part of the page.
 
-// Expose the live r3f camera + scene on window for QA harnesses and devtools
-// inspection. Pure read-only side channel; production cost is negligible.
-function QAExpose() {
-  const { camera, scene } = useThree();
-  useEffect(() => {
-    (window as unknown as { __mapThree?: unknown }).__mapThree = {
-      get camera() {
-        return camera;
-      },
-      get scene() {
-        return scene;
-      },
-    };
-    return () => {
-      delete (window as unknown as { __mapThree?: unknown }).__mapThree;
-    };
-  }, [camera, scene]);
+// Test hook only: registers window.__mapDebug.getCameraState() so UI-check /
+// Playwright harnesses can read the live camera without a full QA side
+// channel. No-op in production (see state/debug.ts).
+function DebugExpose() {
+  const camera = useThree((s) => s.camera) as THREE.OrthographicCamera;
+  useEffect(
+    () =>
+      registerDebug({
+        getCameraState: () => ({
+          x: camera.position.x,
+          y: camera.position.y,
+          zoom: camera.zoom,
+        }),
+      }),
+    [camera],
+  );
   return null;
 }
 
@@ -46,6 +44,17 @@ export function Scene() {
   return (
     <Canvas
       orthographic
+      camera={{
+        manual: true,
+        zoom: 2.4,
+        position: [0, 0, 5],
+        near: 0.1,
+        far: 100,
+        left: -0.75,
+        right: 0.75,
+        top: 0.55,
+        bottom: -0.55,
+      }}
       gl={{ alpha: false, antialias: true }}
       style={{ position: "absolute", inset: 0 }}
       onCreated={({ gl }) => {
@@ -88,25 +97,13 @@ function SceneInner() {
 
   return (
     <>
-      <OrthographicCamera
-        makeDefault
-        position={[0, 0, 5]}
-        zoom={2.4}
-        near={0.1}
-        far={100}
-        left={-0.75}
-        right={0.75}
-        top={0.55}
-        bottom={-0.55}
-      />
-      <QAExpose />
+      <DebugExpose />
       <CameraRig onZoomT={setZoomT} />
       <FlyToFocus />
       <ProjectionBridge />
       <CursorTracker onWorld={setCursorWorld} />
       <FocusController onFocusChange={handleFocusChange} />
       <AmbientDrift />
-      <AutoTour />
       {/* region washes removed; the paper clear color matches the site so the
           map blends into the page rather than sitting on a colored field */}
       {/* labels removed; centroid clustering inaccurate for now */}

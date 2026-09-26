@@ -24,19 +24,30 @@ export function CameraRig({ onZoomT }: { onZoomT?: (t: number) => void }) {
   const lastZoomT = useRef(-1);
 
   const registerInteraction = useMapStore((s) => s.registerInteraction);
+  const registerCameraGrab = useMapStore((s) => s.registerCameraGrab);
 
   useEffect(() => {
     const canvas = gl.domElement;
+    // Tracks whether the current drag has moved yet, so the grab is only
+    // registered once the pointer actually moves with the button down —
+    // matching "pointerdown-drag" rather than every click.
+    let dragMoved = false;
 
     const onDown = (e: PointerEvent) => {
       dragging.current = true;
+      dragMoved = false;
       lastPointer.current = { x: e.clientX, y: e.clientY };
       velocity.current = { x: 0, y: 0 };
       registerInteraction();
+      registerCameraGrab();
     };
     const onMove = (e: PointerEvent) => {
       registerInteraction();
       if (!dragging.current || !lastPointer.current) return;
+      if (!dragMoved) {
+        dragMoved = true;
+        registerCameraGrab();
+      }
       const dx = e.clientX - lastPointer.current.x;
       const dy = e.clientY - lastPointer.current.y;
       lastPointer.current = { x: e.clientX, y: e.clientY };
@@ -52,6 +63,7 @@ export function CameraRig({ onZoomT }: { onZoomT?: (t: number) => void }) {
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       registerInteraction();
+      registerCameraGrab();
       const factor = 1 - e.deltaY * ZOOM_SENSITIVITY;
       camera.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, camera.zoom * factor));
       camera.updateProjectionMatrix();
@@ -69,7 +81,7 @@ export function CameraRig({ onZoomT }: { onZoomT?: (t: number) => void }) {
       canvas.removeEventListener("pointerleave", onUp);
       canvas.removeEventListener("wheel", onWheel);
     };
-  }, [camera, gl, registerInteraction]);
+  }, [camera, gl, registerInteraction, registerCameraGrab]);
 
   useFrame(() => {
     if (!dragging.current) {

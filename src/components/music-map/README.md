@@ -103,9 +103,7 @@ src/components/music-map/
 ├── canvas/
 │   ├── Scene.tsx          # R3F scene root
 │   ├── AlbumField.tsx     # the 5k-album InstancedMesh (hot path)
-│   ├── RegionWashes.tsx   # watercolor color washes
 │   ├── RegionLabels.tsx   # italic-serif cluster labels
-│   ├── BackgroundLayer.tsx
 │   ├── CameraRig.tsx      # pan + zoom
 │   ├── CursorTracker.tsx  # cursor → world coords
 │   ├── FocusController.tsx
@@ -121,13 +119,13 @@ src/components/music-map/
 │   └── MobileFallback.tsx
 ├── state/
 │   ├── store.ts           # Zustand store
+│   ├── tuning.ts          # fixed camera/drift constants (TUNING)
 │   └── projection.ts      # interpolation + KNN + easing
 ├── data/
 │   ├── loader.ts
 │   └── types.ts
 └── shaders/
-    ├── album.ts           # vertex + fragment for the album field
-    └── wash.ts            # fragment for region washes
+    └── album.ts           # vertex + fragment for the album field
 ```
 
 ## Future paths

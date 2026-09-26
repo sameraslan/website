@@ -4,9 +4,10 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { easeInOutCubic, interpolatePosition } from "../state/projection";
+import { getMainBounds } from "../state/bounds";
+import { easeOutCubic, interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
-import { useTuningStore } from "../state/tuning";
+import { TUNING } from "../state/tuning";
 
 interface Animation {
   startMs: number;
@@ -56,8 +57,8 @@ export function FlyToFocus() {
   // Whether any focus has happened yet — gates the initial release so we don't
   // pin the camera to the world origin before the tour places it.
   const everFocused = useRef(false);
-  // First effect run = the mount. focusedId is never restored from the session,
-  // so on mount it is null and we leave the camera for AutoTour to frame.
+  // First effect run = the mount. focusedId is never restored from the
+  // session, so on mount it is null and we leave the camera where it starts.
   const didInit = useRef(false);
   // The very first focus after load eases the zoom in to focusZoom (the intro).
   // Every hop after that PRESERVES the current zoom instead of resetting it, so
@@ -68,24 +69,33 @@ export function FlyToFocus() {
   useEffect(() => {
     if (!data) return;
     const cam = camera as THREE.OrthographicCamera;
-    const tune = useTuningStore.getState();
     const firstRun = !didInit.current;
     didInit.current = true;
 
     if (!focusedId) {
-      // Nothing focused yet on a fresh mount: leave the camera alone so AutoTour
-      // can frame the cloud. Only animate a release once we've actually focused.
-      if (!everFocused.current) return;
+      if (!everFocused.current) {
+        // Fresh load, nothing ever focused: snap the camera onto the dense
+        // median center of the cloud (getMainBounds), not the world origin,
+        // so the map never opens framed on empty space. One-time and
+        // instant: no animation, no focus, no mode change.
+        if (firstRun) {
+          const b = getMainBounds(data, useMapStore.getState().sliderT);
+          cam.position.x = (b.minX + b.maxX) / 2;
+          cam.position.y = (b.minY + b.maxY) / 2;
+          cam.updateProjectionMatrix();
+        }
+        return;
+      }
       const here = new THREE.Vector2(cam.position.x, cam.position.y);
       anim.current = {
         startMs: performance.now(),
         startWall: Date.now(),
-        durationMs: tune.focusReleaseDurationMs,
+        durationMs: TUNING.focusReleaseDurationMs,
         fromPos: here.clone(),
         toPos: here.clone(),
         ctrl: here.clone(),
         fromZoom: cam.zoom,
-        toZoom: tune.overviewZoom,
+        toZoom: TUNING.overviewZoom,
         instant: prefersReducedMotion(),
       };
       return;
@@ -94,12 +104,18 @@ export function FlyToFocus() {
     everFocused.current = true;
     const target = data.positions.find((p) => p.id === focusedId);
     if (!target) return;
-    const [tx, ty] = interpolatePosition(target.audio, target.balanced, target.mood, sliderT);
+    const currentSliderT = useMapStore.getState().sliderT;
+    const [tx, ty] = interpolatePosition(
+      target.audio,
+      target.balanced,
+      target.mood,
+      currentSliderT,
+    );
     const toPos = new THREE.Vector2(tx, ty);
 
     // Intro hop eases to focusZoom; later hops keep whatever zoom is current
     // (the user's manual zoom, or the focusZoom the intro settled on).
-    const toZoom = introDone.current ? cam.zoom : tune.focusZoom;
+    const toZoom = introDone.current ? cam.zoom : TUNING.focusZoom;
     introDone.current = true;
 
     if (firstRun) {
@@ -111,7 +127,7 @@ export function FlyToFocus() {
       anim.current = {
         startMs: performance.now(),
         startWall: Date.now(),
-        durationMs: tune.focusFlyDurationMs,
+        durationMs: TUNING.focusFlyDurationMs,
         fromPos: toPos.clone(),
         toPos: toPos.clone(),
         ctrl: toPos.clone(),
@@ -126,7 +142,7 @@ export function FlyToFocus() {
     anim.current = {
       startMs: performance.now(),
       startWall: Date.now(),
-      durationMs: tune.focusFlyDurationMs,
+      durationMs: TUNING.focusFlyDurationMs,
       fromPos,
       toPos,
       ctrl: arcControlPoint(fromPos, toPos),
@@ -134,7 +150,25 @@ export function FlyToFocus() {
       toZoom,
       instant: prefersReducedMotion(),
     };
-  }, [focusedId, data, sliderT, camera]);
+  }, [focusedId, data, camera]);
+
+  // sliderT moves every album's world position, including the focused one. If
+  // it changes while a glide is already in flight, update the animation's
+  // target in place rather than restarting the glide (which would reset the
+  // timing and re-trigger the curve on every slider tick).
+  useEffect(() => {
+    if (!data || !focusedId) return;
+    const a = anim.current;
+    if (!a) return;
+    const target = data.positions.find((p) => p.id === focusedId);
+    if (!target) return;
+    const [tx, ty] = interpolatePosition(target.audio, target.balanced, target.mood, sliderT);
+    const dx = tx - a.toPos.x;
+    const dy = ty - a.toPos.y;
+    a.toPos.set(tx, ty);
+    a.ctrl.x += dx;
+    a.ctrl.y += dy;
+  }, [sliderT, data, focusedId]);
 
   useFrame(() => {
     if (!anim.current) return;
@@ -148,14 +182,15 @@ export function FlyToFocus() {
       anim.current = null;
       return;
     }
-    // The user grabbed the camera (pan/drag/zoom) after this glide began: bail
-    // so manual control takes over instantly instead of fighting the glide.
-    if (useMapStore.getState().lastInteraction > a.startWall) {
+    // The user grabbed the camera (drag/wheel/slider-drag) after this glide
+    // began: bail so manual control takes over instantly instead of fighting
+    // the glide. Hover/pointermove alone (lastInteraction) never cancels it.
+    if (useMapStore.getState().lastCameraGrab > a.startWall) {
       anim.current = null;
       return;
     }
     const t = (performance.now() - a.startMs) / a.durationMs;
-    const k = easeInOutCubic(t);
+    const k = easeOutCubic(t);
     // Quadratic bezier: (1-k)^2*from + 2(1-k)k*ctrl + k^2*to.
     const mk = 1 - k;
     const w0 = mk * mk;

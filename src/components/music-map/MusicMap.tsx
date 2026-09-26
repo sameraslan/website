@@ -9,7 +9,6 @@ import { MobileFallback } from "./overlays/MobileFallback";
 import { SearchOverlay } from "./overlays/SearchOverlay";
 import { Slider } from "./overlays/Slider";
 import { Tooltip } from "./overlays/Tooltip";
-import { TuneHud } from "./overlays/TuneHud";
 import { useMapStore } from "./state/store";
 
 function isWebGLAvailable(): boolean {
@@ -151,7 +150,6 @@ export function MusicMap() {
         <Slider />
         <SearchOverlay />
       </div>
-      <TuneHud />
     </div>
   );
 }
