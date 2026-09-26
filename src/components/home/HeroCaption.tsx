@@ -1,7 +1,7 @@
 /**
  * Caption card for the home hero (Option B). Sits bottom-left over the music
  * map on desktop; collapses to static, full-width flow below 640px (rough
- * for now — Task 11 refines mobile layout).
+ * for now, Task 11 refines mobile layout).
  */
 export function HeroCaption() {
   return (
@@ -13,8 +13,8 @@ export function HeroCaption() {
         bottom: 40,
         width: 380,
         padding: "22px 24px 20px",
-        background: "rgba(253, 250, 242, 0.92)",
-        border: "1px solid rgba(35, 29, 20, 0.16)",
+        background: "color-mix(in srgb, var(--color-paper-soft) 92%, transparent)",
+        border: "1px solid var(--color-rule)",
         display: "flex",
         flexDirection: "column",
         gap: 12,

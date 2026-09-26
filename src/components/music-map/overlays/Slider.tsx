@@ -55,16 +55,16 @@ export function Slider() {
     <div
       style={{
         height: 36,
-        background: "rgba(253, 250, 242, 0.92)",
-        border: "1px solid rgba(35, 29, 20, 0.16)",
+        background: "color-mix(in srgb, var(--color-paper-soft) 92%, transparent)",
+        border: "1px solid var(--color-rule)",
         padding: "0 14px",
         display: "flex",
         alignItems: "center",
         gap: 10,
         fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
-        fontSize: 11,
-        color: "#6b5e47",
-        letterSpacing: "0.12em",
+        fontSize: "var(--text-tiny)",
+        color: "var(--color-ink-muted)",
+        letterSpacing: "var(--text-tiny--letter-spacing)",
         textTransform: "uppercase",
       }}
       role="group"
@@ -79,7 +79,7 @@ export function Slider() {
           // Visual track is a thin bar; the surrounding 24px box widens the
           // pointer hit area so playwright (and human) drags don't have to
           // hit a 3-px line.
-          background: "linear-gradient(to bottom, transparent 0, transparent calc(50% - 1px), rgba(35, 29, 20, 0.16) calc(50% - 1px), rgba(35, 29, 20, 0.16) calc(50% + 1px), transparent calc(50% + 1px))",
+          background: "linear-gradient(to bottom, transparent 0, transparent calc(50% - 1px), var(--color-rule) calc(50% - 1px), var(--color-rule) calc(50% + 1px), transparent calc(50% + 1px))",
           position: "relative",
           cursor: "pointer",
           touchAction: "none",

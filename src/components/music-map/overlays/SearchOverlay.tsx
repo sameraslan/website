@@ -63,16 +63,16 @@ export function SearchOverlay() {
         aria-label="Search the music map"
         style={{
           height: 36,
-          background: "rgba(253, 250, 242, 0.92)",
-          border: "1px solid rgba(35, 29, 20, 0.16)",
+          background: "color-mix(in srgb, var(--color-paper-soft) 92%, transparent)",
+          border: "1px solid var(--color-rule)",
           padding: "0 14px",
           display: "flex",
           alignItems: "center",
           gap: 6,
           fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
-          fontSize: 11,
-          color: "#6b5e47",
-          letterSpacing: "0.12em",
+          fontSize: "var(--text-tiny)",
+          color: "var(--color-ink-muted)",
+          letterSpacing: "var(--text-tiny--letter-spacing)",
           textTransform: "uppercase",
           cursor: "pointer",
         }}
