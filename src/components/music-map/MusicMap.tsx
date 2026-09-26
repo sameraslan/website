@@ -36,12 +36,6 @@ export function MusicMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isNarrow, setIsNarrow] = useState(false);
   const [webglOk, setWebglOk] = useState(true);
-  // The slider + search are chrome, not content — reveal them only while the
-  // pointer is over the map (or while search has focus, so mid-typing the
-  // controls don't vanish if the cursor drifts off-canvas).
-  const [hovered, setHovered] = useState(false);
-  const [chromeFocused, setChromeFocused] = useState(false);
-  const chromeVisible = hovered || chromeFocused;
 
   useEffect(() => setWebglOk(isWebGLAvailable()), []);
 
@@ -75,8 +69,6 @@ export function MusicMap() {
   return (
     <div
       ref={containerRef}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       style={{
         position: "relative",
         width: "100%",
@@ -145,17 +137,15 @@ export function MusicMap() {
         }}
       />
       <Tooltip containerRef={containerRef} />
+      {/* Bottom-right control row: always visible, not hover-revealed. */}
       <div
-        onFocusCapture={() => setChromeFocused(true)}
-        onBlurCapture={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-            setChromeFocused(false);
-          }
-        }}
         style={{
-          opacity: chromeVisible ? 1 : 0,
-          pointerEvents: chromeVisible ? "auto" : "none",
-          transition: "opacity 220ms ease",
+          position: "absolute",
+          right: 48,
+          bottom: 40,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
         }}
       >
         <Slider />

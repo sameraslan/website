@@ -54,20 +54,15 @@ export function Slider() {
   return (
     <div
       style={{
-        position: "absolute",
-        left: "50%",
-        bottom: 24,
-        transform: "translateX(-50%)",
-        background: "rgba(250, 246, 236, 0.92)",
-        backdropFilter: "blur(8px)",
-        border: "1px solid #e1dac9",
-        borderRadius: 999,
-        padding: "10px 20px",
+        height: 36,
+        background: "rgba(253, 250, 242, 0.92)",
+        border: "1px solid rgba(35, 29, 20, 0.16)",
+        padding: "0 14px",
         display: "flex",
         alignItems: "center",
-        gap: 14,
-        fontFamily: "ui-monospace, Menlo, monospace",
-        fontSize: 10,
+        gap: 10,
+        fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+        fontSize: 11,
         color: "#6b5e47",
         letterSpacing: "0.12em",
         textTransform: "uppercase",
@@ -84,7 +79,7 @@ export function Slider() {
           // Visual track is a thin bar; the surrounding 24px box widens the
           // pointer hit area so playwright (and human) drags don't have to
           // hit a 3-px line.
-          background: "linear-gradient(to bottom, transparent 0, transparent calc(50% - 1px), #e1dac9 calc(50% - 1px), #e1dac9 calc(50% + 1px), transparent calc(50% + 1px))",
+          background: "linear-gradient(to bottom, transparent 0, transparent calc(50% - 1px), rgba(35, 29, 20, 0.16) calc(50% - 1px), rgba(35, 29, 20, 0.16) calc(50% + 1px), transparent calc(50% + 1px))",
           position: "relative",
           cursor: "pointer",
           touchAction: "none",
@@ -96,8 +91,8 @@ export function Slider() {
             left: `${sliderT * 100}%`,
             top: "50%",
             transform: "translate(-50%, -50%)",
-            width: 10,
-            height: 10,
+            width: 9,
+            height: 9,
             borderRadius: 5,
             background: "#231d14",
             pointerEvents: "none",

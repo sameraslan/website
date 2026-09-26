@@ -19,6 +19,11 @@ describe("SearchOverlay", () => {
   it("shows fuzzy-matched suggestions and focuses on selection", () => {
     useMapStore.setState({ data: fixture as any, focusedId: null });
     render(<SearchOverlay />);
+
+    // The search trigger is a pill button; the input only mounts once the
+    // popover is opened.
+    fireEvent.click(screen.getByRole("button", { name: /search the music map/i }));
+
     const input = screen.getByPlaceholderText(/search/i);
     fireEvent.change(input, { target: { value: "bon iver" } });
     expect(screen.getByText(/For Emma, Forever Ago/)).toBeTruthy();

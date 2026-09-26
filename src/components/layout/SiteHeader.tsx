@@ -12,9 +12,24 @@ function isActiveFor(item: { href: string }, pathname: string) {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const overlay = pathname === '/';
 
   return (
-    <header className="border-b border-rule">
+    <header
+      className={overlay ? 'z-20' : 'border-b border-rule'}
+      style={
+        overlay
+          ? {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              background:
+                'linear-gradient(to bottom, #faf6ec 55%, rgba(250,246,236,0) 100%)',
+            }
+          : undefined
+      }
+    >
       <div className="mx-auto max-w-page flex items-baseline justify-between gap-6 px-6 sm:px-10 md:px-16 pt-6 pb-4">
         <Link
           href="/"
