@@ -37,3 +37,6 @@ next-env.d.ts
 
 # brainstorming companion
 .superpowers/
+
+# ui-check harness output
+/scripts/ui-check/out/
