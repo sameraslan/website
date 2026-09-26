@@ -17,11 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="bg-paper text-ink antialiased min-h-screen flex flex-col">
         <SiteHeader />
-        <main className="flex-1">
-          <div className="mx-auto max-w-page px-6 sm:px-10 md:px-16 py-10">
-            {children}
-          </div>
-        </main>
+        <main className="flex-1">{children}</main>
         <SiteFooter />
       </body>
     </html>
