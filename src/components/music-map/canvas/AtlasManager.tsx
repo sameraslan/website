@@ -28,6 +28,9 @@ loader.setOptions({ imageOrientation: "none", premultiplyAlpha: "none" });
 // disc-to-cover crossfade starts (see SIZE_CURVE_POWER in shaders/album.ts),
 // so no atlas request lands before the user has actually zoomed in.
 const ATLAS_ZOOM_THRESHOLD_FIT_MULTIPLE = 1.9;
+// Absolute cap on the gate so it is always reachable below CameraRig's
+// MAX_ZOOM (5): with fitZoom clamped as high as 5, 1.9x fit would be 9.5.
+const ATLAS_ZOOM_THRESHOLD_MAX = 4.5;
 
 function configureAtlasTexture(bitmap: ImageBitmap): THREE.Texture {
   const tex = new THREE.Texture(bitmap as unknown as HTMLImageElement);
@@ -176,7 +179,10 @@ export function useAtlasTextures(
 
   useFrame(() => {
     if (startedRef.current) return;
-    const threshold = ATLAS_ZOOM_THRESHOLD_FIT_MULTIPLE * getOverviewFraming().zoom;
+    const threshold = Math.min(
+      ATLAS_ZOOM_THRESHOLD_FIT_MULTIPLE * getOverviewFraming().zoom,
+      ATLAS_ZOOM_THRESHOLD_MAX,
+    );
     if (camera.zoom < threshold) return;
     startedRef.current = true;
     loadNext();

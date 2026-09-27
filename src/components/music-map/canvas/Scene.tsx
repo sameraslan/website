@@ -18,7 +18,7 @@ import { CameraRig } from "./CameraRig";
 import { CursorTracker, screenToWorld } from "./CursorTracker";
 import { FlyToFocus } from "./FlyToFocus";
 import { FocusController } from "./FocusController";
-import { InitialFrame } from "./InitialFrame";
+import { FRUSTUM_HALF_HEIGHT, InitialFrame } from "./InitialFrame";
 import { RegionLabels } from "./RegionLabels";
 import { TooltipDriver } from "./TooltipDriver";
 // Region washes deleted (see docs/superpowers/specs/2026-09-26-website-improvement-design.md
@@ -122,10 +122,13 @@ export function Scene() {
         position: [0, 0, 5],
         near: 0.1,
         far: 100,
-        left: -0.75,
-        right: 0.75,
-        top: 0.55,
-        bottom: -0.55,
+        // Placeholder frustum: InitialFrame sets left/right to
+        // ±FRUSTUM_HALF_HEIGHT * aspect on mount and on every resize, in a
+        // layout effect before the first frame is drawn.
+        left: -FRUSTUM_HALF_HEIGHT,
+        right: FRUSTUM_HALF_HEIGHT,
+        top: FRUSTUM_HALF_HEIGHT,
+        bottom: -FRUSTUM_HALF_HEIGHT,
       }}
       gl={{ alpha: false, antialias: false }}
       dpr={[1, 2]}

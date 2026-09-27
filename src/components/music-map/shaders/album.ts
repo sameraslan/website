@@ -224,14 +224,3 @@ export const ALBUM_FRAGMENT_SHADER = /* glsl */ `
     gl_FragColor = vec4(col, discMask);
   }
 `;
-
-export const CLUSTER_COLORS_RGB: [number, number, number][] = [
-  [0x5b / 255, 0x78 / 255, 0x55 / 255], // sage
-  [0x7c / 255, 0x82 / 255, 0x55 / 255], // olive
-  [0x3a / 255, 0x66 / 255, 0x55 / 255], // forest
-  [0x8a / 255, 0x3a / 255, 0x2a / 255], // oxblood
-  [0xb6 / 255, 0x53 / 255, 0x2a / 255], // terracotta
-  [0xa8 / 255, 0x94 / 255, 0x5c / 255], // amber
-  [0x5a / 255, 0x70 / 255, 0x80 / 255], // slate
-  [0x6a / 255, 0x48 / 255, 0x60 / 255], // plum
-];

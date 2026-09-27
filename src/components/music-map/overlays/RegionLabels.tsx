@@ -38,7 +38,9 @@ export function RegionLabels({ regions }: RegionLabelsProps) {
             position: "absolute",
             left: 0,
             top: 0,
-            fontSize: 22,
+            fontSize: 24,
+            // Paper halo (#faf6ec) so the label reads over the dots it names.
+            textShadow: "0 0 6px #faf6ec, 0 0 12px #faf6ec, 0 0 2px #faf6ec",
             color: region.color,
             pointerEvents: "none",
             opacity: 0,

@@ -1,5 +1,5 @@
-// Task 8 fix round 3 verification: percentile-fit overview framing.
-// Usage: node scripts/ui-check/task8-fix3-check.mjs (dev server on :3111).
+// Task 8 fix round 4 verification: framing, square world units, resize re-snap.
+// Usage: node scripts/ui-check/task8-fix4-check.mjs (dev server on :3111).
 import { chromium } from 'playwright';
 
 const BASE_URL = 'http://localhost:3111';
@@ -70,6 +70,17 @@ async function main() {
       camera: window.__mapDebug.getCameraState(),
       fit: window.__mapDebug.getFitState(),
       ndcInside: window.__mapDebug.getNdcInsideFraction(),
+      // World units per 100 CSS px along each axis; equal means square world
+      // units on screen (no aspect stretch).
+      worldPer100px: (() => {
+        const b = document.querySelector('canvas').getBoundingClientRect();
+        const cx = b.left + b.width / 2;
+        const cy = b.top + b.height / 2;
+        const o = window.__mapDebug.getWorldAt(cx, cy);
+        const x = window.__mapDebug.getWorldAt(cx + 100, cy);
+        const y = window.__mapDebug.getWorldAt(cx, cy + 100);
+        return { x: Math.abs(x.x - o.x), y: Math.abs(y.y - o.y) };
+      })(),
       sliderT: window.__mapDebug.getSliderT(),
       canvas: (() => {
         const b = document.querySelector('canvas').getBoundingClientRect();
@@ -83,7 +94,7 @@ async function main() {
     console.log('camera-centre distance:', dPos, 'zoom - fitZoom:', r.camera.zoom - r.fit.fitZoom);
     console.log('labels:', JSON.stringify(labels));
     console.log('atlas requests at load:', JSON.stringify(atlas));
-    await page.screenshot({ path: `${OUT}/task8fix3-load.png` });
+    await page.screenshot({ path: `${OUT}/task8fix4-load.png` });
     await context.close();
   }
 
@@ -119,7 +130,7 @@ async function main() {
       'drift', Math.hypot(after.x - before.worldAtCentre.x, after.y - before.worldAtCentre.y));
     console.log('visible labels:', JSON.stringify(labels));
     console.log('atlas requests:', JSON.stringify(atlas));
-    await page.screenshot({ path: `${OUT}/task8fix3-zoom2.5x.png` });
+    await page.screenshot({ path: `${OUT}/task8fix4-zoom2.5x.png` });
     await context.close();
   }
 
@@ -152,7 +163,39 @@ async function main() {
     console.log('=== 3. click focus ===');
     console.log('focused album pos', JSON.stringify(focused), 'camera', JSON.stringify(cam));
     console.log('atlas requests:', JSON.stringify(atlas));
-    await page.screenshot({ path: `${OUT}/task8fix3-focus.png` });
+    await page.screenshot({ path: `${OUT}/task8fix4-focus.png` });
+    await context.close();
+  }
+
+  // 4. Resize before any interaction: frustum follows the new aspect and the
+  // camera re-snaps to the new fit.
+  {
+    const { context, page } = await open(browser);
+    const before = await page.evaluate(() => ({
+      camera: window.__mapDebug.getCameraState(),
+      fit: window.__mapDebug.getFitState(),
+    }));
+    await page.setViewportSize({ width: 1000, height: 900 });
+    await page.waitForTimeout(1500);
+    const after = await page.evaluate(() => {
+      const b = document.querySelector('canvas').getBoundingClientRect();
+      const cx = b.left + b.width / 2;
+      const cy = b.top + b.height / 2;
+      const o = window.__mapDebug.getWorldAt(cx, cy);
+      const x = window.__mapDebug.getWorldAt(cx + 100, cy);
+      const y = window.__mapDebug.getWorldAt(cx, cy + 100);
+      return {
+        canvas: { width: b.width, height: b.height },
+        camera: window.__mapDebug.getCameraState(),
+        fit: window.__mapDebug.getFitState(),
+        ndcInside: window.__mapDebug.getNdcInsideFraction(),
+        worldPer100px: { x: Math.abs(x.x - o.x), y: Math.abs(y.y - o.y) },
+      };
+    });
+    console.log('=== 4. resize to 1000x900 before interaction ===');
+    console.log('before', JSON.stringify(before));
+    console.log('after', JSON.stringify(after));
+    await page.screenshot({ path: `${OUT}/task8fix4-resized.png` });
     await context.close();
   }
 

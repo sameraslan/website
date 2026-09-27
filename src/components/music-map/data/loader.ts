@@ -48,7 +48,7 @@ function computeStopTransform(
   const halfH = Math.max(Math.abs(y95 - cy), Math.abs(cy - y5));
   const halfMax = Math.max(halfW, halfH, 1e-6);
   // Map p5..p95 bulk (around the median) into ±0.55 of world space so the
-  // ±0.75 frustum leaves ~25% paper margin around the dense mass.
+  // camera framing (InitialFrame's fit zoom) has a predictable bulk to fit.
   const scale = 0.55 / halfMax;
   return { cx, cy, scale };
 }

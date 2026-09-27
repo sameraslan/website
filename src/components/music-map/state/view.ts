@@ -40,3 +40,20 @@ export function setOverviewFraming(next: OverviewFraming): void {
 export function getOverviewFraming(): OverviewFraming {
   return framing;
 }
+
+/**
+ * True once InitialFrame has applied the fit snap for the current MapData.
+ * CameraBounds does nothing until then, so it can never nudge the camera
+ * from its pre-load position on the first frame (before the snap lands, the
+ * published bounds belong to no data or to the previous data). InitialFrame
+ * clears it whenever `data` changes and sets it again after the snap.
+ */
+let framed = false;
+
+export function setFramed(next: boolean): void {
+  framed = next;
+}
+
+export function isFramed(): boolean {
+  return framed;
+}

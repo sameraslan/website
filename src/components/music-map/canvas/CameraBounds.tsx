@@ -6,7 +6,7 @@ import * as THREE from "three";
 
 import { nudgeVector, viewportWorldRect } from "../state/bounds";
 import { useMapStore } from "../state/store";
-import { getOverviewFraming } from "../state/view";
+import { getOverviewFraming, isFramed } from "../state/view";
 
 // How hard to pull the camera back toward the album box each frame. Soft so a
 // manual over-pan eases back in instead of snapping, and so ambient drift sits
@@ -59,6 +59,8 @@ export function CameraBounds() {
   useFrame((state) => {
     const data = useMapStore.getState().data;
     if (!data || data.positions.length === 0) return;
+    // Never nudge before InitialFrame has applied the fit snap for this data.
+    if (!isFramed()) return;
 
     const { mode, lastInteraction, lastCameraGrab, dragging } = stateRef.current;
     // Only constrain the ambient/idle camera. Focus fly-tos (mode "focus"),

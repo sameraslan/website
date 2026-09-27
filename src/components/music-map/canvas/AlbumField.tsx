@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { ALBUM_FRAGMENT_SHADER, ALBUM_VERTEX_SHADER, CLUSTER_COLORS_RGB } from "../shaders/album";
+import { ALBUM_FRAGMENT_SHADER, ALBUM_VERTEX_SHADER } from "../shaders/album";
 import type { MapData, MetadataRecord, PositionRecord } from "../data/types";
 import { clusterMedians, clusterMemberCounts } from "../state/centroids";
+import { clusterColorsFromRegions } from "../state/clusterColors";
 import { markFirstDraw } from "../state/debug";
 import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
@@ -158,7 +159,11 @@ export function AlbumField({
     pointsGeom.instanceCount = n;
 
     const atlasLoadedFloats = new Float32Array(MAX_ATLASES);
-    const clusterColorsVec3 = CLUSTER_COLORS_RGB.map((c) => new THREE.Vector3(...c));
+    // Dot colours come from the data (regions.json, by clusterId), the same
+    // source the region labels use, so dots and labels always agree.
+    const clusterColorsVec3 = clusterColorsFromRegions(data.regions, 8).map(
+      (c) => new THREE.Vector3(...c),
+    );
 
     const mat = new THREE.ShaderMaterial({
       vertexShader: ALBUM_VERTEX_SHADER,
