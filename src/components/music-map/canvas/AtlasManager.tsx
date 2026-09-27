@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 import { requestRender } from "../state/invalidate";
+import { getOverviewFraming } from "../state/view";
 import type { MapData } from "../data/types";
 
 // ImageBitmapLoader decodes off the main thread (a worker + createImageBitmap),
@@ -20,11 +21,13 @@ loader.setOptions({ imageOrientation: "none", premultiplyAlpha: "none" });
 // atlas download + decode per sheet (perf audit item 1d treated the previous
 // 1.05 gate as effectively "always on" since the initial zoom already clears
 // it). Real camera.zoom, not the normalized zoomT used for shader uniforms.
-// Raised to 3.0 (controller-inspection fix, task 8 round 1): the sprite-size
-// power curve in shaders/album.ts now keeps the disc-to-cover crossfade from
-// starting until zoom ~3.1, so this gate sits just below that, no atlas
-// downloads at the initial framing (zoom 2.4).
-const ATLAS_ZOOM_THRESHOLD = 3.0;
+// Expressed as a multiple of the fitted overview zoom (task 8 fix round 2),
+// not a fixed absolute zoom (round 1's "3.0" assumed a fixed 2.4 overview
+// zoom, which stopped matching once the real dataset's fit zoom turned out
+// much smaller): just below where the shader's crossfade starts (1.6x fit,
+// see RegionLabels and shaders/album.ts), so no atlas request lands before
+// the user has actually zoomed in.
+const ATLAS_ZOOM_THRESHOLD_FIT_MULTIPLE = 1.9;
 
 function configureAtlasTexture(bitmap: ImageBitmap): THREE.Texture {
   const tex = new THREE.Texture(bitmap as unknown as HTMLImageElement);
@@ -173,7 +176,8 @@ export function useAtlasTextures(
 
   useFrame(() => {
     if (startedRef.current) return;
-    if (camera.zoom < ATLAS_ZOOM_THRESHOLD) return;
+    const threshold = ATLAS_ZOOM_THRESHOLD_FIT_MULTIPLE * getOverviewFraming().zoom;
+    if (camera.zoom < threshold) return;
     startedRef.current = true;
     loadNext();
   });

@@ -6,10 +6,11 @@ import * as THREE from "three";
 
 import { ALBUM_FRAGMENT_SHADER, ALBUM_VERTEX_SHADER, CLUSTER_COLORS_RGB } from "../shaders/album";
 import type { MapData, MetadataRecord, PositionRecord } from "../data/types";
-import { clusterCentroids } from "../state/centroids";
+import { clusterCentroids, clusterMemberCounts } from "../state/centroids";
 import { markFirstDraw } from "../state/debug";
 import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
+import { getOverviewFraming } from "../state/view";
 
 // Viewport-relative sprite cap: a single album cover should never dominate
 // more than 18% of the viewport height, even at max zoom on a short window
@@ -43,6 +44,12 @@ interface AlbumFieldProps {
    * driver hides it).
    */
   centroidsRef: React.MutableRefObject<Float32Array>;
+  /**
+   * Member count per clusterId, computed once per data load (membership
+   * doesn't change with sliderT). Read by the region-labels driver to hide
+   * labels for clusters too small to mean anything (task 8 fix round 2).
+   */
+  clusterCountsRef: React.MutableRefObject<Uint32Array>;
   focusedIndex: number;
   neighborIndices: number[];
 }
@@ -59,6 +66,7 @@ export function AlbumField({
   hoverRef,
   positionsRef,
   centroidsRef,
+  clusterCountsRef,
   focusedIndex,
   neighborIndices,
 }: AlbumFieldProps) {
@@ -86,6 +94,16 @@ export function AlbumField({
   useEffect(() => {
     clusterIdsRef.current = clusterIds8;
   }, [clusterIds8]);
+  // Member count per clusterId: fixed per data load (unlike centroids, this
+  // doesn't depend on sliderT), so it's computed once here alongside
+  // clusterIds8 rather than in the per-sliderT-change effect below.
+  const clusterCounts = useMemo(
+    () => clusterMemberCounts(clusterIds8, data.positions.length, regionCount),
+    [clusterIds8, data.positions.length, regionCount],
+  );
+  useEffect(() => {
+    clusterCountsRef.current = clusterCounts;
+  }, [clusterCounts, clusterCountsRef]);
   const reducedMotionRef = useRef(prefersReducedMotion());
   // Tracks the previous frame's hover uniform so we only invalidate() (under
   // frameloop="demand") on an actual change, not every frame.
@@ -150,6 +168,7 @@ export function AlbumField({
         u_sliderT: { value: 0.5 },
         u_zoomT: { value: 0 },
         u_zoom: { value: 2.4 },
+        u_fitZoom: { value: 2.4 },
         u_pixelRatio: { value: gl.getPixelRatio() },
         u_focusedAlbumIndex: { value: -1 },
         u_neighborMask: { value: new Float32Array(12).fill(-1) },
@@ -222,6 +241,10 @@ export function AlbumField({
     // in the vertex shader so overview stays small discs and covers only
     // read once the user zooms in (controller-inspection fix, task 8 round 1).
     material.uniforms.u_zoom.value = zoomRef.current;
+    // The zoom at which the whole album cloud fits the frustum: the size
+    // curve above is relative to this, not a fixed absolute zoom (task 8
+    // fix round 2).
+    material.uniforms.u_fitZoom.value = getOverviewFraming().zoom;
     material.uniforms.u_focusedAlbumIndex.value = focusedIndex;
     const mask = material.uniforms.u_neighborMask.value as Float32Array;
     mask.fill(-1);

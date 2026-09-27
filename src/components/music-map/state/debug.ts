@@ -34,6 +34,14 @@ export interface DebugGetters {
    */
   getWorldAt?(clientX: number, clientY: number): { x: number; y: number } | null;
   /**
+   * NDC-projected (camera.project) coordinates of the four corners of the
+   * true, untrimmed album cloud bounding box (state/bounds.ts's
+   * getFullBounds) at the current sliderT. Verification-only: lets
+   * Playwright confirm the whole cloud is actually visible at the initial
+   * framing without duplicating the fit-zoom math in the test script.
+   */
+  getCloudCornersNdc?(): { x: number; y: number }[] | null;
+  /**
    * performance.now() timestamp of the first time AlbumField rendered with
    * real data, i.e. the first frame where dots could plausibly be on screen.
    * Used by the Fast-3G first-draw verification script (task 9); set once by

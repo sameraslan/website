@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clusterCentroids } from "./centroids";
+import { clusterCentroids, clusterMemberCounts } from "./centroids";
 
 describe("clusterCentroids", () => {
   it("computes the mean x,y per cluster", () => {
@@ -32,5 +32,20 @@ describe("clusterCentroids", () => {
   it("returns an empty array for k=0", () => {
     const out = clusterCentroids(new Float32Array(0), new Uint8Array(0), 0, 0);
     expect(out.length).toBe(0);
+  });
+});
+
+describe("clusterMemberCounts", () => {
+  it("counts members per cluster, including small and empty clusters", () => {
+    // Mirrors the real dataset's shape: a couple of large clusters and
+    // several with only a handful of members.
+    const clusterIds = new Uint8Array([0, 0, 0, 1, 1, 2]);
+    const counts = clusterMemberCounts(clusterIds, 6, 4);
+    expect(Array.from(counts)).toEqual([3, 2, 1, 0]);
+  });
+
+  it("returns all zeros for n=0", () => {
+    const counts = clusterMemberCounts(new Uint8Array(0), 0, 3);
+    expect(Array.from(counts)).toEqual([0, 0, 0]);
   });
 });

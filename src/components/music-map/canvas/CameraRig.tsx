@@ -5,14 +5,27 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 import { useMapStore } from "../state/store";
+import { getOverviewFraming } from "../state/view";
 import { anchoredZoom } from "../state/zoomMath";
 import { screenToWorld } from "./CursorTracker";
 
-const MIN_ZOOM = 0.5;
 // Capped at 5 so a high-DPR viewport stays under the ~256 GL_POINTS sprite
 // limit (see album.ts gl_PointSize clamp). 5x lets you read a single cover
 // without losing the focused dot.
 const MAX_ZOOM = 5.0;
+// Fraction of the fitted overview zoom (state/view.ts) below which the user
+// can't zoom out further: 0.8x fit still shows the whole cloud with room to
+// spare, but doesn't let the camera wander out to where the cloud is a speck
+// (task 8 fix round 2; replaces the old fixed MIN_ZOOM=0.5, which no longer
+// means anything now the overview zoom itself varies with the dataset).
+const MIN_ZOOM_FIT_MULTIPLE = 0.8;
+
+/** Dynamic zoom-out floor: 0.8x the fitted overview zoom, never above
+ * MAX_ZOOM (a fit zoom above 5 would otherwise invert the [min, max] range). */
+function getMinZoom(): number {
+  const fitZoom = Math.min(getOverviewFraming().zoom, MAX_ZOOM);
+  return MIN_ZOOM_FIT_MULTIPLE * fitZoom;
+}
 const PAN_SENSITIVITY = 0.0025;
 // Trackpad pinch (ctrlKey) uses half the sensitivity of a mouse wheel notch
 // (spec 4.4.4).
@@ -33,7 +46,7 @@ const VELOCITY_EPSILON_SQ = 1e-10;
 const VELOCITY_HISTORY_LEN = 3;
 
 function clampZoom(z: number): number {
-  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z));
+  return Math.max(getMinZoom(), Math.min(MAX_ZOOM, z));
 }
 
 export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number> }) {

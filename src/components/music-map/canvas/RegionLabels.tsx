@@ -6,15 +6,17 @@ import * as THREE from "three";
 
 import type { RegionRecord } from "../data/types";
 import { getRegionLabelEl } from "../state/regionLabelEls";
-
-// Mirrors CameraRig's zoom range (see canvas/CameraRig.tsx) so zoomT here
-// matches the u_zoomT the shader uses.
-const MIN_ZOOM = 0.5;
-const MAX_ZOOM = 5.0;
+import { getOverviewFraming } from "../state/view";
 
 // Labels sit 14 CSS px below the centroid so they don't cover the densest
 // dots at that region's core (spec 4.3 / task-8 brief).
 const LABEL_OFFSET_Y_PX = 14;
+
+// Regions with fewer members than this are hidden entirely: with the real
+// dataset only 3 of 8 clusters are actually populated (1092 to 1635 members
+// each); the rest have 1 to 3 albums and labeling them as a "region" is
+// misleading (task 8 fix round 2).
+const MIN_MEMBERS_FOR_LABEL = 40;
 
 interface RegionLabelsProps {
   regions: RegionRecord[];
@@ -24,7 +26,9 @@ interface RegionLabelsProps {
    * region.clusterId, matching regions.json's cluster ordering.
    */
   centroidsRef: React.MutableRefObject<Float32Array>;
-  /** Real camera.zoom (0.5..5), written every frame by CameraRig. */
+  /** Member count per clusterId, fixed per data load; owned by AlbumField. */
+  clusterCountsRef: React.MutableRefObject<Uint32Array>;
+  /** Real camera.zoom, written every frame by CameraRig. */
   zoomRef: React.MutableRefObject<number>;
 }
 
@@ -36,7 +40,12 @@ interface RegionLabelsProps {
  * overlays/RegionLabels.tsx, registered via state/regionLabelEls.ts). No
  * React state, no per-frame re-render.
  */
-export function RegionLabels({ regions, centroidsRef, zoomRef }: RegionLabelsProps) {
+export function RegionLabels({
+  regions,
+  centroidsRef,
+  clusterCountsRef,
+  zoomRef,
+}: RegionLabelsProps) {
   const { camera, gl } = useThree();
   const rectRef = useRef<DOMRect | null>(null);
   const vecRef = useRef(new THREE.Vector3());
@@ -54,13 +63,16 @@ export function RegionLabels({ regions, centroidsRef, zoomRef }: RegionLabelsPro
   useFrame(() => {
     const rect = rectRef.current;
     const centroids = centroidsRef.current;
+    const counts = clusterCountsRef.current;
+    const fitZoom = getOverviewFraming().zoom;
 
-    const zoomT = Math.max(0, Math.min(1, (zoomRef.current - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)));
-    // clamp(1 - (zoomT - 0.50) / 0.12, 0, 1): fully visible at the initial
-    // framing (zoomT 0.42) and below, faded to 0 by zoomT 0.62 (zoom ~3.3),
-    // just before the shader's disc-to-cover crossfade starts reading as
-    // covers (controller-inspection fix, task 8 round 1).
-    let opacity = 1 - (zoomT - 0.5) / 0.12;
+    // clamp(1 - (zoom/fitZoom - 1.6) / 0.5, 0, 1): fully visible at the
+    // overview (zoom == fitZoom, ratio 1) and below, faded to 0 by 2.1x fit,
+    // ahead of the shader's disc-to-cover crossfade (task 8 fix round 2;
+    // replaces round 1's absolute-zoomT formula, which stopped matching once
+    // the real fit zoom turned out much smaller than the old fixed 2.4).
+    const ratio = zoomRef.current / Math.max(fitZoom, 0.0001);
+    let opacity = 1 - (ratio - 1.6) / 0.5;
     if (opacity < 0) opacity = 0;
     if (opacity > 1) opacity = 1;
 
@@ -72,8 +84,10 @@ export function RegionLabels({ regions, centroidsRef, zoomRef }: RegionLabelsPro
       const cy = centroids[region.clusterId * 2 + 1];
       const hasCentroid =
         centroids.length > region.clusterId * 2 + 1 && !Number.isNaN(cx) && !Number.isNaN(cy);
+      const hasEnoughMembers =
+        counts.length > region.clusterId && counts[region.clusterId] >= MIN_MEMBERS_FOR_LABEL;
 
-      if (!rect || !hasCentroid || opacity <= 0) {
+      if (!rect || !hasCentroid || !hasEnoughMembers || opacity <= 0) {
         el.style.opacity = "0";
         continue;
       }

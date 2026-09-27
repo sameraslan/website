@@ -8,7 +8,8 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
 
   uniform float u_sliderT;
   uniform float u_zoomT;
-  uniform float u_zoom;   // real camera.zoom (0.5..5), not normalized
+  uniform float u_zoom;   // real camera.zoom (dynamic min..5), not normalized
+  uniform float u_fitZoom; // zoom at which the whole album cloud fits the frustum
   uniform float u_pixelRatio;
   uniform float u_focusedAlbumIndex;
   uniform float u_neighborMask[12];  // indices of focused + neighbors (10 + 1 + sentinel)
@@ -55,13 +56,17 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
     vec4 mvPos = modelViewMatrix * vec4(worldPos, 0.0, 1.0);
     gl_Position = projectionMatrix * mvPos;
 
-    // Power curve of the real camera zoom (not the linear u_zoomT), tuned so
-    // the initial framing (zoom 2.4) reads as small tinted discs and covers
-    // only become legible once the user actually zooms in: ~12px at 2.4,
-    // ~24px at 3.1, ~40px at 3.8, ~80px at 5.0 (controller-inspection fix,
-    // task 8 round 1). Clamped to [4, 90] CSS px before the scale/dpr/ring
-    // multipliers below.
-    float baseSize = clamp(12.0 * pow(u_zoom / 2.4, 2.6), 4.0, 90.0);  // px
+    // Power curve of the real camera zoom relative to u_fitZoom (the zoom at
+    // which the whole album cloud fits the frustum), not a fixed absolute
+    // zoom: the overview always reads as small tinted discs regardless of
+    // how far out fitting the whole cloud actually requires, and covers only
+    // become legible once the user zooms in relative to that fit (task 8
+    // fix round 2; round 1 used a fixed "2.4" that stopped matching once the
+    // real dataset's fit zoom turned out to be much smaller). Ratios: ~10px
+    // at the overview (zoom == fitZoom), ~24px at 2.1x fit, ~40px at 3.2x
+    // fit, ~69px at 5x fit. Clamped to [4, 90] CSS px before the scale/dpr/
+    // ring multipliers below.
+    float baseSize = clamp(10.0 * pow(u_zoom / max(u_fitZoom, 0.0001), 1.2), 4.0, 90.0);  // px
     float scale = 1.0;
     v_dim = 0.0;
     if (u_focusedAlbumIndex >= 0.0) {

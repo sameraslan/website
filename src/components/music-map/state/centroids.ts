@@ -44,3 +44,21 @@ export function clusterCentroids(
   }
   return out;
 }
+
+/**
+ * Member count per cluster, indexed by clusterId. Membership doesn't change
+ * with sliderT (it's a fixed assignment from the data pipeline), so this is
+ * computed once per data load, not per slider change, unlike
+ * `clusterCentroids`. Used to hide region labels for clusters too small to
+ * mean anything (task 8 fix round 2): with the real dataset, 5 of 8
+ * clusters have 1 to 3 members each, so their "region" label is misleading.
+ */
+export function clusterMemberCounts(clusterIds: Uint8Array, n: number, k: number): Uint32Array {
+  const counts = new Uint32Array(k);
+  for (let i = 0; i < n; i++) {
+    const c = clusterIds[i];
+    if (c < 0 || c >= k) continue;
+    counts[c] += 1;
+  }
+  return counts;
+}

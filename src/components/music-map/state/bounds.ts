@@ -73,6 +73,64 @@ export function getMainBounds(
   return cached;
 }
 
+/**
+ * True (untrimmed) bounding box of every album's position at the given
+ * sliderT. Unlike `getMainBounds` (median-centered, robust to outliers, used
+ * only for the idle-camera nudge), this literally includes outliers, so the
+ * "whole cloud is visible" guarantee `fitZoom`/`cloudCenter` below provide is
+ * real. Used only for the one-time initial camera framing.
+ */
+export function getFullBounds(data: MapData, sliderT: number): Bounds {
+  const n = data.positions.length;
+  if (n === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const p = data.positions[i];
+    const [x, y] = interpolatePosition(p.audio, p.balanced, p.mood, sliderT);
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  return { minX, maxX, minY, maxY };
+}
+
+/** Midpoint of a bounding box. */
+export function cloudCenter(cloud: Bounds): { x: number; y: number } {
+  return { x: (cloud.minX + cloud.maxX) / 2, y: (cloud.minY + cloud.maxY) / 2 };
+}
+
+export interface FitFrustum {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * The largest camera zoom at which the whole `cloud` box, padded by `margin`
+ * of its own size on each side, fits inside `frustum`. Used to frame the
+ * overview camera on load so the entire album cloud is visible (task 8 fix
+ * round 2): the previous fixed initial zoom (2.4) combined with a
+ * median-snap-only initial position showed only a corner of the cloud once
+ * the full, unsampled dataset landed (positions span roughly [-1.68, 0.26] x
+ * [-1.23, 0.18] at the balanced stop, far wider than the 2.4x frustum).
+ */
+export function fitZoom(cloud: Bounds, frustum: FitFrustum, margin = 0.08): number {
+  // Guard against a degenerate (zero-size) cloud so a single-point dataset
+  // never divides by zero; never hit by the real album data.
+  const width = Math.max(cloud.maxX - cloud.minX, 1e-6);
+  const height = Math.max(cloud.maxY - cloud.minY, 1e-6);
+  const paddedWidth = width * (1 + 2 * margin);
+  const paddedHeight = height * (1 + 2 * margin);
+  const zoomX = (frustum.right - frustum.left) / paddedWidth;
+  const zoomY = (frustum.top - frustum.bottom) / paddedHeight;
+  return Math.min(zoomX, zoomY);
+}
+
 export interface ViewportWorldRect {
   halfW: number;
   halfH: number;

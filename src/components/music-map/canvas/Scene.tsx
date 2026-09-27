@@ -4,6 +4,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
+import { getFullBounds } from "../state/bounds";
 import { bumpCommitCounter, registerDebug } from "../state/debug";
 import { setInvalidate } from "../state/invalidate";
 import { interpolatePosition } from "../state/projection";
@@ -70,6 +71,22 @@ function DebugExpose() {
           const rect = canvas.getBoundingClientRect();
           const [x, y] = screenToWorld(clientX, clientY, rect, camera);
           return { x, y };
+        },
+        getCloudCornersNdc: () => {
+          const s = useMapStore.getState();
+          if (!s.data || s.data.positions.length === 0) return null;
+          const b = getFullBounds(s.data, s.sliderT);
+          const corners: [number, number][] = [
+            [b.minX, b.minY],
+            [b.minX, b.maxY],
+            [b.maxX, b.minY],
+            [b.maxX, b.maxY],
+          ];
+          return corners.map(([x, y]) => {
+            const v = new THREE.Vector3(x, y, 0);
+            v.project(camera);
+            return { x: v.x, y: v.y };
+          });
         },
       }),
     [camera],
@@ -154,6 +171,9 @@ function SceneInner() {
   // indexed by clusterId; owned and recomputed by AlbumField whenever
   // positionsRef is rebuilt, read every frame by the RegionLabels driver.
   const centroidsRef = useRef<Float32Array>(new Float32Array(0));
+  // Member count per clusterId, fixed per data load; owned by AlbumField,
+  // read by the RegionLabels driver to hide labels for tiny clusters.
+  const clusterCountsRef = useRef<Uint32Array>(new Uint32Array(0));
   const [focus, setFocus] = useState<{ index: number; neighbors: number[] }>({
     index: -1,
     neighbors: [],
@@ -204,12 +224,18 @@ function SceneInner() {
         hoverRef={hoverRef}
         positionsRef={positionsRef}
         centroidsRef={centroidsRef}
+        clusterCountsRef={clusterCountsRef}
         focusedIndex={focus.index}
         neighborIndices={focus.neighbors}
       />
       <TooltipDriver positionsRef={positionsRef} idIndexById={idIndexById} />
       {data.regions.length > 0 && (
-        <RegionLabels regions={data.regions} centroidsRef={centroidsRef} zoomRef={zoomRef} />
+        <RegionLabels
+          regions={data.regions}
+          centroidsRef={centroidsRef}
+          clusterCountsRef={clusterCountsRef}
+          zoomRef={zoomRef}
+        />
       )}
       {/* Mounted last so its frame callback runs after drift/tour have moved
           the camera, reining the idle camera back into the album cloud. */}
