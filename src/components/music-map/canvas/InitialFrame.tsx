@@ -32,6 +32,14 @@ export const FRUSTUM_HALF_HEIGHT = 0.55;
  *   never moves the camera.
  *
  * A layout effect, so all of this lands before R3F draws the first frame.
+ *
+ * Dragging the mood slider can dispatch a new `sliderT` many times within a
+ * single animation frame; recomputing `getCloudBounds` (a sort of every
+ * album's position) on each one is wasted work between paints. The initial
+ * frame, and any resize/data change, still recompute synchronously in the
+ * same layout effect that resizes the frustum, so there is never a frame
+ * where the framing lags the frustum. Pure `sliderT` changes instead store
+ * the latest value and recompute at most once per rAF.
  */
 export function InitialFrame() {
   const camera = useThree((s) => s.camera) as THREE.OrthographicCamera;
@@ -42,20 +50,15 @@ export function InitialFrame() {
   const sliderT = useMapStore((s) => s.sliderT);
   const framedData = useRef<MapData | null>(null);
   const lastSize = useRef<{ width: number; height: number } | null>(null);
+  const rafId = useRef<number | null>(null);
+  // The sliderT value the most recent recompute (synchronous or throttled)
+  // already accounted for; lets the sliderT effect below skip scheduling a
+  // redundant rAF for a value the synchronous effect just handled.
+  const lastHandledSliderT = useRef<number | null>(null);
 
-  useLayoutEffect(() => {
-    if (width > 0 && height > 0) {
-      const halfW = FRUSTUM_HALF_HEIGHT * (width / height);
-      camera.left = -halfW;
-      camera.right = halfW;
-      camera.top = FRUSTUM_HALF_HEIGHT;
-      camera.bottom = -FRUSTUM_HALF_HEIGHT;
-      camera.updateProjectionMatrix();
-    }
-    const sizeChanged =
-      lastSize.current !== null &&
-      (lastSize.current.width !== width || lastSize.current.height !== height);
-    lastSize.current = { width, height };
+  const recomputeFraming = (sizeChanged: boolean) => {
+    const currentSliderT = useMapStore.getState().sliderT;
+    lastHandledSliderT.current = currentSliderT;
 
     if (!data || data.positions.length === 0) {
       framedData.current = null;
@@ -64,7 +67,7 @@ export function InitialFrame() {
       return;
     }
 
-    const bounds = getCloudBounds(data, sliderT);
+    const bounds = getCloudBounds(data, currentSliderT);
     const center = cloudCenter(bounds);
     const zoom = fitZoom(bounds, {
       left: camera.left,
@@ -88,7 +91,49 @@ export function InitialFrame() {
       setFramed(true);
     }
     invalidate();
-  }, [data, sliderT, width, height, camera, invalidate]);
+  };
+
+  // Synchronous: frustum resize plus the initial/data/size-driven framing
+  // and snap. Deliberately excludes sliderT so a slider drag alone never
+  // re-runs this effect; see the throttled effect below.
+  useLayoutEffect(() => {
+    if (width > 0 && height > 0) {
+      const halfW = FRUSTUM_HALF_HEIGHT * (width / height);
+      camera.left = -halfW;
+      camera.right = halfW;
+      camera.top = FRUSTUM_HALF_HEIGHT;
+      camera.bottom = -FRUSTUM_HALF_HEIGHT;
+      camera.updateProjectionMatrix();
+    }
+    const sizeChanged =
+      lastSize.current !== null &&
+      (lastSize.current.width !== width || lastSize.current.height !== height);
+    lastSize.current = { width, height };
+
+    recomputeFraming(sizeChanged);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, width, height, camera, invalidate]);
+
+  // Throttled: pure sliderT changes (the effect above already handled the
+  // sliderT value in effect at mount/data/size time, so this skips that
+  // one) recompute framing at most once per animation frame, using
+  // whichever sliderT is current when the rAF fires rather than every
+  // intermediate value.
+  useLayoutEffect(() => {
+    if (sliderT === lastHandledSliderT.current) return;
+    if (rafId.current !== null) return;
+    rafId.current = requestAnimationFrame(() => {
+      rafId.current = null;
+      recomputeFraming(false);
+    });
+    return () => {
+      if (rafId.current !== null) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sliderT]);
 
   return null;
 }
