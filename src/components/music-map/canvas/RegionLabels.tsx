@@ -56,9 +56,11 @@ export function RegionLabels({ regions, centroidsRef, zoomRef }: RegionLabelsPro
     const centroids = centroidsRef.current;
 
     const zoomT = Math.max(0, Math.min(1, (zoomRef.current - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)));
-    // clamp(1 - (zoomT - 0.3) / 0.15, 0, 1): fully visible below zoomT 0.3,
-    // faded to 0 by zoomT 0.45 (spec 4.3 / task-8 brief).
-    let opacity = 1 - (zoomT - 0.3) / 0.15;
+    // clamp(1 - (zoomT - 0.50) / 0.12, 0, 1): fully visible at the initial
+    // framing (zoomT 0.42) and below, faded to 0 by zoomT 0.62 (zoom ~3.3),
+    // just before the shader's disc-to-cover crossfade starts reading as
+    // covers (controller-inspection fix, task 8 round 1).
+    let opacity = 1 - (zoomT - 0.5) / 0.12;
     if (opacity < 0) opacity = 0;
     if (opacity > 1) opacity = 1;
 

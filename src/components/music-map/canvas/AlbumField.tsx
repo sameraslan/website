@@ -149,6 +149,7 @@ export function AlbumField({
       uniforms: {
         u_sliderT: { value: 0.5 },
         u_zoomT: { value: 0 },
+        u_zoom: { value: 2.4 },
         u_pixelRatio: { value: gl.getPixelRatio() },
         u_focusedAlbumIndex: { value: -1 },
         u_neighborMask: { value: new Float32Array(12).fill(-1) },
@@ -217,6 +218,10 @@ export function AlbumField({
       Math.min(1, (zoomRef.current - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)),
     );
     material.uniforms.u_zoomT.value = zoomT;
+    // Real camera.zoom (not normalized): drives the sprite-size power curve
+    // in the vertex shader so overview stays small discs and covers only
+    // read once the user zooms in (controller-inspection fix, task 8 round 1).
+    material.uniforms.u_zoom.value = zoomRef.current;
     material.uniforms.u_focusedAlbumIndex.value = focusedIndex;
     const mask = material.uniforms.u_neighborMask.value as Float32Array;
     mask.fill(-1);

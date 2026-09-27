@@ -8,7 +8,7 @@ export const TUNING = {
   driftFreqHz: 1 / 8,
   driftIdleDelayMs: 10_000,
   overviewZoom: 2.4,
-  focusZoom: 3.4,
+  focusZoom: 4.0,
   focusFlyDurationMs: 550,
   focusReleaseDurationMs: 320,
 } as const;

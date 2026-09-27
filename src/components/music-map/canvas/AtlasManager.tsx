@@ -20,7 +20,11 @@ loader.setOptions({ imageOrientation: "none", premultiplyAlpha: "none" });
 // atlas download + decode per sheet (perf audit item 1d treated the previous
 // 1.05 gate as effectively "always on" since the initial zoom already clears
 // it). Real camera.zoom, not the normalized zoomT used for shader uniforms.
-const ATLAS_ZOOM_THRESHOLD = 1.6;
+// Raised to 3.0 (controller-inspection fix, task 8 round 1): the sprite-size
+// power curve in shaders/album.ts now keeps the disc-to-cover crossfade from
+// starting until zoom ~3.1, so this gate sits just below that, no atlas
+// downloads at the initial framing (zoom 2.4).
+const ATLAS_ZOOM_THRESHOLD = 3.0;
 
 function configureAtlasTexture(bitmap: ImageBitmap): THREE.Texture {
   const tex = new THREE.Texture(bitmap as unknown as HTMLImageElement);
