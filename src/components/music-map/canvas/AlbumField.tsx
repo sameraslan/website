@@ -6,6 +6,7 @@ import * as THREE from "three";
 
 import { ALBUM_FRAGMENT_SHADER, ALBUM_VERTEX_SHADER, CLUSTER_COLORS_RGB } from "../shaders/album";
 import type { MapData, MetadataRecord, PositionRecord } from "../data/types";
+import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
 
 function prefersReducedMotion(): boolean {
@@ -19,6 +20,14 @@ interface AlbumFieldProps {
   /** Real camera.zoom (0.5..5), written every frame by CameraRig. */
   zoomRef: React.MutableRefObject<number>;
   cursorRef: React.MutableRefObject<[number, number] | null>;
+  /** -1 = no hover target. Written by CursorTracker on pointermove. */
+  hoverRef: React.MutableRefObject<number>;
+  /**
+   * Flat [x0,y0,x1,y1,...] interpolated positions. Owned by AlbumField,
+   * recomputed only when sliderT changes (not per frame); CursorTracker and
+   * TooltipDriver read it for hit-testing and tooltip placement.
+   */
+  positionsRef: React.MutableRefObject<Float32Array>;
   focusedIndex: number;
   neighborIndices: number[];
 }
@@ -32,12 +41,18 @@ export function AlbumField({
   atlasTextures,
   zoomRef,
   cursorRef,
+  hoverRef,
+  positionsRef,
   focusedIndex,
   neighborIndices,
 }: AlbumFieldProps) {
   const sliderT = useMapStore((s) => s.sliderT);
   const { gl } = useThree();
+  const invalidate = useThree((s) => s.invalidate);
   const reducedMotionRef = useRef(prefersReducedMotion());
+  // Tracks the previous frame's hover uniform so we only invalidate() (under
+  // frameloop="demand") on an actual change, not every frame.
+  const prevHoverRef = useRef(-1);
 
   const { geometry, material } = useMemo(() => {
     const pointsGeom = new THREE.InstancedBufferGeometry();
@@ -100,6 +115,7 @@ export function AlbumField({
         u_pixelRatio: { value: gl.getPixelRatio() },
         u_focusedAlbumIndex: { value: -1 },
         u_neighborMask: { value: new Float32Array(12).fill(-1) },
+        u_hoverIndex: { value: -1 },
         u_cursor: { value: new THREE.Vector2(0, 0) },
         u_cursorActive: { value: 0 },
         u_atlas0: { value: null },
@@ -113,6 +129,25 @@ export function AlbumField({
     });
     return { geometry: pointsGeom, material: mat };
   }, [data, gl]);
+
+  // Interpolated positions used for hit-testing (CursorTracker) and tooltip
+  // placement (TooltipDriver): a flat typed array recomputed only when
+  // sliderT changes, not per frame, so hover hit-testing stays a cheap
+  // typed-array scan rather than recomputing interpolation on every move.
+  useEffect(() => {
+    const n = data.positions.length;
+    let arr = positionsRef.current;
+    if (arr.length !== n * 2) {
+      arr = new Float32Array(n * 2);
+      positionsRef.current = arr;
+    }
+    for (let i = 0; i < n; i++) {
+      const p = data.positions[i];
+      const [x, y] = interpolatePosition(p.audio, p.balanced, p.mood, sliderT);
+      arr[i * 2] = x;
+      arr[i * 2 + 1] = y;
+    }
+  }, [data, sliderT, positionsRef]);
 
   // Push texture changes into uniforms
   useEffect(() => {
@@ -147,6 +182,17 @@ export function AlbumField({
     material.uniforms.u_cursorActive.value = c && !reducedMotionRef.current ? 1 : 0;
     if (c) {
       material.uniforms.u_cursor.value.set(c[0], c[1]);
+    }
+
+    const hv = hoverRef.current;
+    material.uniforms.u_hoverIndex.value = hv;
+    if (hv !== prevHoverRef.current) {
+      prevHoverRef.current = hv;
+      // Under frameloop="demand", the ring/scale change needs its own frame
+      // to actually draw (CursorTracker already invalidates on the
+      // pointermove that caused this, but this covers any other path that
+      // changes hoverRef without going through CursorTracker's handler).
+      invalidate();
     }
   });
 

@@ -135,7 +135,7 @@ export function MusicMap() {
           `,
         }}
       />
-      <Tooltip containerRef={containerRef} />
+      <Tooltip />
       {/* Bottom-right control row: always visible, not hover-revealed. */}
       <div
         style={{

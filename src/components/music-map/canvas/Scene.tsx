@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useThree } from "@react-three/fiber";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 import { bumpCommitCounter, registerDebug } from "../state/debug";
@@ -16,7 +16,7 @@ import { CameraRig } from "./CameraRig";
 import { CursorTracker } from "./CursorTracker";
 import { FlyToFocus } from "./FlyToFocus";
 import { FocusController } from "./FocusController";
-import { ProjectionBridge } from "./ProjectionBridge";
+import { TooltipDriver } from "./TooltipDriver";
 // import { RegionLabels } from "./RegionLabels"; // unmounted; centroids inaccurate
 // Region washes deleted (see docs/superpowers/specs/2026-09-26-website-improvement-design.md
 // 4.5.7); the paper clear color matches the site so the map reads as part of the page.
@@ -42,6 +42,27 @@ function DebugExpose() {
           if (!p) return null;
           const [x, y] = interpolatePosition(p.audio, p.balanced, p.mood, s.sliderT);
           return { x, y };
+        },
+        // Test-only: projects a real album's current world position to
+        // screen (viewport) coordinates, so Playwright can dispatch a
+        // pointermove at a coordinate guaranteed to land on an album dot
+        // rather than guessing at empty space. Picks the middle index of
+        // the position list, not necessarily the visually densest point,
+        // but always a real album.
+        getNearestScreenPoint: () => {
+          const s = useMapStore.getState();
+          if (!s.data || s.data.positions.length === 0) return null;
+          const p = s.data.positions[Math.floor(s.data.positions.length / 2)];
+          const [x, y] = interpolatePosition(p.audio, p.balanced, p.mood, s.sliderT);
+          const v = new THREE.Vector3(x, y, 0);
+          v.project(camera);
+          const canvas = document.querySelector("canvas");
+          if (!canvas) return null;
+          const rect = canvas.getBoundingClientRect();
+          return {
+            x: rect.left + (v.x * 0.5 + 0.5) * rect.width,
+            y: rect.top + (-v.y * 0.5 + 0.5) * rect.height,
+          };
         },
       }),
     [camera],
@@ -113,11 +134,28 @@ function SceneInner() {
   // both in its own useFrame to set uniforms.
   const zoomRef = useRef(2.4);
   const cursorRef = useRef<[number, number] | null>(null);
+  // Hover target index (-1 = none), written by CursorTracker on pointermove,
+  // read by AlbumField (uniform + ring) and TooltipDriver (tooltip target).
+  // A ref, not React state: hover changes on every pointermove and must
+  // never trigger a SceneInner re-render.
+  const hoverRef = useRef(-1);
+  // Flat [x0,y0,x1,y1,...] interpolated positions, owned and recomputed by
+  // AlbumField whenever sliderT changes; read by CursorTracker (hit-testing)
+  // and TooltipDriver (tooltip placement).
+  const positionsRef = useRef<Float32Array>(new Float32Array(0));
   const [focus, setFocus] = useState<{ index: number; neighbors: number[] }>({
     index: -1,
     neighbors: [],
   });
   const textures = useAtlasTextures(data.atlasUrls);
+
+  // id -> index into positionsRef, built once per data load (positions are
+  // append-only per session; order matches data.positions throughout).
+  const idIndexById = useMemo(() => {
+    const m = new Map<string, number>();
+    data.positions.forEach((p, i) => m.set(p.id, i));
+    return m;
+  }, [data]);
 
   const handleFocusChange = useCallback(
     (i: number, n: number[]) => {
@@ -142,8 +180,7 @@ function SceneInner() {
       <InvalidateBridge />
       <CameraRig zoomRef={zoomRef} />
       <FlyToFocus />
-      <ProjectionBridge />
-      <CursorTracker cursorRef={cursorRef} />
+      <CursorTracker cursorRef={cursorRef} hoverRef={hoverRef} positionsRef={positionsRef} />
       <FocusController onFocusChange={handleFocusChange} />
       <AmbientDrift />
       {/* region washes removed; the paper clear color matches the site so the
@@ -155,9 +192,12 @@ function SceneInner() {
         atlasTextures={textures}
         zoomRef={zoomRef}
         cursorRef={cursorRef}
+        hoverRef={hoverRef}
+        positionsRef={positionsRef}
         focusedIndex={focus.index}
         neighborIndices={focus.neighbors}
       />
+      <TooltipDriver positionsRef={positionsRef} idIndexById={idIndexById} />
       {/* Mounted last so its frame callback runs after drift/tour have moved
           the camera, reining the idle camera back into the album cloud. */}
       <CameraBounds />

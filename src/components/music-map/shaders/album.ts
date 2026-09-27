@@ -13,6 +13,7 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
   uniform float u_neighborMask[12];  // indices of focused + neighbors (10 + 1 + sentinel)
   uniform vec2 u_cursor;
   uniform float u_cursorActive;
+  uniform float u_hoverIndex;   // -1 = no hover target
 
   varying vec2 v_atlasOrigin;
   varying vec2 v_atlasSize;
@@ -20,6 +21,7 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
   varying float v_clusterId;
   varying float v_dim;          // 0 = full opacity, 1 = dimmed in focus mode
   varying float v_screenSize;   // pixels
+  varying float v_hovered;      // 1 = this instance is the hover target
 
   vec2 interpolatePos() {
     if (u_sliderT <= 0.5) {
@@ -61,6 +63,10 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
         v_dim = 0.7;
       }
     }
+    v_hovered = (abs(u_hoverIndex - instanceIndex) < 0.5) ? 1.0 : 0.0;
+    if (v_hovered > 0.5) {
+      scale = 1.25;
+    }
     // Clamp at 240 device-px: most desktop GPUs cap GL_POINTS sprites around
     // 256, so without this a high-DPR (3x) viewport at max zoom asks for a
     // ~300px sprite and the driver silently culls the entire point — the
@@ -92,6 +98,7 @@ export const ALBUM_FRAGMENT_SHADER = /* glsl */ `
   varying float v_clusterId;
   varying float v_dim;
   varying float v_screenSize;
+  varying float v_hovered;
 
   // Returns vec4(rgb, loaded) where loaded = 1.0 if the atlas was sampled,
   // 0.0 if the atlas isn't loaded yet (caller falls back to the dot color).
@@ -119,14 +126,25 @@ export const ALBUM_FRAGMENT_SHADER = /* glsl */ `
     vec2 coord = gl_PointCoord - vec2(0.5);
     float r = length(coord);
     float aa = fwidth(r);
-    float discMask = 1.0 - smoothstep(0.5 - aa, 0.5, r);
-    if (discMask <= 0.0) discard;
 
     // Authored in sRGB; ShaderMaterial does not auto-apply the
     // linear->sRGB output conversion, so we write the literal hex
     // values straight to the framebuffer.
     vec3 ink = vec3(0.137, 0.114, 0.078);   // #231d14
     vec3 paper = vec3(0.980, 0.965, 0.926); // #faf6ec
+
+    // Ring geometry, expressed in gl_PointCoord's r-space. One device pixel
+    // measured against the sprite's on-screen diameter (v_screenSize, in
+    // device px) is 1/v_screenSize in this space, since r=0.5 spans half
+    // that diameter. The hovered sprite is already 1.25x bigger (see the
+    // vertex shader), so the ring hugs the enlarged disc, not the base size.
+    float pxR = 1.0 / max(v_screenSize, 1.0);
+    float inkOuter = 0.5 + pxR;              // 1px ink ring at the disc edge
+    float paperOuter = inkOuter + 2.0 * pxR; // 2px paper ring beyond it
+    float outerEdge = v_hovered > 0.5 ? paperOuter : 0.5;
+
+    float discMask = 1.0 - smoothstep(outerEdge - aa, outerEdge, r);
+    if (discMask <= 0.0) discard;
     vec3 cluster = clusterColor(int(v_clusterId));
     vec3 dotColor = mix(ink, cluster, 0.3);
     vec3 col;
@@ -152,6 +170,15 @@ export const ALBUM_FRAGMENT_SHADER = /* glsl */ `
     }
 
     col = mix(col, paper, v_dim);
+
+    // Ring band: r in (0.5, paperOuter] on a hovered sprite. inkMask fades
+    // from ink (right at the disc edge) to paper (further out), giving a
+    // 1px ink ring immediately outside the disc and a 2px paper ring beyond it.
+    if (v_hovered > 0.5 && r > 0.5) {
+      float inkMask = 1.0 - smoothstep(inkOuter - aa, inkOuter, r);
+      col = mix(paper, ink, inkMask);
+    }
+
     gl_FragColor = vec4(col, discMask);
   }
 `;

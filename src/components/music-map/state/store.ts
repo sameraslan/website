@@ -10,6 +10,12 @@ export interface MapStore {
   mode: MapMode;
   data: import("../data/types").MapData | null;
   focusedId: string | null;
+  /**
+   * Id of the album under the cursor, set 80ms after CursorTracker's hover
+   * ref settles on a target (not on every pointermove). Cleared immediately
+   * on hover-out. Tooltip.tsx reads `focusedId ?? hoveredId` (focus wins).
+   */
+  hoveredId: string | null;
   /** sliderT ∈ [0, 1]: 0 = pure audio, 0.5 = balanced, 1 = pure mood. */
   sliderT: number;
   /** Last interaction timestamp (ms). Used to gate idle drift. */
@@ -26,6 +32,7 @@ export interface MapStore {
   setData(data: import("../data/types").MapData): void;
   setMode(mode: MapMode): void;
   focus(id: string | null): void;
+  setHoveredId(id: string | null): void;
   setSliderT(t: number): void;
   registerInteraction(): void;
   registerCameraGrab(): void;
@@ -77,6 +84,7 @@ export const useMapStore = create<MapStore>()(
     mode: "loading",
     data: null,
     focusedId: null,
+    hoveredId: null,
     sliderT: loadFromSession().sliderT ?? DEFAULT_SLIDER_T,
     lastInteraction: 0,
     lastCameraGrab: 0,
@@ -87,6 +95,7 @@ export const useMapStore = create<MapStore>()(
       const next = id === null ? "idle" : "focus";
       set({ focusedId: id, mode: next });
     },
+    setHoveredId: (id) => set({ hoveredId: id }),
     setSliderT: (t) => {
       const clamped = Math.max(0, Math.min(1, t));
       set({ sliderT: clamped });

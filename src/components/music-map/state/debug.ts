@@ -20,6 +20,12 @@ export interface DebugGetters {
   getFocusedAlbumPos?(): { x: number; y: number } | null;
   /** Current sliderT. Verification-only, mirrors the debug getters above. */
   getSliderT?(): number;
+  /**
+   * Viewport (screen) coordinates of a real album's current position, for
+   * Playwright to dispatch synthetic pointer events at a coordinate
+   * guaranteed to land on an album dot. Verification-only.
+   */
+  getNearestScreenPoint?(): { x: number; y: number } | null;
 }
 
 declare global {
