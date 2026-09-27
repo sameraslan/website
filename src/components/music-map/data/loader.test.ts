@@ -80,4 +80,25 @@ describe("startPrefetch", () => {
     // Each JSON file is fetched exactly once, not once per startPrefetch call.
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
+
+  it("evicts a rejected fetch so a later call retries instead of reusing the failure forever", async () => {
+    const failingFetch = vi.fn(async () => {
+      throw new Error("network down");
+    });
+    vi.stubGlobal("fetch", failingFetch);
+
+    const p1 = startPrefetch("/data");
+    await expect(p1).rejects.toThrow("network down");
+
+    // A transient failure must not poison every later mount in the session:
+    // the next call should kick off a brand new fetch, not return the same
+    // rejected promise.
+    const workingFetch = mockFetchWithCount(1);
+    vi.stubGlobal("fetch", workingFetch);
+
+    const p2 = startPrefetch("/data");
+    expect(p2).not.toBe(p1);
+    const result = await p2;
+    expect(result.positions).toHaveLength(1);
+  });
 });

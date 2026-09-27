@@ -166,5 +166,16 @@ export function startPrefetch(base: string): Promise<MapData> {
   if (existing) return existing;
   const promise = fetchMapData(base);
   registry.set(base, promise);
+  // A transient network failure should not poison every later mount in the
+  // session: if this fetch rejects, drop it from the registry so the next
+  // startPrefetch(base) call (e.g. a retry, or a later client navigation)
+  // starts a fresh fetch instead of reusing the same rejected promise
+  // forever. The caller still sees the original rejection via `promise`
+  // itself; this only affects what future callers get.
+  promise.catch(() => {
+    if (registry.get(base) === promise) {
+      registry.delete(base);
+    }
+  });
   return promise;
 }

@@ -44,11 +44,28 @@ function configureAtlasTexture(bitmap: ImageBitmap): THREE.Texture {
   return tex;
 }
 
-function loadAtlas(url: string): Promise<THREE.Texture> {
+interface LoadedAtlas {
+  texture: THREE.Texture;
+  bitmap: ImageBitmap;
+}
+
+/** Disposes both the GPU-side texture and the decoded ImageBitmap backing
+ * it. Three's Texture.dispose() only releases the GPU upload; the
+ * ImageBitmap itself (a separate, often large, decoded-pixel resource held
+ * by the browser) needs its own close() call or it leaks until GC. */
+function disposeLoadedAtlas(loaded: LoadedAtlas): void {
+  loaded.texture.dispose();
+  loaded.bitmap.close();
+}
+
+function loadAtlas(url: string): Promise<LoadedAtlas> {
   return new Promise((resolve, reject) => {
     loader.load(
       url,
-      (bitmap) => resolve(configureAtlasTexture(bitmap as unknown as ImageBitmap)),
+      (result) => {
+        const bitmap = result as unknown as ImageBitmap;
+        resolve({ texture: configureAtlasTexture(bitmap), bitmap });
+      },
       undefined,
       (err) => reject(err),
     );
@@ -122,13 +139,36 @@ export function useAtlasTextures(
   const loadedRef = useRef<Set<number>>(new Set());
   const loadingRef = useRef(false);
   const startedRef = useRef(false);
+  // Every loaded texture + its backing ImageBitmap, kept only for cleanup
+  // (the `textures` state array above is what shader consumers read).
+  const loadedAtlasesRef = useRef<Map<number, LoadedAtlas>>(new Map());
+  // Bumped whenever the url set changes or the component unmounts. loadNext
+  // captures the epoch active when it starts a load; if the epoch has moved
+  // on by the time that load resolves (unmount, or a new MapData swapped
+  // in), the result is disposed instead of written into state, so neither
+  // an unmounted component nor a stale data set ever leaks a texture/bitmap.
+  const epochRef = useRef(0);
 
-  // Reset per data load (a fresh MapData means fresh, empty atlas state).
+  // Reset per data load (a fresh MapData means fresh, empty atlas state),
+  // and dispose whatever the previous url set had already loaded.
   useEffect(() => {
+    epochRef.current += 1;
     loadedRef.current = new Set();
     loadingRef.current = false;
     startedRef.current = false;
+    for (const loaded of loadedAtlasesRef.current.values()) {
+      disposeLoadedAtlas(loaded);
+    }
+    loadedAtlasesRef.current = new Map();
     setTextures(urls.map(() => null));
+
+    return () => {
+      epochRef.current += 1;
+      for (const loaded of loadedAtlasesRef.current.values()) {
+        disposeLoadedAtlas(loaded);
+      }
+      loadedAtlasesRef.current = new Map();
+    };
   }, [urls]);
 
   useFrame(() => {
@@ -164,13 +204,21 @@ export function useAtlasTextures(
       );
     }
 
+    const myEpoch = epochRef.current;
     loadingRef.current = true;
     loadAtlas(urls[nextIndex])
-      .then((tex) => {
+      .then((loaded) => {
+        if (epochRef.current !== myEpoch) {
+          // The url set changed or the component unmounted while this atlas
+          // was in flight: don't write into stale state, just release it.
+          disposeLoadedAtlas(loaded);
+          return;
+        }
         loadedRef.current.add(nextIndex);
+        loadedAtlasesRef.current.set(nextIndex, loaded);
         setTextures((prev) => {
           const next = [...prev];
-          next[nextIndex] = tex;
+          next[nextIndex] = loaded.texture;
           return next;
         });
         requestRender();
@@ -184,7 +232,7 @@ export function useAtlasTextures(
       })
       .finally(() => {
         loadingRef.current = false;
-        loadNext();
+        if (epochRef.current === myEpoch) loadNext();
       });
   }
 

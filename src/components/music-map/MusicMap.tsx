@@ -10,11 +10,13 @@ import { RegionLabels } from "./overlays/RegionLabels";
 import { SearchOverlay } from "./overlays/SearchOverlay";
 import { Slider } from "./overlays/Slider";
 import { Tooltip } from "./overlays/Tooltip";
+import { NARROW_MEDIA_QUERY } from "./state/breakpoints";
 import { useMapStore } from "./state/store";
 
 function isNarrowScreen(): boolean {
   if (typeof window === "undefined") return false;
-  return window.matchMedia("(max-width: 639px)").matches;
+  if (typeof window.matchMedia !== "function") return false;
+  return window.matchMedia(NARROW_MEDIA_QUERY).matches;
 }
 
 function isWebGLAvailable(): boolean {
@@ -48,7 +50,8 @@ export function MusicMap() {
   useEffect(() => setWebglOk(isWebGLAvailable()), []);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(NARROW_MEDIA_QUERY);
     const onChange = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
