@@ -277,3 +277,25 @@ registerCameraGrab(): void;
 - [ ] Performance gate from spec §5 on `/`: click-to-settle < 700ms, 0 React commits on pointermove, dots < 1.5s on Fast 3G, texture memory < 60MB before first zoom (read via `renderer.info.memory.textures` count and known sheet size).
 - [ ] Update `src/components/music-map/README.md`: state machine (no tour), file layout (deleted files), tuning const, performance budget actuals.
 - [ ] Commit: `docs(music-map): update README for the improvement pass`.
+
+---
+
+### Task 14: About page layout (content frozen)
+
+Added 2026-09-26 after the owner's mid-pass request. The bio TEXT in `AboutHeader.tsx` stays byte-for-byte identical; only layout, links, and a facts sidebar change.
+
+**Files:**
+- Modify: `src/components/content/AboutHeader.tsx` (layout only)
+- Create: `src/components/content/AboutFacts.tsx` (the `<dl>` sidebar)
+- Modify: `src/app/(pages)/about/page.tsx` if the grid needs to move up a level
+- Test: `src/components/content/AboutHeader.test.tsx`
+
+**Layout (desktop, matches the "About" artboard):** two columns `minmax(0,1fr) 260px`, gap 64px, inside `PageFrame`. Left: `PageTitle` "about", then the existing paragraphs and list unchanged (max-width 60ch), then a row of italic moss links `email →`, `github →`, `linkedin →` using `siteConfig.external` hrefs. Right (`aside`, padding-top 14px): the 220px round avatar (existing mask kept), then `AboutFacts`.
+
+**`AboutFacts`:** a `<dl>` of rows, each `dt` mono tiny uppercase ink-muted, `dd` serif 15px: `now` → "AI and law, Bloomberg LP"; `before` → "Johns Hopkins, CLSP and Dynamic Perception Lab"; `where` → "Brooklyn, New York"; `listening lately` → italic placeholder "coming soon, from Spotify" (data wiring is deferred to the pipeline revamp). Values live in `src/lib/site-config.ts` as `siteConfig.facts: { now, before, where }` so they can be corrected without touching components. Remove the old "Brooklyn, New York" caption under the photo (it moves into the facts).
+
+**Mobile (< 640px):** avatar first (centred, 160px), then facts, then the bio, then links.
+
+- [ ] Write the failing test: render `<AboutHeader />`; assert the three link hrefs (`mailto:samer.aslan@gmail.com`, `https://github.com/sameraslan`, `https://www.linkedin.com/in/sameraslan/`), the four `dt` labels, and that the first bio paragraph text is exactly the current string (copy it from the component into the test so any wording change fails the test).
+- [ ] Implement. `npm test` green. Playwright `/about` desktop + mobile screenshots compared with the artboard.
+- [ ] Commit: `feat(about): facts sidebar and contact links, bio text unchanged`.
