@@ -39,16 +39,15 @@ export function HeroCaption() {
         }
       `}</style>
       <h1 className="font-display font-normal text-[27px] leading-[1.2]">
-        Machine learning engineer working at the intersection of AI and law.
+        Machine learning engineer currently working at the intersection of AI and law.
       </h1>
       <p className="font-serif text-[15.5px] leading-[1.5] text-ink">
         Here&apos;s an evolving map of what I listen to.
       </p>
       <p className="font-mono text-tiny uppercase text-ink-muted">
         <span className="sm:hidden">tap a point · pinch to zoom</span>
-        <span className="hidden sm:inline">
-          hover to read · click for neighbours · scroll to zoom
-        </span>
+        <span className="hidden sm:block">hover to read · click for neighbours</span>
+        <span className="hidden sm:block">scroll to zoom · drag to pan</span>
       </p>
     </div>
   );

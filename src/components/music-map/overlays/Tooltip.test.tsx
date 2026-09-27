@@ -36,7 +36,7 @@ const fixture = {
 describe("Tooltip", () => {
   it("omits the year segment when year is 0", () => {
     useMapStore.setState({ data: fixture as any, focusedId: "a", hoveredId: null });
-    render(<Tooltip />);
+    render(<Tooltip kind="focus" />);
     const status = screen.getByRole("status");
     expect(status.textContent).toContain("Kid A");
     expect(status.textContent).toContain("Radiohead");
@@ -45,23 +45,29 @@ describe("Tooltip", () => {
 
   it("includes the year segment when year is 1973", () => {
     useMapStore.setState({ data: fixture as any, focusedId: "b", hoveredId: null });
-    render(<Tooltip />);
+    render(<Tooltip kind="focus" />);
     const status = screen.getByRole("status");
     expect(status.textContent).toContain("The Dark Side of the Moon");
     expect(status.textContent).toContain("1973");
   });
 
-  it("falls back to hoveredId when nothing is focused", () => {
+  it("the hover label shows the hovered album when nothing is focused", () => {
     useMapStore.setState({ data: fixture as any, focusedId: null, hoveredId: "b" });
-    render(<Tooltip />);
-    expect(screen.getByRole("status").textContent).toContain("1973");
+    const { container } = render(<Tooltip kind="hover" />);
+    expect(container.textContent).toContain("1973");
   });
 
-  it("focus wins over hover when both are set", () => {
+  it("keeps the focused label while the hover label shows another album", () => {
     useMapStore.setState({ data: fixture as any, focusedId: "a", hoveredId: "b" });
-    render(<Tooltip />);
-    const status = screen.getByRole("status");
-    expect(status.textContent).toContain("Kid A");
-    expect(status.textContent).not.toContain("1973");
+    const focus = render(<Tooltip kind="focus" />);
+    expect(focus.container.textContent).toContain("Kid A");
+    const hover = render(<Tooltip kind="hover" />);
+    expect(hover.container.textContent).toContain("The Dark Side of the Moon");
+  });
+
+  it("hides the hover label when it would repeat the focused album", () => {
+    useMapStore.setState({ data: fixture as any, focusedId: "a", hoveredId: "a" });
+    const { container } = render(<Tooltip kind="hover" />);
+    expect(container.textContent).toBe("");
   });
 });

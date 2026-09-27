@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { cssPxToWorld, hitRadiusCssPx, nearestWithin } from "./hitTest";
+import {
+  cssPxToWorld,
+  hitRadiusCssPx,
+  nearestWithin,
+  pickAlbum,
+  spriteHitRadiusCssPx,
+} from "./hitTest";
 
 describe("nearestWithin", () => {
   it("returns the closest index inside the radius", () => {
@@ -53,5 +59,43 @@ describe("cssPxToWorld", () => {
   it("round-trips: the world radius times px per unit gives back the CSS px", () => {
     const r = cssPxToWorld(24, 640, 2.5, 2.2);
     expect(r * ((2.5 * 640) / 2.2)).toBeCloseTo(24, 10);
+  });
+});
+
+describe("spriteHitRadiusCssPx", () => {
+  it("keeps the pointer minimum for small overview discs", () => {
+    expect(spriteHitRadiusCssPx("mouse", 10)).toBe(14);
+    expect(spriteHitRadiusCssPx("touch", 10)).toBe(24);
+  });
+
+  it("covers the whole drawn disc once it is larger than the minimum", () => {
+    expect(spriteHitRadiusCssPx("mouse", 90)).toBe(45);
+    expect(spriteHitRadiusCssPx("touch", 90)).toBe(45);
+  });
+});
+
+describe("pickAlbum", () => {
+  // Album 0 at the origin, album 1 at x=1: at x=0.6 album 1 is nearer.
+  const positions = new Float32Array([0, 0, 1, 0]);
+
+  it("falls back to the nearest centre without priority candidates", () => {
+    expect(pickAlbum(positions, 2, 0.6, 0, 2, [])).toBe(1);
+  });
+
+  it("lets a priority album win anywhere inside its own disc", () => {
+    expect(pickAlbum(positions, 2, 0.6, 0, 2, [{ index: 0, radiusWorld: 0.7 }])).toBe(0);
+  });
+
+  it("ignores a priority album when the point is outside its disc", () => {
+    expect(pickAlbum(positions, 2, 0.6, 0, 2, [{ index: 0, radiusWorld: 0.5 }])).toBe(1);
+  });
+
+  it("checks candidates in order and skips index -1", () => {
+    const priority = [
+      { index: -1, radiusWorld: 9 },
+      { index: 1, radiusWorld: 0.7 },
+      { index: 0, radiusWorld: 0.7 },
+    ];
+    expect(pickAlbum(positions, 2, 0.5, 0, 2, priority)).toBe(1);
   });
 });

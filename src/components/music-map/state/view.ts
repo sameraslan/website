@@ -9,9 +9,9 @@ import { TUNING } from "./tuning";
  * camera) on every sliderT change, since each slider stop has its own extent.
  *
  * This is the single published source of the fitted zoom. Consumers:
- * CameraRig (MIN_ZOOM = 0.8 * zoom), AlbumField (u_fitZoom), the
- * RegionLabels driver (label fade), AtlasManager (lazy-load gate),
- * CameraBounds (idle nudge box) and FlyToFocus (focus-release zoom).
+ * CameraRig (MIN_ZOOM = 0.8 * zoom), AlbumField (u_fitZoom), AtlasManager
+ * (lazy-load gate), CameraBounds (idle nudge box) and FlyToFocus
+ * (focus-release zoom).
  *
  * Plain module-level bridge, not Zustand state, mirroring state/invalidate.ts
  * and state/tooltipEl.ts: consumers read it synchronously inside wheel

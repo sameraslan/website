@@ -1,7 +1,7 @@
 /**
  * Dot colours for the album shader's `u_clusterColors[8]` uniform, built from
- * the data's own regions (public/data/regions.json) so the dots and the
- * region labels (which use `region.color`) always agree. Replaces a
+ * the data's own regions (public/data/regions.json, `region.color` by
+ * clusterId) so the palette lives in one place. Replaces a
  * hardcoded table in shaders/album.ts that had drifted out of order and
  * painted the terracotta "soul" cluster sage.
  */

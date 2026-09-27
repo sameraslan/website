@@ -30,6 +30,29 @@ export function spriteCssSize(zoom: number, fitZoom: number): number {
   return Math.min(90, Math.max(4, s));
 }
 
+/** Viewport-relative sprite cap (the u_maxSpritePx uniform, set in
+ * AlbumField.tsx): a single album cover should never dominate more than 18%
+ * of the viewport height, even at max zoom on a short window (spec 4.3 /
+ * task-8 brief). */
+export const MAX_SPRITE_VIEWPORT_FRACTION = 0.18;
+
+/**
+ * JS mirror of the sprite diameter the vertex shader actually draws, in CSS
+ * px: the size curve times the per-instance `scale` (1.15 highlighted, 1.25
+ * hovered), then the 240 device-px and u_maxSpritePx caps. Hit testing and
+ * tooltip placement use it so both track the disc on screen at every zoom.
+ */
+export function renderedSpriteCssSize(
+  zoom: number,
+  fitZoom: number,
+  viewportHeightCssPx: number,
+  pixelRatio: number,
+  scale = 1,
+): number {
+  const capDevicePx = Math.min(240, viewportHeightCssPx * MAX_SPRITE_VIEWPORT_FRACTION * pixelRatio);
+  return Math.min(spriteCssSize(zoom, fitZoom) * scale * pixelRatio, capDevicePx) / pixelRatio;
+}
+
 export const ALBUM_VERTEX_SHADER = /* glsl */ `
   attribute vec2 a_pos_audio;
   attribute vec2 a_pos_balanced;
@@ -78,10 +101,25 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
     float instanceIndex = float(gl_InstanceID);
     vec2 worldPos = interpolatePos();
 
+    // Power curve of the real camera zoom relative to u_fitZoom (the fitted
+    // overview zoom, state/view.ts), so the overview always reads as ~10px
+    // tinted discs and covers become legible as the user zooms in relative
+    // to that fit. See SIZE_CURVE_POWER below for the exponent's arithmetic.
+    // Clamped to [4, 90] CSS px before the scale/dpr/ring multipliers below.
+    float baseSize = clamp(10.0 * pow(u_zoom / max(u_fitZoom, 0.0001), ${SIZE_CURVE_POWER.toFixed(2)}), 4.0, 90.0);  // px
+
+    // Cursor pull, authored at the overview zoom. Scaling it by fit/zoom
+    // keeps its on-screen reach and strength constant as the camera zooms in
+    // (a world-constant pull slides a cover ~70px at max zoom, away from
+    // where hit testing looks for it), and it fades out as covers fade in
+    // (24-40px, the fragment shader's crossfade) so a cover being aimed at
+    // stays put.
+    // Capped at 1 so zooming out past the fit leaves the pull as it was.
+    float pullScale = min(1.0, u_fitZoom / max(u_zoom, 0.0001)) * (1.0 - smoothstep(24.0, 40.0, baseSize));
     vec2 toCursor = u_cursor - worldPos;
     float d = length(toCursor);
-    float pullRadius = 0.12;
-    float pullStrength = 0.018 * u_cursorActive;
+    float pullRadius = 0.12 * max(pullScale, 0.0001);
+    float pullStrength = 0.018 * pullScale * u_cursorActive;
     float falloff = 1.0 - smoothstep(0.0, pullRadius, d);
     worldPos += normalize(toCursor + vec2(0.0001)) * (falloff * falloff * pullStrength);
 
@@ -101,12 +139,6 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
     vec4 mvPos = modelViewMatrix * vec4(worldPos, layer, 1.0);
     gl_Position = projectionMatrix * mvPos;
 
-    // Power curve of the real camera zoom relative to u_fitZoom (the fitted
-    // overview zoom, state/view.ts), so the overview always reads as ~10px
-    // tinted discs and covers become legible as the user zooms in relative
-    // to that fit. See SIZE_CURVE_POWER below for the exponent's arithmetic.
-    // Clamped to [4, 90] CSS px before the scale/dpr/ring multipliers below.
-    float baseSize = clamp(10.0 * pow(u_zoom / max(u_fitZoom, 0.0001), ${SIZE_CURVE_POWER.toFixed(2)}), 4.0, 90.0);  // px
     float scale = 1.0;
     v_dim = 0.0;
     if (u_focusedAlbumIndex >= 0.0) {

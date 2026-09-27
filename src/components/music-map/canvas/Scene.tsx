@@ -19,7 +19,6 @@ import { CursorTracker, screenToWorld } from "./CursorTracker";
 import { FlyToFocus } from "./FlyToFocus";
 import { FocusController } from "./FocusController";
 import { FRUSTUM_HALF_HEIGHT, InitialFrame } from "./InitialFrame";
-import { RegionLabels } from "./RegionLabels";
 import { TooltipDriver } from "./TooltipDriver";
 // Region washes deleted (see docs/superpowers/specs/2026-09-26-website-improvement-design.md
 // 4.5.7); the paper clear color matches the site so the map reads as part of the page.
@@ -185,13 +184,6 @@ function SceneInner({ isTouch }: { isTouch: boolean }) {
   // AlbumField whenever sliderT changes; read by CursorTracker (hit-testing)
   // and TooltipDriver (tooltip placement).
   const positionsRef = useRef<Float32Array>(new Float32Array(0));
-  // Flat [x0,y0,...] per-cluster median positions at the current sliderT,
-  // indexed by clusterId; owned and recomputed by AlbumField whenever
-  // positionsRef is rebuilt, read every frame by the RegionLabels driver.
-  const centroidsRef = useRef<Float32Array>(new Float32Array(0));
-  // Member count per clusterId, fixed per data load; owned by AlbumField,
-  // read by the RegionLabels driver to hide labels for tiny clusters.
-  const clusterCountsRef = useRef<Uint32Array>(new Uint32Array(0));
   const [focus, setFocus] = useState<{ index: number; neighbors: number[] }>({
     index: -1,
     neighbors: [],
@@ -229,12 +221,16 @@ function SceneInner({ isTouch }: { isTouch: boolean }) {
       <InvalidateBridge />
       {/* Snaps the camera to the fitted overview once per data load and
           publishes the framing (state/view.ts) that CameraRig, AlbumField,
-          RegionLabels, AtlasManager and CameraBounds read. */}
+          AtlasManager, CameraBounds and FlyToFocus read. */}
       <InitialFrame />
       <CameraRig zoomRef={zoomRef} />
       <FlyToFocus />
       <CursorTracker cursorRef={cursorRef} hoverRef={hoverRef} positionsRef={positionsRef} />
-      <FocusController onFocusChange={handleFocusChange} positionsRef={positionsRef} />
+      <FocusController
+        onFocusChange={handleFocusChange}
+        positionsRef={positionsRef}
+        hoverRef={hoverRef}
+      />
       {/* Drift is a desktop-only idle flourish: touch has no notion of "the
           user hasn't touched anything for a while" the way a resting mouse
           does, and drifting the camera under a finger mid-gesture would be
@@ -249,20 +245,10 @@ function SceneInner({ isTouch }: { isTouch: boolean }) {
         cursorRef={cursorRef}
         hoverRef={hoverRef}
         positionsRef={positionsRef}
-        centroidsRef={centroidsRef}
-        clusterCountsRef={clusterCountsRef}
         focusedIndex={focus.index}
         neighborIndices={focus.neighbors}
       />
       <TooltipDriver positionsRef={positionsRef} idIndexById={idIndexById} />
-      {data.regions.length > 0 && (
-        <RegionLabels
-          regions={data.regions}
-          centroidsRef={centroidsRef}
-          clusterCountsRef={clusterCountsRef}
-          zoomRef={zoomRef}
-        />
-      )}
       {/* Mounted last so its frame callback runs after ambient drift has moved
           the camera, reining the idle camera back into the album cloud. */}
       <CameraBounds />

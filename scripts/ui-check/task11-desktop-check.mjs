@@ -39,11 +39,11 @@ async function main() {
   await page.mouse.move(pt.x, pt.y);
   await page.waitForTimeout(300); // past the 80ms hover-tooltip delay
   const tooltipOpacity = await page.evaluate(() => {
-    const el = document.querySelector('[role="status"]');
+    const el = document.querySelector('[data-tooltip="hover"]');
     return el ? getComputedStyle(el).opacity : null;
   });
   const hoverTitle = await page.evaluate(() => {
-    const el = document.querySelector('[role="status"] b');
+    const el = document.querySelector('[data-tooltip="hover"] b');
     return el ? el.textContent : null;
   });
 

@@ -4,10 +4,9 @@ import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { cssPxToWorld, hitRadiusCssPx, nearestWithin } from "../state/hitTest";
 import { interpolatePosition, kNearestNeighbors } from "../state/projection";
 import { useMapStore } from "../state/store";
-import { screenToWorld } from "./CursorTracker";
+import { albumAt, screenToWorld } from "./CursorTracker";
 
 const NEIGHBOR_K = 10;
 /** A gesture counts as a tap (not a drag/pinch) below this squared movement
@@ -26,6 +25,9 @@ interface FocusControllerProps {
    * exactly the album the hover ring and pointer cursor were showing.
    */
   positionsRef: React.MutableRefObject<Float32Array>;
+  /** CursorTracker's hover index (-1 = none), so a click keeps the album
+   * the hover ring and label were showing when the button went down. */
+  hoverRef: React.MutableRefObject<number>;
 }
 
 /** True when a text-entry element has keyboard focus (Escape belongs to it). */
@@ -40,7 +42,7 @@ function isTextInputFocused(): boolean {
   return !["range", "checkbox", "radio", "button", "submit", "reset"].includes(type);
 }
 
-export function FocusController({ onFocusChange, positionsRef }: FocusControllerProps) {
+export function FocusController({ onFocusChange, positionsRef, hoverRef }: FocusControllerProps) {
   const { camera, gl } = useThree();
   const data = useMapStore((s) => s.data);
   const sliderT = useMapStore((s) => s.sliderT);
@@ -64,22 +66,29 @@ export function FocusController({ onFocusChange, positionsRef }: FocusController
     if (!data) return;
     const canvas = gl.domElement;
 
-    // Same on-screen radius as hover (14 CSS px for a mouse), larger for a
-    // fingertip (24 CSS px for touch and pen), converted to world units at
-    // the current zoom, over the same positions array hover uses.
-    function hitTestAndFocus(clientX: number, clientY: number, pointerType: string) {
+    // Same hit test as hover (CursorTracker albumAt): draw order first, then
+    // the nearest centre within at least 14 CSS px for a mouse, 24 for a
+    // fingertip, or the whole drawn cover once it is bigger than that.
+    function hitTestAndFocus(
+      clientX: number,
+      clientY: number,
+      pointerType: string,
+      hoverIndex: number,
+    ) {
       if (!data) return;
       const rect = canvas.getBoundingClientRect();
       const cam = camera as THREE.OrthographicCamera;
       const [worldX, worldY] = screenToWorld(clientX, clientY, rect, cam);
-      const radiusWorld = cssPxToWorld(
-        hitRadiusCssPx(pointerType),
+      const idx = albumAt(
+        worldX,
+        worldY,
+        cam,
         rect.height,
-        cam.zoom,
-        cam.top - cam.bottom,
+        gl.getPixelRatio(),
+        pointerType,
+        positionsRef.current,
+        hoverIndex,
       );
-      const positions = positionsRef.current;
-      const idx = nearestWithin(positions, positions.length / 2, worldX, worldY, radiusWorld);
       if (idx < 0) {
         focus(null);
       } else {
@@ -94,13 +103,27 @@ export function FocusController({ onFocusChange, positionsRef }: FocusController
     // canvas). A second pointer joining mid-gesture (a pinch) cancels the
     // tap outright, so a two-finger zoom can never also toggle focus.
     let activeCount = 0;
-    let tapStart: { pointerId: number; x: number; y: number; t: number } | null = null;
+    let tapStart: {
+      pointerId: number;
+      x: number;
+      y: number;
+      t: number;
+      hoverIndex: number;
+    } | null = null;
     let cancelled = false;
 
     function onPointerDown(e: PointerEvent) {
       activeCount++;
       if (activeCount === 1) {
-        tapStart = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
+        // Captured now: CursorTracker drops hover on press (until the
+        // pointer moves), so by pointerup hoverRef no longer holds it.
+        tapStart = {
+          pointerId: e.pointerId,
+          x: e.clientX,
+          y: e.clientY,
+          t: performance.now(),
+          hoverIndex: hoverRef.current,
+        };
         cancelled = false;
       } else {
         // A second pointer means this whole gesture is a pinch, not a tap.
@@ -118,7 +141,9 @@ export function FocusController({ onFocusChange, positionsRef }: FocusController
       activeCount = Math.max(0, activeCount - 1);
       if (tapStart && e.pointerId === tapStart.pointerId && !cancelled) {
         const elapsed = performance.now() - tapStart.t;
-        if (elapsed < TAP_MAX_MS) hitTestAndFocus(e.clientX, e.clientY, e.pointerType);
+        if (elapsed < TAP_MAX_MS) {
+          hitTestAndFocus(e.clientX, e.clientY, e.pointerType, tapStart.hoverIndex);
+        }
       }
       if (activeCount === 0) tapStart = null;
     }
@@ -137,7 +162,7 @@ export function FocusController({ onFocusChange, positionsRef }: FocusController
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerCancel);
     };
-  }, [data, camera, gl, focus, positionsRef]);
+  }, [data, camera, gl, focus, positionsRef, hoverRef]);
 
   // Recompute the neighbor index list whenever focus or slider changes
   useEffect(() => {

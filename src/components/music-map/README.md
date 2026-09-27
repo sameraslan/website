@@ -1,9 +1,10 @@
 # `<MusicMap />`
 
-Hero feature of sameraslan.com. Renders ~5,000 albums as a continuous 2D
-embedding on cream paper. Proximity encodes similarity; the slider warps the
-embedding between three pre-baked projections; clicking (or tapping) an
-album surfaces its 10 nearest neighbors.
+Hero feature of sameraslan.com. Renders the ~700 albums rated on
+RateYourMusic as a continuous 2D embedding on cream paper. Proximity encodes
+similarity; the slider warps the embedding between three pre-baked
+projections; clicking (or tapping) an album surfaces its 10 nearest
+neighbors.
 
 ## How it works
 
@@ -13,7 +14,7 @@ album surfaces its 10 nearest neighbors.
 │  ─────────────────     │    │  ──────────────────    │
 │  albums.csv            │    │  • R3F canvas          │
 │      ↓                 │    │  • Single InstancedMesh│
-│  Spotify API           │    │    for 5k albums       │
+│  Spotify API           │    │    for all albums      │
 │  RYM scraper           │    │  • Vertex shader does  │
 │      ↓                 │    │    piecewise-linear    │
 │  Feature matrices      │    │    interpolation       │
@@ -32,9 +33,11 @@ album surfaces its 10 nearest neighbors.
 - `public/data/positions.json`: `{id, audio:[x,y], balanced:[x,y], mood:[x,y]}` per album
 - `public/data/metadata.json`: `{id, title, artist, year, spotifyUrl, clusterId, atlasIndex, atlasUV}` ordered by `clusterId` then by descending `popularity`
 - `public/data/regions.json`: `{clusterId, label, color, stops:{audio,balanced,mood:{centroid,radius}}}`
-- `public/data/atlas-N.webp`: 1024-sprite atlases (96×96 each on a 3072×3072 sheet)
+- `public/data/atlas-N.webp`: 1024-sprite atlases (96×96 each on a 3072×3072 sheet); the current catalog fits on `atlas-0`
 
-All produced by `python pipeline/build.py`. See `pipeline/README.md` for details.
+The pipeline (`python pipeline/build.py`, see `pipeline/README.md`) produces
+the full 4081-album catalog. `scripts/music-catalog/` then filters it to the
+albums rated on RateYourMusic and fills `year` from the RYM export.
 
 ## Public API
 
@@ -54,7 +57,11 @@ navigation.
 
 ## Updating content
 
-**To add or remove albums:**
+**To refresh from a new RateYourMusic export:** see
+`scripts/music-catalog/README.md`. Only albums already in the pipeline's
+catalog can appear, since they need its audio features.
+
+**To add or remove albums from the full catalog:**
 ```bash
 # Edit pipeline/sources/albums.csv (one row per album)
 python pipeline/build.py
@@ -66,10 +73,9 @@ Edit `pipeline/config.yaml`'s `projection.algorithm` value, re-run `build.py`.
 Manifest hashing reruns only the affected steps.
 
 **To re-color regions:**
-Edit `pipeline/config.yaml`'s `cluster_palette` entries. The labels are
-auto-assigned to kmeans clusters via Hungarian matching against
-`FEATURE_SIGNATURES` in `04_project.py`. To force a specific assignment,
-override there.
+Edit `pipeline/config.yaml`'s `cluster_palette` entries. The map reads only
+each region's `color` (dot tint, via `state/clusterColors.ts`); the `label`
+field in `regions.json` is not rendered.
 
 **To retune camera/drift feel:**
 Edit `state/tuning.ts`'s `TUNING` object (drift amplitude/frequency/idle
@@ -94,8 +100,18 @@ releases focus whenever an album is focused and no text field (the search
 input) has keyboard focus. Clicks and taps use the same hit test as hover
 (`state/hitTest.ts` `nearestWithin` over AlbumField's interpolated
 positions) with a CSS-px radius converted to world units at the current
-zoom: 14px for a mouse, 24px for touch and pen. A click farther than that
-from every disc releases focus.
+zoom: at least 14px for a mouse and 24px for touch and pen, and the drawn
+disc's radius once covers are bigger than that (`renderedSpriteCssSize` in
+`shaders/album.ts` mirrors the shader's size maths), so a whole cover is
+hoverable and clickable when zoomed in. A click farther than that from every
+disc releases focus. The shader's cursor pull is sized in screen space and
+fades out as covers fade in, so the cover being aimed at does not slide away
+from where the hit test looks for it.
+
+Desktop shows two labels: a pinned one for the focused album and a hover one
+for the album under the mouse, shown only when that is a different album, so
+a focused album's neighbours can be read one by one. Both sit just above
+their sprite's edge (below it near the top of the canvas).
 
 `FlyToFocus.tsx` captures the camera's position and zoom when focus begins
 from an unfocused state (album-to-album hops keep the original) and a release
@@ -183,7 +199,7 @@ src/components/music-map/
 ├── index.ts
 ├── canvas/
 │   ├── Scene.tsx             # R3F scene root, demand-mode Canvas, debug getters
-│   ├── AlbumField.tsx        # the 5k-album InstancedMesh (hot path)
+│   ├── AlbumField.tsx        # the album InstancedMesh (hot path)
 │   ├── AtlasManager.tsx      # lazy atlas loading as zoom crosses thresholds
 │   ├── InitialFrame.tsx      # frustum sizing + fit-to-cloud framing + initial snap
 │   ├── CameraRig.tsx         # pan + zoom + pinch (touch)
@@ -192,12 +208,10 @@ src/components/music-map/
 │   ├── FocusController.tsx   # click/tap → focus + neighbors
 │   ├── FlyToFocus.tsx        # camera animation on focus
 │   ├── AmbientDrift.tsx      # idle Perlin drift (desktop only, not touch)
-│   ├── RegionLabels.tsx      # canvas-side driver: positions the DOM region labels every frame
-│   └── TooltipDriver.tsx     # canvas-side driver: positions the DOM tooltip every frame
+│   └── TooltipDriver.tsx     # canvas-side driver: positions the DOM labels every frame
 ├── overlays/
-│   ├── Tooltip.tsx           # desktop hover tooltip (DOM, outside <Canvas>)
+│   ├── Tooltip.tsx           # desktop focus/hover labels (DOM, outside <Canvas>)
 │   ├── MobileSheet.tsx       # touch bottom sheet, replaces Tooltip below 640px
-│   ├── RegionLabels.tsx      # DOM region label spans, positioned by canvas/RegionLabels.tsx
 │   ├── Slider.tsx            # audio/balanced/mood slider
 │   ├── SearchOverlay.tsx     # desktop-only fuzzy search (Fuse.js)
 │   └── LoadingState.tsx
@@ -206,13 +220,11 @@ src/components/music-map/
 │   ├── tuning.ts             # fixed camera/drift constants (TUNING); no dev HUD, no presets
 │   ├── bounds.ts             # percentile cloud bounds, fit-to-cloud zoom, idle nudge vector
 │   ├── breakpoints.ts        # single source of truth for the 640px mobile/desktop cutoff
-│   ├── centroids.ts          # per-cluster centroid computation for region labels
-│   ├── clusterColors.ts
+│   ├── clusterColors.ts      # dot tint per clusterId from regions.json `color`
 │   ├── hitTest.ts            # nearest-album hit testing for hover/tap
 │   ├── invalidate.ts         # bridges demand-mode invalidate() outside the fiber tree
 │   ├── debug.ts              # window.__mapDebug test hooks (see "Debug getters" above)
-│   ├── regionLabelEls.ts     # DOM <-> canvas-driver bridge for region label elements
-│   ├── tooltipEl.ts          # DOM <-> canvas-driver bridge for the tooltip element
+│   ├── tooltipEl.ts          # DOM <-> canvas-driver bridge for the label elements
 │   ├── view.ts                # published overview framing (zoom/center/bounds) singleton
 │   ├── projection.ts         # interpolation + KNN + easing
 │   └── zoomMath.ts           # zoom-anchor math (cursor-anchored wheel/pinch zoom)
@@ -233,6 +245,11 @@ src/components/music-map/
   `docs/superpowers/specs/2026-09-26-website-improvement-design.md` §4.5.7.
   The paper clear color now matches the site background directly, so the map
   reads as part of the page rather than sitting on a colored field.
+- **Region labels** (`canvas/RegionLabels.tsx`, `overlays/RegionLabels.tsx`,
+  `state/regionLabelEls.ts`, `state/centroids.ts`): removed. The KMeans
+  cluster names ("ambient", "soul", ...) floated over clusters read as genre
+  claims the clustering does not support. Clusters remain visible only as dot
+  tint.
 - **`@react-three/drei`** (npm dependency): removed; nothing under `src`
   imports it, the canvas is built directly on `@react-three/fiber`.
 

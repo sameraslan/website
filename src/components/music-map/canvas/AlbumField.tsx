@@ -4,20 +4,19 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { ALBUM_FRAGMENT_SHADER, ALBUM_VERTEX_SHADER, spriteCssSize } from "../shaders/album";
+import {
+  ALBUM_FRAGMENT_SHADER,
+  ALBUM_VERTEX_SHADER,
+  MAX_SPRITE_VIEWPORT_FRACTION,
+  spriteCssSize,
+} from "../shaders/album";
 import type { MapData, MetadataRecord, PositionRecord } from "../data/types";
-import { clusterMedians, clusterMemberCounts } from "../state/centroids";
 import { clusterColorsFromRegions } from "../state/clusterColors";
 import { markFirstDraw, registerDebug } from "../state/debug";
 import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
 import { getOverviewFraming } from "../state/view";
 import { cursorToWorld } from "./CursorTracker";
-
-// Viewport-relative sprite cap: a single album cover should never dominate
-// more than 18% of the viewport height, even at max zoom on a short window
-// (spec 4.3 / task-8 brief).
-const MAX_SPRITE_VIEWPORT_FRACTION = 0.18;
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -39,21 +38,6 @@ interface AlbumFieldProps {
    * TooltipDriver read it for hit-testing and tooltip placement.
    */
   positionsRef: React.MutableRefObject<Float32Array>;
-  /**
-   * Flat [x0,y0,...] per-cluster median positions at the current sliderT
-   * (state/centroids.ts clusterMedians, robust to the outlier group),
-   * recomputed alongside positionsRef whenever the slider changes. Read by
-   * the region-labels driver (canvas/RegionLabels.tsx) to place each label.
-   * Length is regionCount * 2; a cluster with no members gets NaN (label
-   * driver hides it).
-   */
-  centroidsRef: React.MutableRefObject<Float32Array>;
-  /**
-   * Member count per clusterId, computed once per data load (membership
-   * doesn't change with sliderT). Read by the region-labels driver to hide
-   * labels for clusters too small to mean anything (task 8 fix round 2).
-   */
-  clusterCountsRef: React.MutableRefObject<Uint32Array>;
   focusedIndex: number;
   neighborIndices: number[];
 }
@@ -69,45 +53,12 @@ export function AlbumField({
   cursorRef,
   hoverRef,
   positionsRef,
-  centroidsRef,
-  clusterCountsRef,
   focusedIndex,
   neighborIndices,
 }: AlbumFieldProps) {
   const sliderT = useMapStore((s) => s.sliderT);
   const { gl, camera } = useThree();
   const invalidate = useThree((s) => s.invalidate);
-  const size = useThree((s) => s.size);
-  const regionCount = data.regions.length;
-  // clusterId per album, rebuilt whenever data changes; read by the
-  // positions effect below to recompute per-cluster centroids on every
-  // sliderT change. Built in its own memo (not inside the geometry memo)
-  // so the ref sync below can happen in an effect rather than during render.
-  const clusterIds8 = useMemo(() => {
-    const n = data.positions.length;
-    const arr = new Uint8Array(n);
-    const metaById = new Map<string, MetadataRecord>();
-    for (const m of data.metadata) metaById.set(m.id, m);
-    for (let i = 0; i < n; i++) {
-      const meta = metaById.get(data.positions[i].id);
-      if (meta) arr[i] = meta.clusterId;
-    }
-    return arr;
-  }, [data]);
-  const clusterIdsRef = useRef<Uint8Array>(clusterIds8);
-  useEffect(() => {
-    clusterIdsRef.current = clusterIds8;
-  }, [clusterIds8]);
-  // Member count per clusterId: fixed per data load (unlike centroids, this
-  // doesn't depend on sliderT), so it's computed once here alongside
-  // clusterIds8 rather than in the per-sliderT-change effect below.
-  const clusterCounts = useMemo(
-    () => clusterMemberCounts(clusterIds8, data.positions.length, regionCount),
-    [clusterIds8, data.positions.length, regionCount],
-  );
-  useEffect(() => {
-    clusterCountsRef.current = clusterCounts;
-  }, [clusterCounts, clusterCountsRef]);
   const reducedMotionRef = useRef(prefersReducedMotion());
   // Tracks the previous frame's hover uniform so we only invalidate() (under
   // frameloop="demand") on an actual change, not every frame.
@@ -161,8 +112,8 @@ export function AlbumField({
     pointsGeom.instanceCount = n;
 
     const atlasLoadedFloats = new Float32Array(MAX_ATLASES);
-    // Dot colours come from the data (regions.json, by clusterId), the same
-    // source the region labels use, so dots and labels always agree.
+    // Dot colours come from the data (regions.json `color`, by clusterId),
+    // so the palette is set in one place (pipeline/config.yaml).
     const clusterColorsVec3 = clusterColorsFromRegions(data.regions, 8).map(
       (c) => new THREE.Vector3(...c),
     );
@@ -222,21 +173,7 @@ export function AlbumField({
       arr[i * 2] = x;
       arr[i * 2 + 1] = y;
     }
-    // Recompute per-cluster label anchors (medians) alongside positions, so
-    // the region labels driver always reads anchors consistent with the current
-    // sliderT rather than a stale value from regions.json.
-    centroidsRef.current = clusterMedians(arr, clusterIdsRef.current, n, regionCount);
-  }, [data, sliderT, positionsRef, centroidsRef, regionCount]);
-
-  // Viewport-relative sprite cap: recomputed on mount and whenever the
-  // canvas resizes, from the CSS-px viewport height and the current device
-  // pixel ratio (see the gl_PointSize clamp in shaders/album.ts).
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/immutability -- mutating a three.js ShaderMaterial's uniforms in place is the standard R3F pattern; the material is a long-lived GPU-backed object, not React-owned state.
-    material.uniforms.u_maxSpritePx.value =
-      size.height * MAX_SPRITE_VIEWPORT_FRACTION * gl.getPixelRatio();
-    invalidate();
-  }, [material, size.height, gl, invalidate]);
+  }, [data, sliderT, positionsRef]);
 
   // Push texture changes into uniforms
   useEffect(() => {
@@ -270,6 +207,14 @@ export function AlbumField({
     // curve above is relative to this, not a fixed absolute zoom (task 8
     // fix round 2).
     material.uniforms.u_fitZoom.value = getOverviewFraming().zoom;
+    // Pixel ratio and the viewport-relative sprite cap (see the gl_PointSize
+    // clamp in shaders/album.ts), read live each frame so a dpr change (a
+    // window moved to another display) or a resize can't leave them stale;
+    // renderedSpriteCssSize, which hit testing and label placement use,
+    // reads the same live values.
+    const dpr = gl.getPixelRatio();
+    material.uniforms.u_pixelRatio.value = dpr;
+    material.uniforms.u_maxSpritePx.value = state.size.height * MAX_SPRITE_VIEWPORT_FRACTION * dpr;
     material.uniforms.u_focusedAlbumIndex.value = focusedIndex;
     const mask = material.uniforms.u_neighborMask.value as Float32Array;
     mask.fill(-1);

@@ -7,7 +7,6 @@ import { startPrefetch } from "./data/loader";
 import { LoadingState } from "./overlays/LoadingState";
 import { MobileFallback } from "./overlays/MobileFallback";
 import { MobileSheet } from "./overlays/MobileSheet";
-import { RegionLabels } from "./overlays/RegionLabels";
 import { SearchOverlay } from "./overlays/SearchOverlay";
 import { Slider } from "./overlays/Slider";
 import { Tooltip } from "./overlays/Tooltip";
@@ -31,7 +30,7 @@ function isWebGLAvailable(): boolean {
 }
 
 /**
- * Music map, a 2D embedding of ~5k albums where proximity encodes similarity.
+ * Music map, a 2D embedding of ~700 albums where proximity encodes similarity.
  * Renders a full WebGL canvas with overlays for search, tooltip, and a
  * sonic-to-mood slider. Data is loaded from `/data/*.json` + atlas sheets at
  * mount; the component takes no props in v1. See README.md in this directory.
@@ -162,11 +161,17 @@ export function MusicMap() {
           `,
         }}
       />
-      {data && <RegionLabels regions={data.regions} />}
       {/* Desktop hover tooltip vs. the touch bottom sheet (spec 4.7): touch
           has no hover state to follow, so it gets a fixed card instead of a
           tooltip that would try to chase a finger. */}
-      {isTouch ? <MobileSheet /> : <Tooltip />}
+      {isTouch ? (
+        <MobileSheet />
+      ) : (
+        <>
+          <Tooltip kind="focus" />
+          <Tooltip kind="hover" />
+        </>
+      )}
       {/* Bottom-right control row: always visible, not hover-revealed. On
           touch it sits above the MobileSheet (bottom: 76px vs. the sheet's
           12px + ~54px tall) so the two never overlap, and search is omitted

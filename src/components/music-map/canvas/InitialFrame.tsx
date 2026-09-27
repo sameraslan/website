@@ -24,8 +24,7 @@ export const FRUSTUM_HALF_HEIGHT = 0.55;
  *   The camera is `manual`, so R3F never touches these itself.
  * - Framing: computes the cloud's percentile bounds, their centre and the
  *   fitted zoom for the live frustum, and publishes them (state/view.ts) for
- *   CameraRig, AlbumField, RegionLabels, AtlasManager, CameraBounds and
- *   FlyToFocus. Recomputed on data, sliderT and size changes.
+ *   CameraRig, AlbumField, AtlasManager, CameraBounds and FlyToFocus. Recomputed on data, sliderT and size changes.
  * - Snap: once per MapData the camera jumps, without animation, to the
  *   framing centre and fitted zoom. A resize re-snaps only while the user
  *   has not yet grabbed the camera or focused an album; a slider change

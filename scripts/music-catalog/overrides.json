@@ -1,0 +1,71 @@
+{
+ "_note": "Apply 'remove' first, then 'add'. The 4 removed ids are re-added with the correct RYM row (REASSIGN), since the catalog album is right but the wrong RYM row was attached.",
+ "remove": [
+  "spotify:album:2jrrWeSrojSEt8Lmw2a1wx",
+  "spotify:album:44Ig8dzqOkvkGDzaUof9lK",
+  "spotify:album:6WBUyDe1Xy8QRwF6wzhJsY",
+  "spotify:album:6gDtROOIYa6OQxwhDNkDRM"
+ ],
+ "add": [
+  {
+   "rym_id": "9768107",
+   "catalog_id": "spotify:album:2jrrWeSrojSEt8Lmw2a1wx",
+   "reason": "REASSIGN: catalog is Streams of Thought Vol. 2; matcher attached the Vol. 1 row (9294580); use the Vol. 2 row"
+  },
+  {
+   "rym_id": "43",
+   "catalog_id": "spotify:album:44Ig8dzqOkvkGDzaUof9lK",
+   "reason": "REASSIGN: catalog is Led Zeppelin [IV]; matcher attached the 1969 debut row (2027); use the [IV] row"
+  },
+  {
+   "rym_id": "5113727",
+   "catalog_id": "spotify:album:6WBUyDe1Xy8QRwF6wzhJsY",
+   "reason": "REASSIGN: catalog is Run the Jewels 2; matcher attached the RTJ1 row (4541581); use the RTJ2 row"
+  },
+  {
+   "rym_id": "8857731",
+   "catalog_id": "spotify:album:6gDtROOIYa6OQxwhDNkDRM",
+   "reason": "REASSIGN: catalog \"Twin Fantasy\" is the 2018 re-recording (2011 original is \"Mirror to Mirror\" on Spotify); matcher attached the 2011 row (3738650)"
+  },
+  {
+   "rym_id": "12722099",
+   "catalog_id": "spotify:album:0sLt9EsWnVZgJAO5Sp35YQ",
+   "reason": "Parannoul; catalog artist is \"파란노을 [Parannoul]\""
+  },
+  {
+   "rym_id": "3431026",
+   "catalog_id": "spotify:album:04DOnsOFx8MrXA1JpjwZLH",
+   "reason": "Elzhi With Will Sessions - Elmatic; catalog artist string concatenated"
+  },
+  {
+   "rym_id": "13931",
+   "catalog_id": "spotify:album:6XHQCPGwvSaqv9MZ2tauqr",
+   "reason": "Mahavishnu Orchestra - The Inner Mounting Flame; catalog artist string concatenated"
+  },
+  {
+   "rym_id": "17488",
+   "catalog_id": "spotify:album:0FVpa0kZMT8Bhks7Sg7Jz9",
+   "reason": "Charles Mingus Presents Charles Mingus; catalog title drops leading artist name"
+  },
+  {
+   "rym_id": "3912",
+   "catalog_id": "spotify:album:65nhz1EbSruHtMqqLJrRja",
+   "reason": "The The - Soul Mining; artist normalizes to empty string after article stripping"
+  },
+  {
+   "rym_id": "4308540",
+   "catalog_id": "spotify:album:3PYWQo89juaAr0HooKtfEH",
+   "reason": "Kinoko Teikoku - Eureka; catalog artist \"きのこ帝国 [Kinoko Teikoku]\""
+  },
+  {
+   "rym_id": "88585",
+   "catalog_id": "spotify:album:2i4fy6a51XTaZOYA8rIdRK",
+   "reason": "Sheena Ringo - Kalk Samen Kuri no Hana; catalog artist \"椎名林檎 [Sheena Ringo]\""
+  },
+  {
+   "rym_id": "40634",
+   "catalog_id": "spotify:album:0D9FANbUo4R1eyn9MZQBOa",
+   "reason": "Songs: Ohia - The Magnolia Electric Co. (2003); catalog credits later name Magnolia Electric Co."
+  }
+ ]
+}
