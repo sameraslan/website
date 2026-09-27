@@ -33,6 +33,13 @@ export interface DebugGetters {
    * position fixed across a zoom change.
    */
   getWorldAt?(clientX: number, clientY: number): { x: number; y: number } | null;
+  /**
+   * performance.now() timestamp of the first time AlbumField rendered with
+   * real data, i.e. the first frame where dots could plausibly be on screen.
+   * Used by the Fast-3G first-draw verification script (task 9); set once by
+   * markFirstDraw() below, not part of the getters DebugExpose registers.
+   */
+  firstDrawAt?: number;
 }
 
 declare global {
@@ -52,7 +59,11 @@ declare global {
 export function registerDebug(getters: DebugGetters): () => void {
   if (process.env.NODE_ENV === "production") return () => {};
   if (typeof window === "undefined") return () => {};
-  window.__mapDebug = getters;
+  // Merge rather than overwrite: markFirstDraw() below may have already set
+  // firstDrawAt on window.__mapDebug before this effect runs (render order
+  // is not guaranteed relative to markFirstDraw's call site), and a plain
+  // overwrite here would erase it.
+  window.__mapDebug = { ...window.__mapDebug, ...getters };
   return () => {
     delete window.__mapDebug;
   };
@@ -63,4 +74,20 @@ export function bumpCommitCounter(): void {
   if (process.env.NODE_ENV === "production") return;
   if (typeof window === "undefined") return;
   window.__mapCommits = (window.__mapCommits ?? 0) + 1;
+}
+
+/**
+ * Records performance.now() the first time AlbumField renders with data.
+ * No-op after the first call. Unlike the other window.__mapDebug getters
+ * (which expose live camera/store control surface and stay dev-only), this
+ * is a single inert timestamp with no command surface, so it stays available
+ * in production builds too. It is the only way to measure real first-draw
+ * latency (perf audit / spec 4.5, "first map paint under 1.5s") since a dev
+ * build's unbundled, uncompressed chunks are not representative of it.
+ */
+export function markFirstDraw(): void {
+  if (typeof window === "undefined") return;
+  if (!window.__mapDebug) window.__mapDebug = {} as DebugGetters;
+  if (window.__mapDebug.firstDrawAt !== undefined) return;
+  window.__mapDebug.firstDrawAt = performance.now();
 }

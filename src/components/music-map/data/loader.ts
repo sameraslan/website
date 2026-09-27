@@ -1,38 +1,7 @@
 import type { MapData, MetadataRecord, PositionRecord, RegionRecord, SliderStopId } from "./types";
 
-/**
- * Temporary UX iteration knob: subsample the full album dataset down to this
- * many records so the cluster reads as an airy constellation rather than a
- * dense overdraw. Set to `Infinity` (or 0) to disable and render every album.
- *
- * Sampling is deterministic — ids are sorted lexicographically and we take a
- * uniform stride — so reloads always show the same 500. Once we're happy with
- * the density story this should be reverted to render the full set.
- */
-const SAMPLE_LIMIT = 500;
-
 export interface LoaderOptions {
   onProgress?: (phase: "fetching" | "parsed" | "atlas-0-ready") => void;
-}
-
-/**
- * Deterministic subsample: sort all album ids lexicographically and pick
- * every Nth so the chosen set is stable across reloads (no shuffle, no RNG).
- * Returns the set of kept ids; both positions.json and metadata.json are
- * filtered with this set so the two lists stay aligned.
- */
-function pickSampledIds(positions: PositionRecord[], limit: number): Set<string> {
-  if (!Number.isFinite(limit) || limit <= 0 || positions.length <= limit) {
-    return new Set(positions.map((p) => p.id));
-  }
-  const ids = positions.map((p) => p.id).sort();
-  const stride = ids.length / limit;
-  const kept = new Set<string>();
-  for (let i = 0; i < limit; i++) {
-    const idx = Math.min(ids.length - 1, Math.floor(i * stride));
-    kept.add(ids[idx]);
-  }
-  return kept;
 }
 
 /**
@@ -64,11 +33,11 @@ function computeStopTransform(
 ): StopTransform {
   const xs = positions.map((p) => p[stop][0]).sort((a, b) => a - b);
   const ys = positions.map((p) => p[stop][1]).sort((a, b) => a - b);
-  // Center on the median (robust to skewed long tails — many stops have
+  // Center on the median (robust to skewed long tails, many stops have
   // outliers reaching x=-1.68 or y=-1.23 while the bulk sits near zero).
   const cx = percentile(xs, 0.5);
   const cy = percentile(ys, 0.5);
-  // Scale from the p5..p95 spread around the median — this is the bulk we
+  // Scale from the p5..p95 spread around the median, this is the bulk we
   // want to fill the frustum with. Outliers land outside (but still inside
   // the camera frustum since we leave 30% headroom on each side).
   const x5 = percentile(xs, 0.05);
@@ -131,10 +100,14 @@ export async function fetchMapData(
   options: LoaderOptions = {},
 ): Promise<MapData> {
   options.onProgress?.("fetching");
+  // credentials: "same-origin" matches the crossOrigin="anonymous" preload
+  // links in src/app/page.tsx, so the browser reuses the preloaded response
+  // instead of firing a second, duplicate request.
+  const fetchOpts: RequestInit = { credentials: "same-origin" };
   const [positionsRes, metadataRes, regionsRes] = await Promise.all([
-    fetch(`${baseUrl}/positions.json`),
-    fetch(`${baseUrl}/metadata.json`),
-    fetch(`${baseUrl}/regions.json`),
+    fetch(`${baseUrl}/positions.json`, fetchOpts),
+    fetch(`${baseUrl}/metadata.json`, fetchOpts),
+    fetch(`${baseUrl}/regions.json`, fetchOpts),
   ]);
   if (!positionsRes.ok || !metadataRes.ok || !regionsRes.ok) {
     throw new Error("failed to fetch music map data");
@@ -146,21 +119,10 @@ export async function fetchMapData(
   ]);
   options.onProgress?.("parsed");
 
-  // Subsample BOTH positions and metadata to the same id set so the indices
-  // (and atlasIndex references) stay aligned. regions.json is per-cluster
-  // centroids — independent of album count — and is passed through untouched.
-  const keptIds = pickSampledIds(rawPositions, SAMPLE_LIMIT);
-  const filteredPositions =
-    keptIds.size === rawPositions.length
-      ? rawPositions
-      : rawPositions.filter((p) => keptIds.has(p.id));
-  const filteredMetadata =
-    keptIds.size === rawPositions.length
-      ? rawMetadata
-      : rawMetadata.filter((m) => keptIds.has(m.id));
-
-  const { positions, regions } = normalizeMapData(filteredPositions, rawRegions);
-  const metadata = filteredMetadata;
+  // Render every album; no subsampling. Overdraw is bounded elsewhere by
+  // clamping sprite size to the viewport (u_maxSpritePx, see AlbumField.tsx).
+  const { positions, regions } = normalizeMapData(rawPositions, rawRegions);
+  const metadata = rawMetadata;
 
   const maxAtlasIndex = metadata.reduce(
     (acc, m) => Math.max(acc, m.atlasIndex),
@@ -172,4 +134,37 @@ export async function fetchMapData(
   }
 
   return { positions, metadata, regions, atlasUrls };
+}
+
+// One in-flight (or settled) fetch per base url, memoised on globalThis so it
+// survives module re-evaluation across the module-scope call in
+// MusicMapClient.tsx and the client-navigation call in MusicMap.tsx. A plain
+// module-level Map would not be shared if the module is instantiated more
+// than once (e.g. by different bundler chunks), so globalThis is the one
+// reliably shared place.
+interface PrefetchGlobal {
+  __musicMapPrefetch?: Map<string, Promise<MapData>>;
+}
+
+function prefetchRegistry(): Map<string, Promise<MapData>> {
+  const g = globalThis as PrefetchGlobal;
+  if (!g.__musicMapPrefetch) {
+    g.__musicMapPrefetch = new Map();
+  }
+  return g.__musicMapPrefetch;
+}
+
+/**
+ * Kicks off fetchMapData(base) at most once per base url and memoises the
+ * resulting promise so repeated calls (module-scope prefetch in
+ * MusicMapClient.tsx, then MusicMap.tsx awaiting the same load) share one
+ * network request set instead of fetching the JSON files twice.
+ */
+export function startPrefetch(base: string): Promise<MapData> {
+  const registry = prefetchRegistry();
+  const existing = registry.get(base);
+  if (existing) return existing;
+  const promise = fetchMapData(base);
+  registry.set(base, promise);
+  return promise;
 }

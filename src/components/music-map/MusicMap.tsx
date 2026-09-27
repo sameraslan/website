@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Scene } from "./canvas/Scene";
-import { fetchMapData } from "./data/loader";
+import { startPrefetch } from "./data/loader";
 import { LoadingState } from "./overlays/LoadingState";
 import { MobileFallback } from "./overlays/MobileFallback";
 import { RegionLabels } from "./overlays/RegionLabels";
@@ -11,6 +11,11 @@ import { SearchOverlay } from "./overlays/SearchOverlay";
 import { Slider } from "./overlays/Slider";
 import { Tooltip } from "./overlays/Tooltip";
 import { useMapStore } from "./state/store";
+
+function isNarrowScreen(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(max-width: 639px)").matches;
+}
 
 function isWebGLAvailable(): boolean {
   if (typeof window === "undefined") return true;
@@ -23,7 +28,7 @@ function isWebGLAvailable(): boolean {
 }
 
 /**
- * Music map — a 2D embedding of ~5k albums where proximity encodes similarity.
+ * Music map, a 2D embedding of ~5k albums where proximity encodes similarity.
  * Renders a full WebGL canvas with overlays for search, tooltip, and a
  * sonic-to-mood slider. Data is loaded from `/data/*.json` + atlas sheets at
  * mount; the component takes no props in v1. See README.md in this directory.
@@ -34,14 +39,16 @@ export function MusicMap() {
   const setData = useMapStore((s) => s.setData);
   const setMode = useMapStore((s) => s.setMode);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isNarrow, setIsNarrow] = useState(false);
+  // Initialised from matchMedia directly (not a useEffect that starts at
+  // `false`), so phones never render one frame committed to the desktop
+  // path before the touch check catches up (perf audit item 1g).
+  const [isNarrow, setIsNarrow] = useState(isNarrowScreen);
   const [webglOk, setWebglOk] = useState(true);
 
   useEffect(() => setWebglOk(isWebGLAvailable()), []);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
-    setIsNarrow(mq.matches);
     const onChange = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -49,8 +56,12 @@ export function MusicMap() {
 
   useEffect(() => {
     if (isNarrow) return;
+    // A client navigation between `/` and `/music` shares the singleton
+    // store; if it already has data (from the previous mount, or from the
+    // module-scope prefetch already having resolved), skip fetching again.
+    if (data) return;
     let cancelled = false;
-    fetchMapData("/data")
+    startPrefetch("/data")
       .then((d) => {
         if (!cancelled) setData(d);
       })
@@ -61,7 +72,7 @@ export function MusicMap() {
     return () => {
       cancelled = true;
     };
-  }, [isNarrow, setData, setMode]);
+  }, [isNarrow, data, setData, setMode]);
 
   if (isNarrow) return <MobileFallback />;
   if (!webglOk) return <MobileFallback />;
@@ -78,7 +89,7 @@ export function MusicMap() {
       }}
     >
       {/* Skip-link. Off-screen by default via clip-path (instead of left:-9999,
-          which the site's global `transition: all 0.2s` would animate over —
+          which the site's global `transition: all 0.2s` would animate over,
           and during the transition the link sits offscreen well past the test
           window). `:focus`/`:focus-visible` reveal it via clip-path:none. We
           also pin position with !important so the global transition can't
@@ -119,7 +130,7 @@ export function MusicMap() {
       </a>
       {mode === "loading" && <LoadingState />}
       {data && <Scene />}
-      {/* Edge feather — a paper-colored gradient that is transparent through
+      {/* Edge feather, a paper-colored gradient that is transparent through
           the center and fades to solid #faf6ec at all four edges, so the
           canvas dissolves into the page instead of ending at a hard border.
           Sits above the canvas but below the chrome/tooltip (DOM order), and

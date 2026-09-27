@@ -158,7 +158,7 @@ function SceneInner() {
     index: -1,
     neighbors: [],
   });
-  const textures = useAtlasTextures(data.atlasUrls);
+  const textures = useAtlasTextures(data, positionsRef);
 
   // id -> index into positionsRef, built once per data load (positions are
   // append-only per session; order matches data.positions throughout).

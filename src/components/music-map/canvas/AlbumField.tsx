@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { ALBUM_FRAGMENT_SHADER, ALBUM_VERTEX_SHADER, CLUSTER_COLORS_RGB } from "../shaders/album";
 import type { MapData, MetadataRecord, PositionRecord } from "../data/types";
 import { clusterCentroids } from "../state/centroids";
+import { markFirstDraw } from "../state/debug";
 import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
 
@@ -224,7 +225,7 @@ export function AlbumField({
       mask[i + 1] = neighborIndices[i];
     }
     // Cursor uniforms. We disable the directional pull when the user
-    // prefers reduced motion — the dot offsetting is a small but
+    // prefers reduced motion, the dot offsetting is a small but
     // continuous animation that some vestibular-sensitive users find
     // distracting. matchMedia is read on mount and cached in the closure;
     // the rare media-query change at runtime isn't worth a listener.
@@ -255,11 +256,19 @@ export function AlbumField({
     };
   }, [geometry, material]);
 
+  // Dev-only: records the first time this component renders with real data,
+  // for the Fast-3G "time to first draw" verification (task 9). AlbumField
+  // only ever renders once `data` is set on the store (MusicMap.tsx gates
+  // <Scene> on `data`), so this fires once per page load.
+  useEffect(() => {
+    markFirstDraw();
+  }, []);
+
   // Frustum-cull off: the geometry's only position attribute is the
   // single 0-vertex stub for instanced draw, so Three's auto-computed
   // bounding sphere has radius 0 at the origin. Any time the camera
   // recentres off-origin (focus, off-center zoom), that sphere falls
-  // outside the frustum and Three skips the whole draw — every album
+  // outside the frustum and Three skips the whole draw, every album
   // disappears, including the focused one.
   return <points ref={points} geometry={geometry} material={material} frustumCulled={false} />;
 }
