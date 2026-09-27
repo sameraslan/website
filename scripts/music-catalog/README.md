@@ -4,6 +4,7 @@ Restricts the music map to albums rated on RateYourMusic. The full
 4081-album pipeline output (from the `music_map` worktree's `pipeline/`)
 carries the audio/mood features; this keeps the subset that also appears in
 the RYM export with a rating above 0, fills `year` from RYM's release date,
+cleans artist credits the upstream catalog glued together (`clean-artist.mjs`),
 and repacks the covers into as few atlas sheets as needed. Positions are the
 original UMAP coordinates, unchanged.
 

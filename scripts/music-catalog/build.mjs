@@ -7,6 +7,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
+
+import { cleanArtist } from "./clean-artist.mjs";
+
 const [CATALOG, WORK] = process.argv.slice(2);
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const WT = path.resolve(HERE, "../..");
@@ -53,6 +56,7 @@ for (let i = 0; i < kept.length; i++) {
   sheets[sheet].push({ input: tile, left: col * THUMB, top: row * THUMB });
   newMeta.push({
     ...m,
+    artist: cleanArtist(m.artist),
     year: yearById.get(m.id),
     atlasIndex: sheet,
     atlasUV: [(col * THUMB) / SHEET, (row * THUMB) / SHEET, THUMB / SHEET, THUMB / SHEET],
