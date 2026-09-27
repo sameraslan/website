@@ -17,8 +17,10 @@ function noise2D(x: number, y: number): number {
 
 /**
  * Gentle idle wander of the overview camera. Only runs when nothing is
- * focused and the user has been idle (no cursor move, drag, wheel, or slider
- * drag) for `TUNING.driftIdleDelayMs`. Never sets `focusedId` or `mode`; it
+ * focused, the mouse is not over the canvas, and the user has been idle (no
+ * drag, wheel, or slider drag, and no pointer leaving the canvas) for
+ * `TUNING.driftIdleDelayMs`. A mouse resting on the map never sees it move:
+ * drift under a stationary cursor would slide albums out from under it. Never sets `focusedId` or `mode`; it
  * only nudges `camera.position`, so it can never wash out the map or leave
  * focus stuck on an album the way the old auto-tour did.
  *
@@ -35,6 +37,12 @@ function noise2D(x: number, y: number): number {
 export function AmbientDrift() {
   const camera = useThree((s) => s.camera) as THREE.OrthographicCamera;
   const invalidate = useThree((s) => s.invalidate);
+  const gl = useThree((s) => s.gl);
+  // Whether a mouse or pen is over the canvas right now (set on
+  // pointerenter/pointermove, cleared on pointerleave and on unmount), and
+  // when it last left, which restarts the idle delay.
+  const pointerInside = useRef(false);
+  const pointerLeftAt = useRef(0);
   // mountedAt seeds the idle gate at the wall-clock time this component
   // mounted, so a fresh page load waits the full driftIdleDelayMs before
   // drift starts (rather than comparing against epoch 0, which would make
@@ -76,7 +84,8 @@ export function AmbientDrift() {
       }
       const { lastInteraction, lastCameraGrab, focusedId } = stateRef.current;
       if (focusedId != null) return; // drift never runs while focused
-      const idleSince = Math.max(lastInteraction, lastCameraGrab, mountedAt);
+      if (pointerInside.current) return; // re-armed on pointerleave
+      const idleSince = Math.max(lastInteraction, lastCameraGrab, mountedAt, pointerLeftAt.current);
       const remaining = idleSince + TUNING.driftIdleDelayMs - Date.now();
       wakeTimer.current = setTimeout(
         () => {
@@ -103,6 +112,29 @@ export function AmbientDrift() {
       if (wakeTimer.current !== null) clearTimeout(wakeTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+    function onInside(e: PointerEvent) {
+      if (e.pointerType === "touch") return;
+      pointerInside.current = true;
+    }
+    function onLeave(e: PointerEvent) {
+      if (e.pointerType === "touch") return;
+      pointerInside.current = false;
+      pointerLeftAt.current = Date.now();
+      scheduleWake.current();
+    }
+    canvas.addEventListener("pointerenter", onInside);
+    canvas.addEventListener("pointermove", onInside);
+    canvas.addEventListener("pointerleave", onLeave);
+    return () => {
+      canvas.removeEventListener("pointerenter", onInside);
+      canvas.removeEventListener("pointermove", onInside);
+      canvas.removeEventListener("pointerleave", onLeave);
+      pointerInside.current = false;
+    };
+  }, [gl]);
   const reducedMotion = useReducedMotion();
 
   // This callback mutates the R3F camera object in place (see the comment
@@ -123,9 +155,11 @@ export function AmbientDrift() {
       return;
     }
 
-    const idleSince = Math.max(lastInteraction, lastCameraGrab, mountedAt);
+    const idleSince = Math.max(lastInteraction, lastCameraGrab, mountedAt, pointerLeftAt.current);
     const interactionGated =
-      reducedMotion || wallNow - idleSince < TUNING.driftIdleDelayMs;
+      reducedMotion ||
+      pointerInside.current ||
+      wallNow - idleSince < TUNING.driftIdleDelayMs;
 
     if (interactionGated) {
       // Not yet time to drift: the wake timer (armed above) will invalidate

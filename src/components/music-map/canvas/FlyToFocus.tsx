@@ -38,7 +38,7 @@ const SLIDER_RETARGET_DURATION_MS = 120;
  * Control point for a curved glide: the straight midpoint pushed sideways
  * (perpendicular to the travel direction) by a randomized fraction of the
  * distance, with a random side. Straight hops become gentle, varied arcs so
- * the tour reads as a wandering, circular drift rather than ruler-straight cuts.
+ * album-to-album glides read as gentle curves rather than ruler-straight cuts.
  */
 function arcControlPoint(from: THREE.Vector2, to: THREE.Vector2): THREE.Vector2 {
   const mid = from.clone().add(to).multiplyScalar(0.5);
@@ -61,16 +61,16 @@ export function FlyToFocus() {
   const focusedId = useMapStore((s) => s.focusedId);
   const sliderT = useMapStore((s) => s.sliderT);
   const anim = useRef<Animation | null>(null);
-  // Whether any focus has happened yet: gates the initial release so we don't
-  // pin the camera to the world origin before the tour places it.
+  // Whether any focus has happened yet: gates the initial release so a
+  // release before any focus leaves InitialFrame's fitted framing alone.
   const everFocused = useRef(false);
   // First effect run = the mount. focusedId is never restored from the
   // session, so on mount it is null and we leave the camera where it starts.
   const didInit = useRef(false);
   // The very first focus after load eases the zoom in to focusZoom (the intro).
   // Every hop after that PRESERVES the current zoom instead of resetting it, so
-  // if the user has manually zoomed in, the tour keeps gliding + circling at
-  // their zoom rather than yanking back out to the tour default.
+  // if the user has manually zoomed in, later glides keep their zoom rather
+  // than yanking back out to focusZoom.
   const introDone = useRef(false);
 
   // eslint-disable-next-line react-hooks/immutability -- this effect mutates the R3F camera in place on focus changes (see the mutation sites below); the standard R3F pattern for driving a long-lived, GPU-backed camera object.
@@ -213,11 +213,17 @@ export function FlyToFocus() {
       cam.zoom = a.toZoom;
       cam.updateProjectionMatrix();
       anim.current = null;
+      // One more frame so components that read the camera earlier in the
+      // frame order (CameraRig's zoomRef, which drives the sprite-size
+      // uniform) pick up the new zoom under frameloop="demand".
+      invalidate();
       return;
     }
-    // The user grabbed the camera (drag/wheel/slider-drag) after this glide
-    // began: bail so manual control takes over instantly instead of fighting
-    // the glide. Hover/pointermove alone (lastInteraction) never cancels it.
+    // The user grabbed the camera (drag/wheel/pinch) after this glide began:
+    // bail so manual control takes over instantly instead of fighting the
+    // glide. A slider drag is not a grab (it retargets the glide in place,
+    // see the sliderT effect above), and hover/pointermove alone
+    // (lastInteraction) never cancels it.
     if (useMapStore.getState().lastCameraGrab > a.startWall) {
       anim.current = null;
       return;
@@ -235,6 +241,9 @@ export function FlyToFocus() {
     cam.updateProjectionMatrix();
     if (t >= 1) {
       anim.current = null;
+      // Settle frame: same reason as the instant branch above, the final
+      // camera write must reach zoomRef and the uniforms.
+      invalidate();
     } else {
       // Glide still in flight: keep the demand loop alive next frame.
       invalidate();

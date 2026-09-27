@@ -12,6 +12,7 @@ import { markFirstDraw, registerDebug } from "../state/debug";
 import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
 import { getOverviewFraming } from "../state/view";
+import { cursorToWorld } from "./CursorTracker";
 
 // Viewport-relative sprite cap: a single album cover should never dominate
 // more than 18% of the viewport height, even at max zoom on a short window
@@ -28,6 +29,7 @@ interface AlbumFieldProps {
   atlasTextures: (THREE.Texture | null)[];
   /** Real camera.zoom (0.5..5), written every frame by CameraRig. */
   zoomRef: React.MutableRefObject<number>;
+  /** Canvas-relative CSS px of the mouse (null = off canvas), from CursorTracker. */
   cursorRef: React.MutableRefObject<[number, number] | null>;
   /** -1 = no hover target. Written by CursorTracker on pointermove. */
   hoverRef: React.MutableRefObject<number>;
@@ -246,10 +248,13 @@ export function AlbumField({
     }
     // eslint-disable-next-line react-hooks/immutability -- flags the material dirty after the uniform writes above; also the R3F mutation pattern.
     material.uniformsNeedUpdate = true;
-  }, [atlasTextures, material]);
+    // frameloop="demand": a texture arriving is not an input event, so
+    // request the frame that actually draws the new covers.
+    invalidate();
+  }, [atlasTextures, material, invalidate]);
 
   // eslint-disable-next-line react-hooks/immutability -- this per-frame callback mutates material.uniforms in place throughout (see the mutation sites below); that is the standard R3F hot-path pattern, not something to restructure into setState (which would re-render React every frame instead of just redrawing the canvas).
-  useFrame(() => {
+  useFrame((state) => {
     // eslint-disable-next-line react-hooks/immutability -- see the useFrame-level comment above.
     material.uniforms.u_sliderT.value = sliderT;
     const zoomT = Math.max(
@@ -277,10 +282,14 @@ export function AlbumField({
     // continuous animation that some vestibular-sensitive users find
     // distracting. matchMedia is read on mount and cached in the closure;
     // the rare media-query change at runtime isn't worth a listener.
+    // cursorRef holds canvas-relative CSS px; it is projected through the
+    // camera as it is this frame, so the pull stays under the mouse while
+    // the camera moves.
     const c = cursorRef.current;
     material.uniforms.u_cursorActive.value = c && !reducedMotionRef.current ? 1 : 0;
     if (c) {
-      material.uniforms.u_cursor.value.set(c[0], c[1]);
+      const [wx, wy] = cursorToWorld(c, state.size, camera as THREE.OrthographicCamera);
+      material.uniforms.u_cursor.value.set(wx, wy);
     }
 
     const hv = hoverRef.current;
@@ -304,8 +313,9 @@ export function AlbumField({
     };
   }, [geometry, material]);
 
-  // Dev-only: records the first time this component renders with real data,
-  // for the Fast-3G "time to first draw" verification (task 9). AlbumField
+  // Records the first time this component renders with real data, for the
+  // Fast-3G "time to first draw" verification (task 9). Unlike the other
+  // debug hooks this one also runs in production (see markFirstDraw). AlbumField
   // only ever renders once `data` is set on the store (MusicMap.tsx gates
   // <Scene> on `data`), so this fires once per page load.
   useEffect(() => {

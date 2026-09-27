@@ -4,14 +4,11 @@ import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
+import { cssPxToWorld, hitRadiusCssPx, nearestWithin } from "../state/hitTest";
+import { interpolatePosition, kNearestNeighbors } from "../state/projection";
 import { useMapStore } from "../state/store";
-import {
-  interpolatePosition,
-  kNearestNeighbors,
-  nearestAlbumIndex,
-} from "../state/projection";
+import { screenToWorld } from "./CursorTracker";
 
-const HIT_RADIUS = 0.04;
 const NEIGHBOR_K = 10;
 /** A gesture counts as a tap (not a drag/pinch) below this squared movement
  * (in CSS px, so 8px matches spec 4.7's "< 8px movement"). */
@@ -23,28 +20,66 @@ const TAP_MAX_MS = 300;
 interface FocusControllerProps {
   /** Receives the resolved focused-index and neighbor indices each render. */
   onFocusChange: (focusedIndex: number, neighborIndices: number[]) => void;
+  /**
+   * Flat [x0,y0,x1,y1,...] interpolated positions, owned by AlbumField. The
+   * same array CursorTracker hover-tests against, so a click lands on
+   * exactly the album the hover ring and pointer cursor were showing.
+   */
+  positionsRef: React.MutableRefObject<Float32Array>;
 }
 
-export function FocusController({ onFocusChange }: FocusControllerProps) {
+/** True when a text-entry element has keyboard focus (Escape belongs to it). */
+function isTextInputFocused(): boolean {
+  const el = document.activeElement as HTMLElement | null;
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName;
+  if (tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (tag !== "INPUT") return false;
+  const type = (el as HTMLInputElement).type;
+  return !["range", "checkbox", "radio", "button", "submit", "reset"].includes(type);
+}
+
+export function FocusController({ onFocusChange, positionsRef }: FocusControllerProps) {
   const { camera, gl } = useThree();
   const data = useMapStore((s) => s.data);
   const sliderT = useMapStore((s) => s.sliderT);
   const focus = useMapStore((s) => s.focus);
+
+  // Escape releases focus (spec 4.4.9), unless a text field owns the key
+  // (the search input uses Escape to close itself).
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (useMapStore.getState().focusedId == null) return;
+      if (isTextInputFocused()) return;
+      focus(null);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [focus]);
   const focusedId = useMapStore((s) => s.focusedId);
 
   useEffect(() => {
     if (!data) return;
     const canvas = gl.domElement;
 
-    function hitTestAndFocus(clientX: number, clientY: number) {
+    // Same on-screen radius as hover (14 CSS px for a mouse), larger for a
+    // fingertip (24 CSS px for touch and pen), converted to world units at
+    // the current zoom, over the same positions array hover uses.
+    function hitTestAndFocus(clientX: number, clientY: number, pointerType: string) {
       if (!data) return;
       const rect = canvas.getBoundingClientRect();
-      const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
-      const ndcY = -(((clientY - rect.top) / rect.height) * 2 - 1);
       const cam = camera as THREE.OrthographicCamera;
-      const worldX = (ndcX / cam.zoom) * (cam.right - cam.left) / 2 + cam.position.x;
-      const worldY = (ndcY / cam.zoom) * (cam.top - cam.bottom) / 2 + cam.position.y;
-      const idx = nearestAlbumIndex(data.positions, worldX, worldY, sliderT, HIT_RADIUS);
+      const [worldX, worldY] = screenToWorld(clientX, clientY, rect, cam);
+      const radiusWorld = cssPxToWorld(
+        hitRadiusCssPx(pointerType),
+        rect.height,
+        cam.zoom,
+        cam.top - cam.bottom,
+      );
+      const positions = positionsRef.current;
+      const idx = nearestWithin(positions, positions.length / 2, worldX, worldY, radiusWorld);
       if (idx < 0) {
         focus(null);
       } else {
@@ -83,7 +118,7 @@ export function FocusController({ onFocusChange }: FocusControllerProps) {
       activeCount = Math.max(0, activeCount - 1);
       if (tapStart && e.pointerId === tapStart.pointerId && !cancelled) {
         const elapsed = performance.now() - tapStart.t;
-        if (elapsed < TAP_MAX_MS) hitTestAndFocus(e.clientX, e.clientY);
+        if (elapsed < TAP_MAX_MS) hitTestAndFocus(e.clientX, e.clientY, e.pointerType);
       }
       if (activeCount === 0) tapStart = null;
     }
@@ -102,7 +137,7 @@ export function FocusController({ onFocusChange }: FocusControllerProps) {
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerCancel);
     };
-  }, [data, camera, gl, sliderT, focus]);
+  }, [data, camera, gl, focus, positionsRef]);
 
   // Recompute the neighbor index list whenever focus or slider changes
   useEffect(() => {

@@ -49,6 +49,30 @@ export interface DebugGetters {
    */
   getNdcInsideFraction?(): number | null;
   /**
+   * The renderer's own resource accounting (`renderer.info.memory`), for
+   * verifying GPU texture growth stays lazy: 0 or 1 non-atlas textures
+   * before the first zoom, growing one atlas sheet at a time as AtlasManager
+   * loads them in. Verification-only.
+   */
+  getRendererInfo?(): { textures: number; geometries: number };
+  /** CursorTracker's current hover index (-1 = none). Verification-only. */
+  getHoverIndex?(): number;
+  /**
+   * Ground-truth hit test at a client point through the live camera:
+   * `index` is the album within the 14px mouse radius (-1 if none),
+   * `nearest` the closest album at any distance, and `distPx` its distance
+   * in CSS px, and `screen` its client position. Verification-only.
+   */
+  getAlbumAt?(
+    clientX: number,
+    clientY: number,
+  ): {
+    index: number;
+    nearest: number;
+    distPx: number;
+    screen: { x: number; y: number } | null;
+  };
+  /**
    * Base sprite size in CSS px from the size curve (shaders/album.ts
    * spriteCssSize), evaluated two ways: `published` from the live camera
    * zoom and the published fit (state/view.ts), `uniform` from the values
@@ -56,13 +80,6 @@ export interface DebugGetters {
    * applies the shader's device-px caps (240, u_maxSpritePx) and the GPU's
    * ALIASED_POINT_SIZE_RANGE max, back in CSS px. Verification-only.
    */
-  /**
-   * The renderer's own resource accounting (`renderer.info.memory`), for
-   * verifying GPU texture growth stays lazy: 0 or 1 non-atlas textures
-   * before the first zoom, growing one atlas sheet at a time as AtlasManager
-   * loads them in. Verification-only.
-   */
-  getRendererInfo?(): { textures: number; geometries: number };
   getSpriteCssSize?(): {
     published: number;
     uniform: number;

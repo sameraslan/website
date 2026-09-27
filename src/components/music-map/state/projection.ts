@@ -47,26 +47,3 @@ export function kNearestNeighbors(
   distances.sort((a, b) => a.d2 - b.d2);
   return distances.slice(0, k).map((x) => x.id);
 }
-
-export function nearestAlbumIndex(
-  positions: { id: string; audio: [number, number]; balanced: [number, number]; mood: [number, number] }[],
-  worldX: number,
-  worldY: number,
-  sliderT: number,
-  maxDistance: number,
-): number {
-  let best = -1;
-  let bestD2 = maxDistance * maxDistance;
-  for (let i = 0; i < positions.length; i++) {
-    const p = positions[i];
-    const [x, y] = interpolatePosition(p.audio, p.balanced, p.mood, sliderT);
-    const dx = x - worldX;
-    const dy = y - worldY;
-    const d2 = dx * dx + dy * dy;
-    if (d2 < bestD2) {
-      bestD2 = d2;
-      best = i;
-    }
-  }
-  return best;
-}
