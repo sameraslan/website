@@ -1,130 +1,91 @@
 "use client";
 
-import { useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useEffect, useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import type { RegionRecord, SliderStopId } from "../data/types";
-import { useMapStore } from "../state/store";
+import type { RegionRecord } from "../data/types";
+import { getRegionLabelEl } from "../state/regionLabelEls";
 
-// Render each label to a hi-DPI canvas in italic Georgia / ink-muted, then
-// upload as a Three.js texture for a Sprite. SDF would be lighter but a
-// per-label canvas at 1024×256 is still well under any budget — there are
-// only 8 regions.
-function makeLabelTexture(text: string): THREE.Texture {
-  const canvas = document.createElement("canvas");
-  // 4× the visible sprite size to keep edges crisp when sampled.
-  canvas.width = 1024;
-  canvas.height = 256;
-  const ctx = canvas.getContext("2d")!;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.font = "italic 140px Georgia, 'Times New Roman', serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  const cx = canvas.width / 2;
-  const cy = canvas.height / 2;
-  // Labels draw BEHIND the album points (renderOrder = -50, set on the
-  // sprite). A faint paper-coloured stroke gives the glyph just enough
-  // contrast to remain readable when the underlying watercolor wash is
-  // dark; the dots overdraw the halo so the cluster ink reading stays
-  // intact. lineWidth=6 is narrow enough to fit between adjacent dots.
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-  ctx.strokeStyle = "rgba(246, 240, 225, 0.7)";
-  ctx.lineWidth = 6;
-  ctx.strokeText(text, cx, cy);
-  ctx.fillStyle = "#6b6852";
-  ctx.fillText(text, cx, cy);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  tex.needsUpdate = true;
-  return tex;
-}
+// Mirrors CameraRig's zoom range (see canvas/CameraRig.tsx) so zoomT here
+// matches the u_zoomT the shader uses.
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 5.0;
 
-interface Props {
+// Labels sit 14 CSS px below the centroid so they don't cover the densest
+// dots at that region's core (spec 4.3 / task-8 brief).
+const LABEL_OFFSET_Y_PX = 14;
+
+interface RegionLabelsProps {
   regions: RegionRecord[];
-  zoomT: number;
+  /**
+   * Flat [x0,y0,...] per-cluster mean positions at the current sliderT,
+   * owned and recomputed by AlbumField (see centroidsRef there). Indexed by
+   * region.clusterId, matching regions.json's cluster ordering.
+   */
+  centroidsRef: React.MutableRefObject<Float32Array>;
+  /** Real camera.zoom (0.5..5), written every frame by CameraRig. */
+  zoomRef: React.MutableRefObject<number>;
 }
 
-// Map (text length) → sprite world width so longer words don't crowd. All
-// labels share the same texture aspect (1024×256 = 4:1), so the sprite y
-// scale is x scale / 4.
-function spriteWidthForLabel(label: string): number {
-  // Sized in world units. Frustum is 1.5 wide at zoom=1, so 0.22 world
-  // units ≈ 200px on a 1360-wide canvas — comfortable read.
-  const base = 0.16;
-  const extra = Math.min(0.16, label.length * 0.016);
-  return base + extra;
-}
+/**
+ * Lives inside the canvas tree, mounted by Scene.tsx alongside TooltipDriver.
+ * Every rendered frame it projects each region's current centroid with
+ * camera.project, converts to CSS px using a cached canvas rect, and writes
+ * style.transform/opacity directly onto the region's DOM <span> (rendered by
+ * overlays/RegionLabels.tsx, registered via state/regionLabelEls.ts). No
+ * React state, no per-frame re-render.
+ */
+export function RegionLabels({ regions, centroidsRef, zoomRef }: RegionLabelsProps) {
+  const { camera, gl } = useThree();
+  const rectRef = useRef<DOMRect | null>(null);
+  const vecRef = useRef(new THREE.Vector3());
 
-export function RegionLabels({ regions, zoomT }: Props) {
-  const sliderT = useMapStore((s) => s.sliderT);
-
-  const sprites = useMemo(() => {
-    return regions.map((region) => {
-      const texture = makeLabelTexture(region.label);
-      const material = new THREE.SpriteMaterial({
-        map: texture,
-        transparent: true,
-        depthTest: false,
-        depthWrite: false,
-      });
-      const sprite = new THREE.Sprite(material);
-      const w = spriteWidthForLabel(region.label);
-      // 1024:256 = 4:1 aspect
-      sprite.scale.set(w, w / 4, 1);
-      sprite.renderOrder = -50;
-      return { sprite, region };
-    });
-  }, [regions]);
-
+  useEffect(() => {
+    const canvas = gl.domElement;
+    function updateRect() {
+      rectRef.current = canvas.getBoundingClientRect();
+    }
+    updateRect();
+    window.addEventListener("resize", updateRect);
+    return () => window.removeEventListener("resize", updateRect);
+  }, [gl]);
 
   useFrame(() => {
-    // Labels are most assertive at far zoom (when you're reading the
-    // genre regions) and fade out as you zoom into the album covers.
-    // - zoomT∈[0.0, 0.55]: opacity = 1
-    // - zoomT∈[0.55, 0.85]: fade to 0
-    // - zoomT > 0.85: hidden
-    let opacity: number;
-    if (zoomT < 0.55) {
-      opacity = 1;
-    } else if (zoomT < 0.85) {
-      opacity = 1 - (zoomT - 0.55) / 0.3;
-    } else {
-      opacity = 0;
-    }
+    const rect = rectRef.current;
+    const centroids = centroidsRef.current;
 
-    for (const { sprite, region } of sprites) {
-      const a = region.stops.audio.centroid;
-      const b = region.stops.balanced.centroid;
-      const m = region.stops.mood.centroid;
-      let x: number, y: number;
-      if (sliderT <= 0.5) {
-        const t = sliderT * 2;
-        x = a[0] + (b[0] - a[0]) * t;
-        y = a[1] + (b[1] - a[1]) * t;
-      } else {
-        const t = (sliderT - 0.5) * 2;
-        x = b[0] + (m[0] - b[0]) * t;
-        y = b[1] + (m[1] - b[1]) * t;
+    const zoomT = Math.max(0, Math.min(1, (zoomRef.current - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)));
+    // clamp(1 - (zoomT - 0.3) / 0.15, 0, 1): fully visible below zoomT 0.3,
+    // faded to 0 by zoomT 0.45 (spec 4.3 / task-8 brief).
+    let opacity = 1 - (zoomT - 0.3) / 0.15;
+    if (opacity < 0) opacity = 0;
+    if (opacity > 1) opacity = 1;
+
+    for (const region of regions) {
+      const el = getRegionLabelEl(region.clusterId);
+      if (!el) continue;
+
+      const cx = centroids[region.clusterId * 2];
+      const cy = centroids[region.clusterId * 2 + 1];
+      const hasCentroid =
+        centroids.length > region.clusterId * 2 + 1 && !Number.isNaN(cx) && !Number.isNaN(cy);
+
+      if (!rect || !hasCentroid || opacity <= 0) {
+        el.style.opacity = "0";
+        continue;
       }
-      // z slightly above background but below the album points — they sort
-      // by renderOrder, not z, so this is mostly cosmetic.
-      sprite.position.set(x, y, 0.5);
-      (sprite.material as THREE.SpriteMaterial).opacity = opacity;
-      sprite.visible = opacity > 0.01;
+
+      const v = vecRef.current;
+      v.set(cx, cy, 0);
+      v.project(camera);
+      const screenX = (v.x * 0.5 + 0.5) * rect.width;
+      const screenY = (-v.y * 0.5 + 0.5) * rect.height + LABEL_OFFSET_Y_PX;
+
+      el.style.transform = `translate3d(${screenX}px, ${screenY}px, 0) translate(-50%, -50%)`;
+      el.style.opacity = String(opacity);
     }
   });
 
-  return (
-    <>
-      {sprites.map(({ sprite }, i) => (
-        <primitive key={i} object={sprite} />
-      ))}
-    </>
-  );
+  return null;
 }
-
-// Re-export for tree-shaking; unused type
-export type RegionLabelStop = SliderStopId;

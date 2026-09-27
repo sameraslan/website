@@ -16,8 +16,8 @@ import { CameraRig } from "./CameraRig";
 import { CursorTracker, screenToWorld } from "./CursorTracker";
 import { FlyToFocus } from "./FlyToFocus";
 import { FocusController } from "./FocusController";
+import { RegionLabels } from "./RegionLabels";
 import { TooltipDriver } from "./TooltipDriver";
-// import { RegionLabels } from "./RegionLabels"; // unmounted; centroids inaccurate
 // Region washes deleted (see docs/superpowers/specs/2026-09-26-website-improvement-design.md
 // 4.5.7); the paper clear color matches the site so the map reads as part of the page.
 
@@ -150,6 +150,10 @@ function SceneInner() {
   // AlbumField whenever sliderT changes; read by CursorTracker (hit-testing)
   // and TooltipDriver (tooltip placement).
   const positionsRef = useRef<Float32Array>(new Float32Array(0));
+  // Flat [x0,y0,...] per-cluster mean positions at the current sliderT,
+  // indexed by clusterId; owned and recomputed by AlbumField whenever
+  // positionsRef is rebuilt, read every frame by the RegionLabels driver.
+  const centroidsRef = useRef<Float32Array>(new Float32Array(0));
   const [focus, setFocus] = useState<{ index: number; neighbors: number[] }>({
     index: -1,
     neighbors: [],
@@ -192,8 +196,6 @@ function SceneInner() {
       <AmbientDrift />
       {/* region washes removed; the paper clear color matches the site so the
           map blends into the page rather than sitting on a colored field */}
-      {/* labels removed; centroid clustering inaccurate for now */}
-      {/* {data.regions.length > 0 && <RegionLabels regions={data.regions} zoomT={zoomT} />} */}
       <AlbumField
         data={data}
         atlasTextures={textures}
@@ -201,10 +203,14 @@ function SceneInner() {
         cursorRef={cursorRef}
         hoverRef={hoverRef}
         positionsRef={positionsRef}
+        centroidsRef={centroidsRef}
         focusedIndex={focus.index}
         neighborIndices={focus.neighbors}
       />
       <TooltipDriver positionsRef={positionsRef} idIndexById={idIndexById} />
+      {data.regions.length > 0 && (
+        <RegionLabels regions={data.regions} centroidsRef={centroidsRef} zoomRef={zoomRef} />
+      )}
       {/* Mounted last so its frame callback runs after drift/tour have moved
           the camera, reining the idle camera back into the album cloud. */}
       <CameraBounds />

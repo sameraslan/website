@@ -14,6 +14,7 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
   uniform vec2 u_cursor;
   uniform float u_cursorActive;
   uniform float u_hoverIndex;   // -1 = no hover target
+  uniform float u_maxSpritePx;  // device px cap, viewportHeightCssPx * 0.18 * dpr
 
   varying vec2 v_atlasOrigin;
   varying vec2 v_atlasSize;
@@ -61,17 +62,21 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
         scale = 1.15;
       } else {
         v_dim = 0.7;
+        // Dimmed sprites also shrink so they recede rather than smearing
+        // paper on paper at full size (spec 4.3).
+        scale = 0.85;
       }
     }
     v_hovered = (abs(u_hoverIndex - instanceIndex) < 0.5) ? 1.0 : 0.0;
     if (v_hovered > 0.5) {
       scale = 1.25;
     }
-    // Clamp at 240 device-px: most desktop GPUs cap GL_POINTS sprites around
-    // 256, so without this a high-DPR (3x) viewport at max zoom asks for a
-    // ~300px sprite and the driver silently culls the entire point — the
-    // user sees the focused album vanish into the paper background.
-    gl_PointSize = min(baseSize * scale * u_pixelRatio, 240.0);
+    // Clamp at 240 device-px (most desktop GPUs cap GL_POINTS sprites around
+    // 256, so without this a high-DPR viewport at max zoom asks for a sprite
+    // large enough that the driver silently culls the whole point) and at
+    // u_maxSpritePx (a viewport-relative cap so a single album cover never
+    // dominates a short viewport at max zoom).
+    gl_PointSize = min(baseSize * scale * u_pixelRatio, min(240.0, u_maxSpritePx));
     v_screenSize = gl_PointSize;
 
     v_atlasOrigin = a_atlasUV.xy;
@@ -91,6 +96,7 @@ export const ALBUM_FRAGMENT_SHADER = /* glsl */ `
   uniform sampler2D u_atlas4;
   uniform float u_atlasLoaded[5];  // 0/1 flags
   uniform vec3 u_clusterColors[8];
+  uniform float u_pixelRatio;
 
   varying vec2 v_atlasOrigin;
   varying vec2 v_atlasSize;
@@ -145,30 +151,39 @@ export const ALBUM_FRAGMENT_SHADER = /* glsl */ `
 
     float discMask = 1.0 - smoothstep(outerEdge - aa, outerEdge, r);
     if (discMask <= 0.0) discard;
-    vec3 cluster = clusterColor(int(v_clusterId));
-    vec3 dotColor = mix(ink, cluster, 0.3);
+    // Dot mode is the full cluster color at full strength, no ink mix, so
+    // the overview reads as coloured structure (spec 4.3).
+    vec3 dotColor = clusterColor(int(v_clusterId));
     vec3 col;
 
     // Cover mode kicks in once a sprite is large enough on screen to read.
     // Compare in CSS pixels by dividing out the pixel ratio baked into
     // v_screenSize (gl_PointSize is in device pixels).
-    if (v_screenSize < 24.0) {
-      // Dot mode — tint by cluster color, mostly ink
+    float cssSize = v_screenSize / max(u_pixelRatio, 0.0001);
+
+    if (cssSize < 24.0) {
+      // Dot mode: full cluster color
       col = dotColor;
     } else {
       // Cover mode — sample atlas in [0,1] using atlasUV
       vec2 uvInAtlas = v_atlasOrigin + gl_PointCoord * v_atlasSize;
       vec4 cover = sampleAtlas(int(v_atlasIndex), uvInAtlas);
+      vec3 coverColor;
       if (cover.a < 0.5) {
         // Atlas not loaded yet — keep the dot color so the album never
         // collapses to pure black while we wait for textures.
-        col = dotColor;
+        coverColor = dotColor;
       } else {
         // Multiply blend with paper — sits in the page
-        col = paper * cover.rgb;
+        coverColor = paper * cover.rgb;
       }
+      // Crossfade from the disc color to the cover between 24 and 40 CSS px
+      // so the switch reads as a fade, not a pop.
+      float coverT = smoothstep(24.0, 40.0, cssSize);
+      col = mix(dotColor, coverColor, coverT);
     }
 
+    // v_dim (paper mix) only applies in focus mode, unchanged from before.
     col = mix(col, paper, v_dim);
 
     // Ring band: r in (0.5, paperOuter] on a hovered sprite. inkMask fades

@@ -6,6 +6,7 @@ import { Scene } from "./canvas/Scene";
 import { fetchMapData } from "./data/loader";
 import { LoadingState } from "./overlays/LoadingState";
 import { MobileFallback } from "./overlays/MobileFallback";
+import { RegionLabels } from "./overlays/RegionLabels";
 import { SearchOverlay } from "./overlays/SearchOverlay";
 import { Slider } from "./overlays/Slider";
 import { Tooltip } from "./overlays/Tooltip";
@@ -135,6 +136,7 @@ export function MusicMap() {
           `,
         }}
       />
+      {data && <RegionLabels regions={data.regions} />}
       <Tooltip />
       {/* Bottom-right control row: always visible, not hover-revealed. */}
       <div
