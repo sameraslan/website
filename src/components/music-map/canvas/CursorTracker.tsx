@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useThree } from "@react-three/fiber";
+import { useEffect, useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 import { nearestWithin } from "../state/hitTest";
@@ -37,77 +37,95 @@ export function CursorTracker({
   positionsRef,
 }: {
   cursorRef: React.MutableRefObject<[number, number] | null>;
-  /** -1 = no hover target. Written at most once per pointermove. */
+  /** -1 = no hover target. Written at most once per rendered frame. */
   hoverRef: React.MutableRefObject<number>;
   /** Flat [x0,y0,x1,y1,...] interpolated positions, owned by AlbumField. */
   positionsRef: React.MutableRefObject<Float32Array>;
 }) {
   const { gl, camera } = useThree();
   const invalidate = useThree((s) => s.invalidate);
+  // Debounces the tooltip's 80ms hover-in delay; cleared whenever the hover
+  // target changes before it fires. A ref (not a local var in the effect)
+  // because it's read and cleared from both the pointer-event effect (on
+  // unmount) and the useFrame hit-test gate below.
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function clearHoverTimer() {
+    if (hoverTimerRef.current !== null) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+  }
 
   useEffect(() => {
     const canvas = gl.domElement;
-    // Debounces the tooltip's 80ms hover-in delay; cleared whenever the
-    // hover target changes before it fires. Hover state itself (hoverRef,
-    // canvas.style.cursor) updates immediately on every pointermove — only
-    // the tooltip's appearance is delayed.
-    let hoverTimer: ReturnType<typeof setTimeout> | null = null;
-
-    function clearHoverTimer() {
-      if (hoverTimer !== null) {
-        clearTimeout(hoverTimer);
-        hoverTimer = null;
-      }
-    }
-
+    // Only records the latest pointer position here; the actual hit test
+    // (an O(n) scan) runs at most once per rendered frame in the useFrame
+    // below (spec 4.4.3), not once per pointermove event. Multiple moves
+    // between frames collapse into a single hit test against the latest
+    // position, same as browser event coalescing would give us, but
+    // guaranteed rather than relied upon.
     function onMove(e: PointerEvent) {
       const rect = canvas.getBoundingClientRect();
       const cam = camera as THREE.OrthographicCamera;
-      const [worldX, worldY] = screenToWorld(e.clientX, e.clientY, rect, cam);
-      cursorRef.current = [worldX, worldY];
-
-      const radiusWorld =
-        HOVER_RADIUS_CSS_PX / ((cam.zoom * rect.height) / (cam.top - cam.bottom));
-      const n = positionsRef.current.length / 2;
-      const idx = nearestWithin(positionsRef.current, n, worldX, worldY, radiusWorld);
-      canvas.style.cursor = idx >= 0 ? "pointer" : "";
-
-      if (idx !== hoverRef.current) {
-        hoverRef.current = idx;
-        clearHoverTimer();
-        if (idx >= 0) {
-          const data = useMapStore.getState().data;
-          const id = data?.positions[idx]?.id ?? null;
-          hoverTimer = setTimeout(() => {
-            hoverTimer = null;
-            useMapStore.getState().setHoveredId(id);
-            invalidate();
-          }, HOVER_TOOLTIP_DELAY_MS);
-        } else {
-          useMapStore.getState().setHoveredId(null);
-        }
-      }
-
+      cursorRef.current = screenToWorld(e.clientX, e.clientY, rect, cam);
       invalidate();
     }
     function onLeave() {
       cursorRef.current = null;
+      invalidate();
+    }
+    canvas.addEventListener("pointermove", onMove);
+    canvas.addEventListener("pointerleave", onLeave);
+    return () => {
+      canvas.removeEventListener("pointermove", onMove);
+      canvas.removeEventListener("pointerleave", onLeave);
+    };
+  }, [gl, camera, cursorRef, invalidate]);
+
+  useEffect(() => clearHoverTimer, []);
+
+  // The actual hit test: runs once per rendered frame (frameloop="demand"
+  // means this only fires when something invalidated, e.g. the pointermove
+  // handler above), never once per pointer event.
+  useFrame(() => {
+    const canvas = gl.domElement;
+    const c = cursorRef.current;
+
+    if (!c) {
       if (hoverRef.current !== -1) {
         hoverRef.current = -1;
         clearHoverTimer();
         useMapStore.getState().setHoveredId(null);
       }
       canvas.style.cursor = "";
-      invalidate();
+      return;
     }
-    canvas.addEventListener("pointermove", onMove);
-    canvas.addEventListener("pointerleave", onLeave);
-    return () => {
+
+    const cam = camera as THREE.OrthographicCamera;
+    const rect = canvas.getBoundingClientRect();
+    const radiusWorld =
+      HOVER_RADIUS_CSS_PX / ((cam.zoom * rect.height) / (cam.top - cam.bottom));
+    const n = positionsRef.current.length / 2;
+    const idx = nearestWithin(positionsRef.current, n, c[0], c[1], radiusWorld);
+    canvas.style.cursor = idx >= 0 ? "pointer" : "";
+
+    if (idx !== hoverRef.current) {
+      hoverRef.current = idx;
       clearHoverTimer();
-      canvas.removeEventListener("pointermove", onMove);
-      canvas.removeEventListener("pointerleave", onLeave);
-    };
-  }, [gl, camera, cursorRef, hoverRef, positionsRef, invalidate]);
+      if (idx >= 0) {
+        const data = useMapStore.getState().data;
+        const id = data?.positions[idx]?.id ?? null;
+        hoverTimerRef.current = setTimeout(() => {
+          hoverTimerRef.current = null;
+          useMapStore.getState().setHoveredId(id);
+          invalidate();
+        }, HOVER_TOOLTIP_DELAY_MS);
+      } else {
+        useMapStore.getState().setHoveredId(null);
+      }
+    }
+  });
 
   return null;
 }
