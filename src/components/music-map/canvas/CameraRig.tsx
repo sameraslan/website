@@ -60,6 +60,7 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
 
   const registerInteraction = useMapStore((s) => s.registerInteraction);
   const registerCameraGrab = useMapStore((s) => s.registerCameraGrab);
+  const setDragging = useMapStore((s) => s.setDragging);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -79,6 +80,7 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
       // once the pointer leaves the canvas bounds (spec 4.4.5); released on
       // pointerup/pointercancel below.
       canvas.setPointerCapture(e.pointerId);
+      setDragging(true);
       registerInteraction();
       registerCameraGrab();
     };
@@ -105,6 +107,7 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
     };
     const endDrag = () => {
       dragging.current = false;
+      setDragging(false);
       lastPointer.current = null;
       if (pointerId.current !== null && canvas.hasPointerCapture(pointerId.current)) {
         canvas.releasePointerCapture(pointerId.current);
@@ -151,7 +154,7 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
       canvas.removeEventListener("pointercancel", endDrag);
       canvas.removeEventListener("wheel", onWheel);
     };
-  }, [camera, gl, registerInteraction, registerCameraGrab, invalidate]);
+  }, [camera, gl, registerInteraction, registerCameraGrab, setDragging, invalidate]);
 
   useFrame((_state, delta) => {
     if (!dragging.current) {

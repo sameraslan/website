@@ -72,3 +72,89 @@ export function getMainBounds(
   cacheKey = key;
   return cached;
 }
+
+export interface ViewportWorldRect {
+  halfW: number;
+  halfH: number;
+}
+
+export interface OrthoFrustum {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  zoom: number;
+}
+
+/**
+ * Half-width/half-height of the visible viewport, in the same world units as
+ * the camera's own frustum and `getMainBounds`'s box. `THREE.Viewport`'s
+ * `getCurrentViewport` is built for perspective cameras and returns figures
+ * in the wrong scale for this manual orthographic camera, which was the root
+ * cause of `CameraBounds` treating an in-view album cloud as "off screen".
+ * The correct figure is just the frustum size scaled down by zoom.
+ */
+export function viewportWorldRect(cam: OrthoFrustum): ViewportWorldRect {
+  return {
+    halfW: (cam.right - cam.left) / (2 * cam.zoom),
+    halfH: (cam.top - cam.bottom) / (2 * cam.zoom),
+  };
+}
+
+// Below this fraction of the cloud's bounding-box area actually inside the
+// viewport, the idle camera is considered to have wandered off the cloud and
+// gets nudged back. Above it (including "zoomed out enough to see the whole
+// cloud at once"), the camera is left alone: seeing all of it, or panning to
+// an edge region, is not a bug to correct.
+export const VISIBLE_FRACTION_THRESHOLD = 0.25;
+
+/**
+ * Decides whether the idle camera should be nudged back toward the album
+ * cloud, and by how much. Returns `null` when no correction is needed: the
+ * cloud's bounding box is at least `VISIBLE_FRACTION_THRESHOLD` visible in
+ * the viewport (by area), or the camera is already sitting at the clamp
+ * target. Otherwise returns the raw (un-eased) correction vector; the caller
+ * eases into it rather than snapping.
+ */
+export function nudgeVector(
+  camPos: { x: number; y: number },
+  viewport: ViewportWorldRect,
+  cloud: Bounds,
+  margin: number,
+): { x: number; y: number } | null {
+  const { halfW, halfH } = viewport;
+  const cloudW = cloud.maxX - cloud.minX;
+  const cloudH = cloud.maxY - cloud.minY;
+  if (cloudW <= 0 || cloudH <= 0) return null;
+
+  const viewMinX = camPos.x - halfW;
+  const viewMaxX = camPos.x + halfW;
+  const viewMinY = camPos.y - halfH;
+  const viewMaxY = camPos.y + halfH;
+
+  const overlapW = Math.max(0, Math.min(viewMaxX, cloud.maxX) - Math.max(viewMinX, cloud.minX));
+  const overlapH = Math.max(0, Math.min(viewMaxY, cloud.maxY) - Math.max(viewMinY, cloud.minY));
+  const visibleFraction = (overlapW * overlapH) / (cloudW * cloudH);
+
+  if (visibleFraction >= VISIBLE_FRACTION_THRESHOLD) return null;
+
+  // Clamp the camera so the viewport sits over the margin-padded cloud box.
+  // When the viewport is wider/taller than the box (zoomed out far enough
+  // that the whole cloud already fits), the range would invert; fall back to
+  // centering on the box midpoint. This branch is a safety net, not the
+  // common path: a viewport that large almost always already clears the
+  // visibleFraction gate above and returns null before reaching here.
+  const loX = cloud.minX - margin + halfW;
+  const hiX = cloud.maxX + margin - halfW;
+  const tx = loX <= hiX ? Math.max(loX, Math.min(hiX, camPos.x)) : (cloud.minX + cloud.maxX) / 2;
+  const loY = cloud.minY - margin + halfH;
+  const hiY = cloud.maxY + margin - halfH;
+  const ty = loY <= hiY ? Math.max(loY, Math.min(hiY, camPos.y)) : (cloud.minY + cloud.maxY) / 2;
+
+  const dx = tx - camPos.x;
+  const dy = ty - camPos.y;
+  // Below this squared distance the camera is already effectively at the
+  // clamp target (floating-point noise, not a real correction).
+  if (dx * dx + dy * dy < 1e-12) return null;
+  return { x: dx, y: dy };
+}

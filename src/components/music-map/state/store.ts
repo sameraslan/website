@@ -28,6 +28,13 @@ export interface MapStore {
    * kill the fly-to.
    */
   lastCameraGrab: number;
+  /**
+   * True for the duration of an active pointer drag (pointerdown-to-up/
+   * cancel on the canvas). `CameraBounds` never nudges the camera while this
+   * is true, regardless of how stale `lastInteraction` has gotten (e.g. the
+   * pointer is held down but not moving).
+   */
+  dragging: boolean;
 
   setData(data: import("../data/types").MapData): void;
   setMode(mode: MapMode): void;
@@ -36,6 +43,7 @@ export interface MapStore {
   setSliderT(t: number): void;
   registerInteraction(): void;
   registerCameraGrab(): void;
+  setDragging(dragging: boolean): void;
 }
 
 const STORAGE_KEY = "music-map:state";
@@ -88,6 +96,7 @@ export const useMapStore = create<MapStore>()(
     sliderT: loadFromSession().sliderT ?? DEFAULT_SLIDER_T,
     lastInteraction: 0,
     lastCameraGrab: 0,
+    dragging: false,
 
     setData: (data) => set({ data, mode: "idle" }),
     setMode: (mode) => set({ mode }),
@@ -107,6 +116,7 @@ export const useMapStore = create<MapStore>()(
     },
     registerInteraction: () => set({ lastInteraction: Date.now() }),
     registerCameraGrab: () => set({ lastCameraGrab: Date.now() }),
+    setDragging: (dragging) => set({ dragging }),
   })),
 );
 
