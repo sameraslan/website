@@ -13,7 +13,7 @@ import { AmbientDrift } from "./AmbientDrift";
 import { useAtlasTextures } from "./AtlasManager";
 import { CameraBounds } from "./CameraBounds";
 import { CameraRig } from "./CameraRig";
-import { CursorTracker } from "./CursorTracker";
+import { CursorTracker, screenToWorld } from "./CursorTracker";
 import { FlyToFocus } from "./FlyToFocus";
 import { FocusController } from "./FocusController";
 import { TooltipDriver } from "./TooltipDriver";
@@ -63,6 +63,13 @@ function DebugExpose() {
             x: rect.left + (v.x * 0.5 + 0.5) * rect.width,
             y: rect.top + (-v.y * 0.5 + 0.5) * rect.height,
           };
+        },
+        getWorldAt: (clientX, clientY) => {
+          const canvas = document.querySelector("canvas");
+          if (!canvas) return null;
+          const rect = canvas.getBoundingClientRect();
+          const [x, y] = screenToWorld(clientX, clientY, rect, camera);
+          return { x, y };
         },
       }),
     [camera],

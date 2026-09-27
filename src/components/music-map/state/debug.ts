@@ -26,6 +26,13 @@ export interface DebugGetters {
    * guaranteed to land on an album dot. Verification-only.
    */
   getNearestScreenPoint?(): { x: number; y: number } | null;
+  /**
+   * World coordinates under a client (viewport) point, using the live camera
+   * and the same screen-to-world conversion CursorTracker uses. Lets
+   * Playwright verify cursor-anchored zoom keeps a screen point's world
+   * position fixed across a zoom change.
+   */
+  getWorldAt?(clientX: number, clientY: number): { x: number; y: number } | null;
 }
 
 declare global {

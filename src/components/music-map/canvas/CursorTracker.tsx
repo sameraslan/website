@@ -12,6 +12,25 @@ const HOVER_RADIUS_CSS_PX = 14;
 /** Tooltip shows 80ms after the hover target settles (spec 4.4.3/4.4.7). */
 const HOVER_TOOLTIP_DELAY_MS = 80;
 
+/**
+ * Converts a client (viewport) point to world coordinates under the given
+ * orthographic camera and canvas rect. Shared by CursorTracker's hover
+ * tracking, CameraRig's zoom-anchor point, and state/debug.ts's
+ * `getWorldAt` test hook, so there is exactly one screen-to-world formula.
+ */
+export function screenToWorld(
+  clientX: number,
+  clientY: number,
+  rect: { left: number; top: number; width: number; height: number },
+  camera: THREE.OrthographicCamera,
+): [number, number] {
+  const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+  const ndcY = -(((clientY - rect.top) / rect.height) * 2 - 1);
+  const worldX = (ndcX / camera.zoom) * (camera.right - camera.left) / 2 + camera.position.x;
+  const worldY = (ndcY / camera.zoom) * (camera.top - camera.bottom) / 2 + camera.position.y;
+  return [worldX, worldY];
+}
+
 export function CursorTracker({
   cursorRef,
   hoverRef,
@@ -43,11 +62,8 @@ export function CursorTracker({
 
     function onMove(e: PointerEvent) {
       const rect = canvas.getBoundingClientRect();
-      const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      const ndcY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
       const cam = camera as THREE.OrthographicCamera;
-      const worldX = (ndcX / cam.zoom) * (cam.right - cam.left) / 2 + cam.position.x;
-      const worldY = (ndcY / cam.zoom) * (cam.top - cam.bottom) / 2 + cam.position.y;
+      const [worldX, worldY] = screenToWorld(e.clientX, e.clientY, rect, cam);
       cursorRef.current = [worldX, worldY];
 
       const radiusWorld =
