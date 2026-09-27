@@ -164,16 +164,22 @@ export function nudgeVector(
 
   const overlapW = Math.max(0, Math.min(viewMaxX, cloud.maxX) - Math.max(viewMinX, cloud.minX));
   const overlapH = Math.max(0, Math.min(viewMaxY, cloud.maxY) - Math.max(viewMinY, cloud.minY));
-  const visibleFraction = (overlapW * overlapH) / (cloudW * cloudH);
+  // Fraction of the cloud's own box area that the viewport currently
+  // overlaps, not the fraction of the viewport occupied by the cloud. A
+  // fully-zoomed-out viewport that contains the whole cloud (and then some)
+  // reads as 1.0 here, same as a tight viewport that exactly frames it.
+  const cloudCoverage = (overlapW * overlapH) / (cloudW * cloudH);
 
-  if (visibleFraction >= VISIBLE_FRACTION_THRESHOLD) return null;
+  if (cloudCoverage >= VISIBLE_FRACTION_THRESHOLD) return null;
 
   // Clamp the camera so the viewport sits over the margin-padded cloud box.
-  // When the viewport is wider/taller than the box (zoomed out far enough
-  // that the whole cloud already fits), the range would invert; fall back to
-  // centering on the box midpoint. This branch is a safety net, not the
+  // When the viewport is wider/taller than the box on a given axis (zoomed
+  // out far enough that the whole cloud already fits on that axis), loX
+  // exceeds hiX and the min/max clamp on that axis has no valid range to
+  // hold the camera inside, making it inert; fall back to centering on the
+  // box midpoint for that axis instead. This branch is a safety net, not the
   // common path: a viewport that large almost always already clears the
-  // visibleFraction gate above and returns null before reaching here.
+  // cloudCoverage gate above and returns null before reaching here.
   const loX = cloud.minX - margin + halfW;
   const hiX = cloud.maxX + margin - halfW;
   const tx = loX <= hiX ? Math.max(loX, Math.min(hiX, camPos.x)) : (cloud.minX + cloud.maxX) / 2;
