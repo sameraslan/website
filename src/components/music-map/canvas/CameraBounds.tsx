@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { nudgeVector, viewportWorldRect } from "../state/bounds";
+import { nudgeVector, viewportWorldRect, visibleFractionThreshold } from "../state/bounds";
 import { useMapStore } from "../state/store";
 import { getOverviewFraming, isFramed } from "../state/view";
 
@@ -27,8 +27,9 @@ const SETTLE_DIST_SQ = 1e-10;
  * entirely off the main mass of albums. Viewport-aware: computes the visible
  * viewport in the same world units as the camera's own frustum
  * (`viewportWorldRect`, see state/bounds.ts) and only corrects when the album
- * cloud's bounding box is mostly out of view (`nudgeVector`'s
- * VISIBLE_FRACTION_THRESHOLD) rather than clamping the camera into the box on
+ * cloud's bounding box is mostly out of view (under 60% of it visible at or
+ * below the fitted zoom, under 25% when zoomed in past it; see
+ * `visibleFractionThreshold`) rather than clamping the camera into the box on
  * every frame. A user who zooms out to see the whole cloud, or pans to an
  * edge region while most of the cloud stays in view, is never yanked back.
  *
@@ -45,16 +46,35 @@ export function CameraBounds() {
     lastCameraGrab: useMapStore.getState().lastCameraGrab,
     dragging: useMapStore.getState().dragging,
   });
-  useEffect(
-    () =>
-      useMapStore.subscribe((s) => {
-        stateRef.current.mode = s.mode;
-        stateRef.current.lastInteraction = s.lastInteraction;
-        stateRef.current.lastCameraGrab = s.lastCameraGrab;
-        stateRef.current.dragging = s.dragging;
-      }),
-    [],
-  );
+  useEffect(() => {
+    // frameloop="demand": once a drag, wheel or release settles, nothing
+    // renders again until the next input (and drift no longer runs under a
+    // resting mouse), so the gates below would never be re-checked. Wake
+    // one frame just after RELEASE_MS whenever a gate input changes.
+    let wake: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = useMapStore.subscribe((s) => {
+      const prev = stateRef.current;
+      const changed =
+        prev.mode !== s.mode ||
+        prev.lastInteraction !== s.lastInteraction ||
+        prev.lastCameraGrab !== s.lastCameraGrab ||
+        prev.dragging !== s.dragging;
+      prev.mode = s.mode;
+      prev.lastInteraction = s.lastInteraction;
+      prev.lastCameraGrab = s.lastCameraGrab;
+      prev.dragging = s.dragging;
+      if (!changed) return;
+      if (wake !== null) clearTimeout(wake);
+      wake = setTimeout(() => {
+        wake = null;
+        invalidate();
+      }, RELEASE_MS + 20);
+    });
+    return () => {
+      unsubscribe();
+      if (wake !== null) clearTimeout(wake);
+    };
+  }, [invalidate]);
 
   useFrame((state) => {
     const data = useMapStore.getState().data;
@@ -77,12 +97,17 @@ export function CameraBounds() {
     // The same percentile bounds the overview framing fits to (published by
     // InitialFrame, recomputed on every sliderT change), so the idle nudge
     // keeps the bulk of the cloud on screen, not its outliers.
-    const cloud = getOverviewFraming().bounds;
+    const framing = getOverviewFraming();
+    const cloud = framing.bounds;
+    // Stricter at or below the fitted zoom (60% of the cloud's box must be
+    // in view) than when zoomed in past it (25%): see
+    // visibleFractionThreshold in state/bounds.ts.
     const nudge = nudgeVector(
       { x: cam.position.x, y: cam.position.y },
       viewport,
       cloud,
       MARGIN,
+      visibleFractionThreshold(cam.zoom, framing.zoom),
     );
     if (!nudge) return;
 

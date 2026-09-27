@@ -57,3 +57,25 @@ export function setFramed(next: boolean): void {
 export function isFramed(): boolean {
   return framed;
 }
+
+/** A camera view: world-space centre and orthographic zoom. */
+export interface CameraView {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+/**
+ * Where releasing focus should glide the camera to: the view captured when
+ * focus began (so the visitor returns to exactly what they were looking at,
+ * including a pan or zoom of their own), or, when nothing was captured
+ * (focus restored on a remount), the fitted overview centre and zoom.
+ * Always returns a fresh object.
+ */
+export function releaseView(
+  preFocusView: CameraView | null,
+  overview: OverviewFraming,
+): CameraView {
+  if (preFocusView) return { x: preFocusView.x, y: preFocusView.y, zoom: preFocusView.zoom };
+  return { x: overview.center.x, y: overview.center.y, zoom: overview.zoom };
+}

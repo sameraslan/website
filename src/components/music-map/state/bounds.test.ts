@@ -8,6 +8,7 @@ import {
   nudgeVector,
   percentileBounds,
   viewportWorldRect,
+  visibleFractionThreshold,
 } from "./bounds";
 
 function makeData(points: [number, number][]): MapData {
@@ -196,5 +197,40 @@ describe("nudgeVector", () => {
     // loX = cloud.minX - margin + halfW = -0.4 - 0.04 + 0.1 = -0.34
     const camPos = { x: -0.34, y: 0 };
     expect(nudgeVector(camPos, viewport, cloud, 0.04)).toBeNull();
+  });
+
+  it("at or below fit zoom, nudges a view showing under 60% of the cloud even above 25%", () => {
+    // Fit-sized viewport (0.5 x 0.4 half extents) offset so the view spans
+    // x [-0.2, 0.8], y [-0.1, 0.7]: overlap 0.6 x 0.4 = 0.24 of the cloud's
+    // 0.8 x 0.6 = 0.48 area, i.e. 50% coverage. Above the zoomed-in 25%
+    // threshold (left alone), below the fit-zoom 60% threshold (nudged).
+    const viewport = { halfW: 0.5, halfH: 0.4 };
+    const camPos = { x: 0.3, y: 0.3 };
+    expect(nudgeVector(camPos, viewport, cloud, 0.04)).toBeNull();
+    const delta = nudgeVector(
+      camPos,
+      viewport,
+      cloud,
+      0.04,
+      visibleFractionThreshold(1.007, 1.007),
+    );
+    expect(delta).not.toBeNull();
+    // Viewport is larger than the padded box on both axes, so the target is
+    // the box midpoint (0, 0): the correction points back toward it.
+    expect(delta!.x).toBeCloseTo(-0.3, 10);
+    expect(delta!.y).toBeCloseTo(-0.3, 10);
+  });
+});
+
+describe("visibleFractionThreshold", () => {
+  it("is 0.6 at or below the fitted zoom and 0.25 once zoomed in past it", () => {
+    expect(visibleFractionThreshold(1.007, 1.007)).toBe(0.6);
+    expect(visibleFractionThreshold(0.85, 1.007)).toBe(0.6);
+    expect(visibleFractionThreshold(1.5, 1.007)).toBe(0.25);
+    expect(visibleFractionThreshold(4, 1.007)).toBe(0.25);
+  });
+
+  it("tolerates float noise from the release glide landing on fitZoom", () => {
+    expect(visibleFractionThreshold(1.0069727591127577, 1.0069727591127575)).toBe(0.6);
   });
 });

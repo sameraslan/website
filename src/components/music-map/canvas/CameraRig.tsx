@@ -43,6 +43,9 @@ const FRICTION = 0.92;
 const VELOCITY_EPSILON_SQ = 1e-10;
 // Fling velocity averages the last 3 move deltas (spec 4.4.5).
 const VELOCITY_HISTORY_LEN = 3;
+// A release this long after the last move is a hold-then-let-go, not a
+// flick: no fling, so the camera stays exactly where the drag left it.
+const FLING_MAX_IDLE_MS = 80;
 
 function clampZoom(z: number): number {
   return Math.max(getMinZoom(), Math.min(MAX_ZOOM, z));
@@ -63,6 +66,8 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
   // on release into the fling velocity, so a single jittery final move can't
   // dominate the fling.
   const moveHistory = useRef<{ x: number; y: number }[]>([]);
+  // performance.now() of the last pan move, for the fling staleness check.
+  const lastMoveAt = useRef(0);
 
   // All currently-down pointers, keyed by pointerId (screen px). Used to
   // detect a two-finger pinch: single-pointer pan is handled by the existing
@@ -169,6 +174,7 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
       camera.position.x += wdx;
       camera.position.y += wdy;
       moveHistory.current.push({ x: wdx, y: wdy });
+      lastMoveAt.current = performance.now();
       if (moveHistory.current.length > VELOCITY_HISTORY_LEN) {
         moveHistory.current.shift();
       }
@@ -190,7 +196,8 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
         setDragging(false);
         lastPointer.current = null;
         const hist = moveHistory.current;
-        if (hist.length > 0) {
+        const fresh = performance.now() - lastMoveAt.current <= FLING_MAX_IDLE_MS;
+        if (hist.length > 0 && fresh) {
           let sx = 0;
           let sy = 0;
           for (const v of hist) {
@@ -198,6 +205,10 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
             sy += v.y;
           }
           velocity.current = { x: sx / hist.length, y: sy / hist.length };
+          // frameloop="demand": start the fling now. Without this the
+          // stored velocity sat until some unrelated frame rendered (a
+          // hover, a later wake) and the camera lurched then.
+          invalidate();
         }
         moveHistory.current = [];
       } else {

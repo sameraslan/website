@@ -97,6 +97,13 @@ positions) with a CSS-px radius converted to world units at the current
 zoom: 14px for a mouse, 24px for touch and pen. A click farther than that
 from every disc releases focus.
 
+`FlyToFocus.tsx` captures the camera's position and zoom when focus begins
+from an unfocused state (album-to-album hops keep the original) and a release
+glides both back to it (`releaseView` in `state/view.ts`), falling back to
+the fitted overview centre and zoom when nothing was captured. Each focus
+from an unfocused state eases in to `TUNING.focusZoom` (or keeps a closer
+user zoom); hops keep the current zoom.
+
 `interactive` is declared on `MapMode` but nothing currently transitions the
 store into it; it is a placeholder from before the tour was removed and is
 not part of the live state machine. `idle` covers hover, drag/pan, wheel/pinch

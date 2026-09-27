@@ -1,7 +1,8 @@
 // Final fix wave verification (focus release, click radius, cursor/hover
 // after camera motion, drift gate, reduced-motion render, hover ring).
 // Usage: node scripts/ui-check/final-fix-check.mjs [section ...]
-// Sections: gap, near, escape, hover, drift, reduced, ring (default: all).
+// Sections: gap, edge, near, escape, escsearch, hover, drift, reduced,
+// release, fling, skip, ring (default: all).
 import { chromium } from 'playwright';
 
 const BASE_URL = 'http://localhost:3111';
@@ -55,6 +56,108 @@ async function main() {
       await page.mouse.click(gap.x, gap.y);
       await page.waitForTimeout(1200);
       results.gap = { gap, focusedAfterClick: await focused(page), camBefore: before, camAfter: await cam(page) };
+      await context.close();
+    }
+
+    if (run('release')) {
+      // Release (Escape or empty click) glides position and zoom back to the
+      // view captured when focus began, including a user pan, and an
+      // album-to-album hop keeps the original view.
+      const near = (a, b) => Math.abs(a.x - b.x) < 0.01 && Math.abs(a.y - b.y) < 0.01 && Math.abs(a.zoom - b.zoom) < 0.01;
+      const drag = async (page, from, to) => {
+        await page.mouse.move(from.x, from.y);
+        await page.mouse.down();
+        await page.mouse.move(to.x, to.y, { steps: 25 });
+        await page.waitForTimeout(250); // hold still so there is no fling
+        await page.mouse.up();
+        await page.waitForTimeout(900);
+      };
+      const out = {};
+      {
+        const { context, page } = await openMap(browser);
+        const pre = await cam(page);
+        const pt = await centerAlbum(page);
+        await page.mouse.click(pt.x, pt.y);
+        await page.waitForTimeout(1200);
+        const focusedCam = await cam(page);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(700);
+        const after = await cam(page);
+        out.escape = { pre, focusedCam, after, returned: near(pre, after), focused: await focused(page) };
+
+        // Pan, focus, release by empty click.
+        await drag(page, { x: 720, y: 450 }, { x: 640, y: 410 });
+        const panned = await cam(page);
+        const pt2 = await centerAlbum(page);
+        await page.mouse.click(pt2.x, pt2.y);
+        await page.waitForTimeout(1200);
+        const focusedPanCam = await cam(page);
+        const gap = await findGap(page);
+        await page.mouse.click(gap.x, gap.y);
+        await page.waitForTimeout(700);
+        const afterPan = await cam(page);
+        await page.waitForTimeout(1500);
+        const afterPanLater = await cam(page);
+        out.panEmptyClick = { panned, focusedPanCam, gapDistPx: gap.distPx, afterPan, returned: near(panned, afterPan), stillThere1500ms: near(panned, afterPanLater), focused: await focused(page) };
+        await context.close();
+      }
+      {
+        // Hop: focus A, focus B while focused, Escape -> original view.
+        const { context, page } = await openMap(browser);
+        const pre = await cam(page);
+        const a = await centerAlbum(page);
+        await page.mouse.click(a.x, a.y);
+        await page.waitForTimeout(1200);
+        const b = await centerAlbum(page, 900, 300);
+        await page.mouse.click(b.x, b.y);
+        await page.waitForTimeout(1200);
+        const hopCam = await cam(page);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(700);
+        const after = await cam(page);
+        // Second focus after the release: which zoom does it use?
+        const c = await centerAlbum(page);
+        await page.mouse.click(c.x, c.y);
+        await page.waitForTimeout(1200);
+        out.hop = { pre, hopCam, after, returned: near(pre, after), secondFocusZoom: (await cam(page)).zoom };
+        await context.close();
+      }
+      {
+        // CameraBounds: a fit-zoom view showing under 60% of the cloud is eased back.
+        const { context, page } = await openMap(browser);
+        const fit = await page.evaluate(() => window.__mapDebug.getFitState());
+        await drag(page, { x: 1300, y: 450 }, { x: 500, y: 450 });
+        const justAfter = await cam(page);
+        await page.waitForTimeout(2500);
+        const later = await cam(page);
+        out.bounds = { fitCenter: fit.center, fitZoom: fit.fitZoom, justAfterDrag: justAfter, after2500ms: later, easedBackBy: Math.hypot(later.x - justAfter.x, later.y - justAfter.y) };
+        await context.close();
+      }
+      results.release = out;
+    }
+
+    if (run('fling')) {
+      // Headless software GL spaces Playwright mouse moves ~190ms apart, far
+      // slower than real input, so moves are sent through CDP without
+      // awaiting each one: a real flick (release right after the last
+      // move) must still fling, and immediately. Hold-then-release is
+      // covered by the release section's drag helper (no drift after up).
+      const { context, page } = await openMap(browser);
+      const cdp = await context.newCDPSession(page);
+      const ev = (type, x) => cdp.send('Input.dispatchMouseEvent', {
+        type, x, y: 450, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1,
+      });
+      await page.mouse.move(720, 450);
+      const ps = [ev('mousePressed', 720)];
+      for (let i = 1; i <= 10; i++) ps.push(ev('mouseMoved', 720 - i * 10));
+      ps.push(ev('mouseReleased', 620));
+      await Promise.all(ps);
+      const atUp = await cam(page);
+      await page.waitForTimeout(1500);
+      const settled = await cam(page);
+      await page.waitForTimeout(1000);
+      const later = await cam(page);
+      results.fling = { atUp, settled, flungBy: settled.x - atUp.x, stillAfter1s: settled.x === later.x };
       await context.close();
     }
 

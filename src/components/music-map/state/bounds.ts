@@ -135,14 +135,33 @@ export function viewportWorldRect(cam: OrthoFrustum): ViewportWorldRect {
 // viewport, the idle camera is considered to have wandered off the cloud and
 // gets nudged back. Above it (including "zoomed out enough to see the whole
 // cloud at once"), the camera is left alone: seeing all of it, or panning to
-// an edge region, is not a bug to correct.
+// an edge region, is not a bug to correct. This is the zoomed-in threshold:
+// past the fitted zoom the viewport is smaller than the cloud, so even a
+// well-placed view covers only part of its box.
 export const VISIBLE_FRACTION_THRESHOLD = 0.25;
+// At or below the fitted zoom the viewport is at least as big as the cloud's
+// box, so a view showing under 60% of it is mostly empty paper with the
+// cloud off to one side, and gets eased back.
+export const FIT_VISIBLE_FRACTION_THRESHOLD = 0.6;
+
+/**
+ * Coverage threshold for `nudgeVector` at the given camera zoom:
+ * `FIT_VISIBLE_FRACTION_THRESHOLD` at or below `fitZoom` (with a small
+ * relative tolerance for float noise from a glide landing on it), else
+ * `VISIBLE_FRACTION_THRESHOLD`.
+ */
+export function visibleFractionThreshold(zoom: number, fitZoom: number): number {
+  return zoom <= fitZoom * (1 + 1e-3)
+    ? FIT_VISIBLE_FRACTION_THRESHOLD
+    : VISIBLE_FRACTION_THRESHOLD;
+}
 
 /**
  * Decides whether the idle camera should be nudged back toward the album
  * cloud, and by how much. Returns `null` when no correction is needed: the
- * cloud's bounding box is at least `VISIBLE_FRACTION_THRESHOLD` visible in
- * the viewport (by area), or the camera is already sitting at the clamp
+ * cloud's bounding box is at least `threshold` visible in the viewport (by
+ * area; defaults to `VISIBLE_FRACTION_THRESHOLD`, CameraBounds passes
+ * `visibleFractionThreshold(zoom, fitZoom)`), or the camera is already sitting at the clamp
  * target. Otherwise returns the raw (un-eased) correction vector; the caller
  * eases into it rather than snapping.
  */
@@ -151,6 +170,7 @@ export function nudgeVector(
   viewport: ViewportWorldRect,
   cloud: Bounds,
   margin: number,
+  threshold: number = VISIBLE_FRACTION_THRESHOLD,
 ): { x: number; y: number } | null {
   const { halfW, halfH } = viewport;
   const cloudW = cloud.maxX - cloud.minX;
@@ -170,7 +190,7 @@ export function nudgeVector(
   // reads as 1.0 here, same as a tight viewport that exactly frames it.
   const cloudCoverage = (overlapW * overlapH) / (cloudW * cloudH);
 
-  if (cloudCoverage >= VISIBLE_FRACTION_THRESHOLD) return null;
+  if (cloudCoverage >= threshold) return null;
 
   // Clamp the camera so the viewport sits over the margin-padded cloud box.
   // When the viewport is wider/taller than the box on a given axis (zoomed

@@ -39,7 +39,8 @@ export function AmbientDrift() {
   const invalidate = useThree((s) => s.invalidate);
   const gl = useThree((s) => s.gl);
   // Whether a mouse or pen is over the canvas right now (set on
-  // pointerenter/pointermove, cleared on pointerleave and on unmount), and
+  // pointerenter/pointermove, cleared on pointerleave, pointercancel and on
+  // unmount), and
   // when it last left, which restarts the idle delay.
   const pointerInside = useRef(false);
   const pointerLeftAt = useRef(0);
@@ -84,7 +85,7 @@ export function AmbientDrift() {
       }
       const { lastInteraction, lastCameraGrab, focusedId } = stateRef.current;
       if (focusedId != null) return; // drift never runs while focused
-      if (pointerInside.current) return; // re-armed on pointerleave
+      if (pointerInside.current) return; // re-armed on pointerleave/cancel
       const idleSince = Math.max(lastInteraction, lastCameraGrab, mountedAt, pointerLeftAt.current);
       const remaining = idleSince + TUNING.driftIdleDelayMs - Date.now();
       wakeTimer.current = setTimeout(
@@ -128,10 +129,14 @@ export function AmbientDrift() {
     canvas.addEventListener("pointerenter", onInside);
     canvas.addEventListener("pointermove", onInside);
     canvas.addEventListener("pointerleave", onLeave);
+    // A cancelled pointer (pen lifted out of range, OS gesture) may never
+    // send pointerleave; without this the flag could stick and block drift.
+    canvas.addEventListener("pointercancel", onLeave);
     return () => {
       canvas.removeEventListener("pointerenter", onInside);
       canvas.removeEventListener("pointermove", onInside);
       canvas.removeEventListener("pointerleave", onLeave);
+      canvas.removeEventListener("pointercancel", onLeave);
       pointerInside.current = false;
     };
   }, [gl]);

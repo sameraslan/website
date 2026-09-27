@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { easeOutCubic, interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
 import { TUNING } from "../state/tuning";
-import { getOverviewFraming } from "../state/view";
+import { type CameraView, getOverviewFraming, releaseView } from "../state/view";
 
 interface Animation {
   startMs: number;
@@ -21,6 +21,8 @@ interface Animation {
   fromZoom: number;
   toZoom: number;
   instant: boolean;
+  /** "release" glides back to the pre-focus view; everything else is "fly". */
+  kind: "fly" | "release";
 }
 
 function prefersReducedMotion(): boolean {
@@ -67,11 +69,14 @@ export function FlyToFocus() {
   // First effect run = the mount. focusedId is never restored from the
   // session, so on mount it is null and we leave the camera where it starts.
   const didInit = useRef(false);
-  // The very first focus after load eases the zoom in to focusZoom (the intro).
-  // Every hop after that PRESERVES the current zoom instead of resetting it, so
-  // if the user has manually zoomed in, later glides keep their zoom rather
-  // than yanking back out to focusZoom.
-  const introDone = useRef(false);
+  // The camera view (position and zoom) captured when focus began from an
+  // unfocused state; releasing focus glides back to it (releaseView in
+  // state/view.ts). Hopping album to album keeps the original. Cleared once
+  // a release glide completes, or when a camera grab cancels it.
+  const preFocusView = useRef<CameraView | null>(null);
+  // focusedId as of the previous focus effect run, to tell "focus from
+  // unfocused" apart from an album-to-album hop.
+  const prevFocusedId = useRef<string | null>(null);
 
   // eslint-disable-next-line react-hooks/immutability -- this effect mutates the R3F camera in place on focus changes (see the mutation sites below); the standard R3F pattern for driving a long-lived, GPU-backed camera object.
   useEffect(() => {
@@ -79,32 +84,44 @@ export function FlyToFocus() {
     const cam = camera as THREE.OrthographicCamera;
     const firstRun = !didInit.current;
     didInit.current = true;
+    const wasFocused = prevFocusedId.current != null;
+    prevFocusedId.current = focusedId;
 
     if (!focusedId) {
       // Fresh load, nothing ever focused: leave the camera where
       // InitialFrame put it (the fitted overview framing).
       if (!everFocused.current) return;
+      // Glide position and zoom back to the view captured when focus began,
+      // or to the fitted overview (centre and zoom, state/view.ts) if none
+      // was captured, e.g. focus restored on a remount. Gliding only the
+      // zoom would leave the camera parked over the focused album, showing
+      // mostly empty paper with the cloud off to one side.
       const here = new THREE.Vector2(cam.position.x, cam.position.y);
+      const target = releaseView(preFocusView.current, getOverviewFraming());
+      const to = new THREE.Vector2(target.x, target.y);
       anim.current = {
         startMs: performance.now(),
         startWall: Date.now(),
         durationMs: TUNING.focusReleaseDurationMs,
-        fromPos: here.clone(),
-        toPos: here.clone(),
-        ctrl: here.clone(),
+        fromPos: here,
+        toPos: to,
+        ctrl: here.clone().add(to).multiplyScalar(0.5),
         fromZoom: cam.zoom,
-        // The fitted overview zoom (state/view.ts), not the fixed
-        // TUNING.overviewZoom fallback: releasing focus should return to
-        // the "whole cloud visible" framing, which TUNING.overviewZoom only
-        // approximates until the real fit has been computed.
-        toZoom: getOverviewFraming().zoom,
+        toZoom: target.zoom,
         instant: prefersReducedMotion(),
+        kind: "release",
       };
       invalidate();
       return;
     }
 
     everFocused.current = true;
+    // Focus from an unfocused state: remember the view to release back to.
+    // Not on the first run (a restored focus has no meaningful "before"),
+    // and not while a release glide is still carrying the original view.
+    if (!wasFocused && !firstRun && preFocusView.current == null) {
+      preFocusView.current = { x: cam.position.x, y: cam.position.y, zoom: cam.zoom };
+    }
     const target = data.positions.find((p) => p.id === focusedId);
     if (!target) return;
     const currentSliderT = useMapStore.getState().sliderT;
@@ -116,10 +133,12 @@ export function FlyToFocus() {
     );
     const toPos = new THREE.Vector2(tx, ty);
 
-    // Intro hop eases to focusZoom; later hops keep whatever zoom is current
-    // (the user's manual zoom, or the focusZoom the intro settled on).
-    const toZoom = introDone.current ? cam.zoom : TUNING.focusZoom;
-    introDone.current = true;
+    // Focus from an unfocused state eases in to focusZoom (or keeps the
+    // user's own zoom if it is already closer); album-to-album hops keep
+    // whatever zoom is current, so a manual zoom while focused survives.
+    // Keyed on the previous focus rather than "first focus ever", so a
+    // focus after a release zooms in again instead of staying at overview.
+    const toZoom = wasFocused ? cam.zoom : Math.max(cam.zoom, TUNING.focusZoom);
 
     if (firstRun) {
       // Restored focus: snap onto the album and ease only the zoom, so the page
@@ -138,6 +157,7 @@ export function FlyToFocus() {
         fromZoom: cam.zoom,
         toZoom,
         instant: prefersReducedMotion(),
+        kind: "fly",
       };
       invalidate();
       return;
@@ -154,6 +174,7 @@ export function FlyToFocus() {
       fromZoom: cam.zoom,
       toZoom,
       instant: prefersReducedMotion(),
+      kind: "fly",
     };
     invalidate();
   }, [focusedId, data, camera, invalidate]);
@@ -196,6 +217,7 @@ export function FlyToFocus() {
       fromZoom: cam.zoom,
       toZoom: cam.zoom,
       instant: prefersReducedMotion(),
+      kind: "fly",
     };
     invalidate();
   }, [sliderT, data, focusedId, camera, invalidate]);
@@ -213,6 +235,7 @@ export function FlyToFocus() {
       cam.zoom = a.toZoom;
       cam.updateProjectionMatrix();
       anim.current = null;
+      if (a.kind === "release") preFocusView.current = null;
       // One more frame so components that read the camera earlier in the
       // frame order (CameraRig's zoomRef, which drives the sprite-size
       // uniform) pick up the new zoom under frameloop="demand".
@@ -226,6 +249,8 @@ export function FlyToFocus() {
     // (lastInteraction) never cancels it.
     if (useMapStore.getState().lastCameraGrab > a.startWall) {
       anim.current = null;
+      // The user took over mid-release: the next focus captures a fresh view.
+      if (a.kind === "release") preFocusView.current = null;
       return;
     }
     const t = (performance.now() - a.startMs) / a.durationMs;
@@ -241,6 +266,7 @@ export function FlyToFocus() {
     cam.updateProjectionMatrix();
     if (t >= 1) {
       anim.current = null;
+      if (a.kind === "release") preFocusView.current = null;
       // Settle frame: same reason as the instant branch above, the final
       // camera write must reach zoomRef and the uniforms.
       invalidate();
