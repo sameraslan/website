@@ -84,7 +84,7 @@ Shader (`shaders/album.ts`):
 - Cover mode: covers at full opacity. The current `v_dim` path only applies when an album is focused (unchanged), and dimmed sprites also shrink to 0.85 scale so they recede rather than smearing paper on paper.
 - Cover fade: between 24 and 40 CSS px, mix from disc color to cover so the transition is a crossfade, not a pop.
 
-Region labels: re-enable `RegionLabels.tsx` with corrected centroids computed on the client from the loaded positions (mean of each cluster's positions at the current `sliderT`), not from `regions.json` centroids. Labels are the `regions.json` labels, italic display face, 22px at overview, fading out above `zoomT` 0.45. Rendered as DOM overlays positioned via the projection bridge (same mechanism as the tooltip) so they use the site font.
+Region labels: re-enable `RegionLabels.tsx` with corrected centroids computed on the client from the loaded positions (mean of each cluster's positions at the current `sliderT`), not from `regions.json` centroids. Labels are the `regions.json` labels, italic display face, 22px at overview, fading out as the camera zooms in. *Amended during implementation:* the fade is relative to the fitted overview zoom (`zoom / fitZoom`, fully visible at 1.6x fit and below, gone by 2.1x fit), not the absolute `zoomT`, because the fitted zoom varies with the dataset and viewport. Rendered as DOM overlays positioned via the projection bridge (same mechanism as the tooltip) so they use the site font.
 
 Region washes stay off.
 
@@ -92,15 +92,15 @@ Region washes stay off.
 
 All items reference the audit in `docs/superpowers/notes/2026-09-26-music-map-perf-audit.md`.
 
-1. **Interaction split.** `store.ts` gains `lastCameraGrab: number` set only on pointerdown-drag, wheel, and slider drag. `lastInteraction` keeps firing on hover for drift gating. `FlyToFocus` cancels only on `lastCameraGrab > startWall`.
+1. **Interaction split.** `store.ts` gains `lastCameraGrab: number` set only on pointerdown-drag, wheel, and pinch. *Amended during implementation:* slider drags are not camera grabs; they retarget a running glide in place (see 10) instead of cancelling it. `lastInteraction` keeps firing on hover for drift gating. `FlyToFocus` cancels only on `lastCameraGrab > startWall`.
 2. **Durations.** `focusFlyDurationMs: 550` with `easeOutCubic`; `focusReleaseDurationMs: 320` with `easeOutCubic`. Remove the tour presets from `tuning.ts` (`near-focus`, `slow-tour`, `pan-loop`); keep one `default` preset.
 3. **Hover.** `CursorTracker` runs `nearestAlbumIndex` on pointermove (throttled to one per animation frame) and writes `u_hoverIndex` to the material and `cursor: pointer` on the canvas when within 14 CSS px of a point. Hovered sprite scales 1.25 and gets a 2px paper ring plus a 1px ink ring (drawn in the fragment shader). The tooltip shows on hover after 80ms and on focus immediately.
-4. **Zoom.** Wheel zoom targets a `targetZoom` that the frame loop approaches with an exponential time constant of 90ms, anchored to the world point under the cursor. Trackpad pinch (`ctrlKey`) uses half the sensitivity. Range stays 0.5 to 5.
+4. **Zoom.** Wheel zoom targets a `targetZoom` that the frame loop approaches with an exponential time constant of 90ms, anchored to the world point under the cursor. Trackpad pinch (`ctrlKey`) uses half the sensitivity. Range stays 0.5 to 5. The wheel handler calls `preventDefault`, so a wheel over the full-bleed home hero zooms the map rather than scrolling the page; this is as designed (the page below the hero is reached by scrolling outside the map, the keyboard, or the skip link).
 5. **Pan.** `setPointerCapture` on pointerdown; velocity averaged over the last three move events.
 6. **No React state per frame.** `cursorWorld` and `zoomT` move out of `SceneInner` state into refs written by `CursorTracker`/`CameraRig` and read by `AlbumField` in `useFrame`. The atlas loader reads `camera.zoom` directly.
 7. **Tooltip.** One `useFrame` in a canvas-side component writes `transform: translate3d(x,y,0)` to the tooltip element via a ref; the two `CustomEvent`s and per-frame `setState` go away. `meta` is memoized on `focusedId`/`hoverId`. If `year === 0`, omit the year segment.
 8. **Idle.** `AutoTour` is unmounted and deleted. `AmbientDrift` starts after 10s idle (`driftIdleDelayMs: 10_000`), amplitude 0.08, never sets `focusedId`, and never enters focus mode. Cursor on canvas or any camera grab pauses drift; it resumes after the same delay.
-9. **Escape / empty click** release focus (existing behaviour, keep).
+9. **Escape / empty click** release focus. *Amended during implementation:* empty click was existing behaviour; Escape-to-release is new in this pass (a document-level `keydown` in `FocusController`, ignored while a text field such as the search input has focus). An empty click is one farther than the hover radius (14 CSS px for a mouse, 24 for touch and pen) from every album.
 10. **Slider.** `FlyToFocus` no longer restarts on `sliderT`; it updates the running animation's target. `saveToSession` is debounced to 250ms.
 
 ### 4.5 Map load path

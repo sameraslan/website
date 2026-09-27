@@ -35,7 +35,7 @@ const SETTLE_DIST_SQ = 1e-10;
  * Only acts while the map is idle, no drag is in progress, and the user
  * hasn't grabbed the camera (drag or wheel) recently: manual panning,
  * zooming, and click-to-focus fly-tos are left untouched. Mount LAST in the
- * scene so this runs after drift/tour have moved the camera this frame.
+ * scene so this runs after ambient drift has moved the camera this frame.
  */
 export function CameraBounds() {
   const invalidate = useThree((s) => s.invalidate);

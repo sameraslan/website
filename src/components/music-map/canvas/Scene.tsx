@@ -263,7 +263,7 @@ function SceneInner({ isTouch }: { isTouch: boolean }) {
           zoomRef={zoomRef}
         />
       )}
-      {/* Mounted last so its frame callback runs after drift/tour have moved
+      {/* Mounted last so its frame callback runs after ambient drift has moved
           the camera, reining the idle camera back into the album cloud. */}
       <CameraBounds />
     </>

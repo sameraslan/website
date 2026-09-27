@@ -29,10 +29,10 @@ album surfaces its 10 nearest neighbors.
 
 ## Data shape
 
-- `public/data/positions.json` — `{id, audio:[x,y], balanced:[x,y], mood:[x,y]}` per album
-- `public/data/metadata.json` — `{id, title, artist, year, spotifyUrl, clusterId, atlasIndex, atlasUV}` ordered by `clusterId` then by descending `popularity`
-- `public/data/regions.json` — `{clusterId, label, color, stops:{audio,balanced,mood:{centroid,radius}}}`
-- `public/data/atlas-N.webp` — 1024-sprite atlases (96×96 each on a 3072×3072 sheet)
+- `public/data/positions.json`: `{id, audio:[x,y], balanced:[x,y], mood:[x,y]}` per album
+- `public/data/metadata.json`: `{id, title, artist, year, spotifyUrl, clusterId, atlasIndex, atlasUV}` ordered by `clusterId` then by descending `popularity`
+- `public/data/regions.json`: `{clusterId, label, color, stops:{audio,balanced,mood:{centroid,radius}}}`
+- `public/data/atlas-N.webp`: 1024-sprite atlases (96×96 each on a 3072×3072 sheet)
 
 All produced by `python pipeline/build.py`. See `pipeline/README.md` for details.
 
@@ -86,8 +86,16 @@ practice the map only ever moves between three of them:
 loading  ──data fetched──▶  idle  ──album click / tap──▶  focus
                             ▲                                │
                             └────────────focus(null)─────────┘
-                     (Escape, background click, or focus a new album)
+              (Escape, a click or tap on empty map, or focus a new album)
 ```
+
+Escape is a document-level `keydown` handler in `FocusController.tsx`: it
+releases focus whenever an album is focused and no text field (the search
+input) has keyboard focus. Clicks and taps use the same hit test as hover
+(`state/hitTest.ts` `nearestWithin` over AlbumField's interpolated
+positions) with a CSS-px radius converted to world units at the current
+zoom: 14px for a mouse, 24px for touch and pen. A click farther than that
+from every disc releases focus.
 
 `interactive` is declared on `MapMode` but nothing currently transitions the
 store into it; it is a placeholder from before the tour was removed and is
@@ -104,9 +112,11 @@ explicitly asks it to via R3F's `invalidate()`. `state/invalidate.ts` bridges
 that call out to code outside the fiber tree (the Slider DOM overlay,
 `store.ts`'s `setSliderT`) so they can request a render without importing
 `@react-three/fiber` themselves. Interactions that request a frame: pointer
-drag/zoom (every frame while active), a slider change, a focus change, and
-the idle-drift wake timer. A stalled idle map (no drift, no interaction) is
-expected to render zero frames until the next input.
+drag/zoom (every frame while active), a slider change, a focus change, an
+atlas texture arriving, the final frame of a fly-to (so the settled zoom
+reaches the sprite-size uniform), and the idle-drift wake timer. A stalled
+idle map (no drift, no interaction) is expected to render zero frames until
+the next input. Drift never starts while the mouse rests on the canvas.
 
 ## Framing: fit-to-cloud, not fit-to-data
 
@@ -130,7 +140,9 @@ check), and a production verification run can opt back in with
 `NEXT_PUBLIC_MAP_DEBUG=1`. Current getters: `getCameraState`, `getSliderT`,
 `getFocusedAlbumPos`, `getNearestScreenPoint`, `getWorldAt`, `getFitState`,
 `getNdcInsideFraction`, `getSpriteCssSize`, `getRendererInfo` (renderer
-texture/geometry counts, for verifying atlas textures load lazily), plus the
+texture/geometry counts, for verifying atlas textures load lazily),
+`getHoverIndex` and `getAlbumAt` (hover state and a ground-truth hit test
+at a client point, used by `scripts/ui-check/final-fix-check.mjs`), plus the
 always-available `firstDrawAt` timestamp and the dev-only `window.__mapCommits`
 React-commit counter used by `scripts/ui-check/profile-moves.mjs`.
 
@@ -141,13 +153,14 @@ Measured at 1440×900 in Chromium against a production build
 
 | Metric | Target | Actual | Where measured |
 |---|---|---|---|
-| Click-to-settle (pointerdown → zoom within 0.01 of focus zoom) | < 700ms | see task-13-report.md | dispatched pointerdown/up + poll `getCameraState()` |
-| React commits on pointermove | 0 | see task-13-report.md | `window.__mapCommits` via `profile-moves.mjs` |
-| First draw (dots visible) | < 1.5s | see task-13-report.md | `window.__mapDebug.firstDrawAt` |
-| GPU textures before first zoom | 0–1 non-atlas | see task-13-report.md | `getRendererInfo().textures`, grows one atlas sheet at a time after zooming in |
+| Click-to-settle (pointerup → zoom within 0.01 of focus zoom) | < 700ms | ~660ms (3 runs: 654, 673, 656ms) | in-page `requestAnimationFrame` poll of `getCameraState()`, timed from an in-page `pointerup` listener (`task13-perf-gate.mjs`) |
+| React commits on pointermove | 0 | 0 | `window.__mapCommits` via `profile-moves.mjs` (dev server) |
+| First draw (dots visible), broadband | < 1.5s | ~430ms (420-436ms) | `window.__mapDebug.firstDrawAt` |
+| First draw, Fast 3G (CDP throttle) | < 1.5s | ~7.3s, not met | `firstDrawAt`; the critical path is ~0.8-1MB gzip (three.js chunk plus `positions.json` and `metadata.json`), carried to the pipeline revamp (JSON slimming) |
+| Atlas textures before the first zoom | 0 | 0 | `getRendererInfo().textures`; grows one atlas sheet at a time (3 textures ~1.5s after a zoom-in click) |
 
-See `.superpowers/sdd/2026-09-26-website-improvement/task-13-report.md` for
-the actual numbers from the verification run and how each was measured.
+Measured in Chromium at 1440×900 against a production build run with
+`NEXT_PUBLIC_MAP_DEBUG=1` so the debug getters are available.
 
 ## Visual references
 

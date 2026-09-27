@@ -44,10 +44,15 @@ export function Slider() {
     track.addEventListener("pointerdown", onDown);
     track.addEventListener("pointermove", onMove);
     track.addEventListener("pointerup", onUp);
+    // A cancelled pointer (OS gesture, palm rejection, capture lost) ends
+    // the drag the same way a release does, so the handle never stays stuck
+    // following later moves.
+    track.addEventListener("pointercancel", onUp);
     return () => {
       track.removeEventListener("pointerdown", onDown);
       track.removeEventListener("pointermove", onMove);
       track.removeEventListener("pointerup", onUp);
+      track.removeEventListener("pointercancel", onUp);
     };
   }, [setSliderT, discreteOnly]);
 

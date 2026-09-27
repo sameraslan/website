@@ -14,8 +14,10 @@ const MusicMap = dynamic(
 // (loaded by the dynamic import above) has even started downloading, so the
 // two overlap instead of the fetch waiting behind the chunk (see
 // docs/superpowers/notes/2026-09-26-music-map-perf-audit.md item 1a).
-// Narrow screens don't mount the map yet (Task 11), so skip the fetch there
-// to avoid downloading the desktop payload on a phone (item 1g).
+// Narrow screens do mount the map (Task 11) but fetch from MusicMap's own
+// mount effect instead; this module-scope head start is skipped there so a
+// phone only pays for the payload once the map actually renders (item 1g).
+// On `/` the ReactDOM.preload links in app/page.tsx start it for every size.
 // `matchMedia` itself is guarded: this module is imported under jsdom in
 // tests, and jsdom does not implement matchMedia at all, so calling it
 // unconditionally would throw at import time.
