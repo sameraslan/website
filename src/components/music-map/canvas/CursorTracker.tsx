@@ -94,6 +94,7 @@ export function CursorTracker({
   // The actual hit test: runs once per rendered frame (frameloop="demand"
   // means this only fires when something invalidated, e.g. the pointermove
   // handler above), never once per pointer event.
+  // eslint-disable-next-line react-hooks/immutability -- this per-frame callback sets canvas.style.cursor directly on the R3F canvas DOM node (see below); a plain DOM style write is cheaper than routing cursor state through React here and matches the rest of this hot path's ref-based, non-React-render pattern.
   useFrame(() => {
     const canvas = gl.domElement;
     const c = cursorRef.current;
@@ -104,6 +105,7 @@ export function CursorTracker({
         clearHoverTimer();
         useMapStore.getState().setHoveredId(null);
       }
+      // eslint-disable-next-line react-hooks/immutability -- see the useFrame-level comment above.
       canvas.style.cursor = "";
       return;
     }

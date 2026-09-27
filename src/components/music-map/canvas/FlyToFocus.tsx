@@ -73,6 +73,7 @@ export function FlyToFocus() {
   // their zoom rather than yanking back out to the tour default.
   const introDone = useRef(false);
 
+  // eslint-disable-next-line react-hooks/immutability -- this effect mutates the R3F camera in place on focus changes (see the mutation sites below); the standard R3F pattern for driving a long-lived, GPU-backed camera object.
   useEffect(() => {
     if (!data) return;
     const cam = camera as THREE.OrthographicCamera;
@@ -123,6 +124,7 @@ export function FlyToFocus() {
     if (firstRun) {
       // Restored focus: snap onto the album and ease only the zoom, so the page
       // opens on the album instead of sliding across empty space from (0,0).
+      // eslint-disable-next-line react-hooks/immutability -- see the effect-level comment above.
       cam.position.x = tx;
       cam.position.y = ty;
       cam.updateProjectionMatrix();
@@ -198,13 +200,16 @@ export function FlyToFocus() {
     invalidate();
   }, [sliderT, data, focusedId, camera, invalidate]);
 
+  // eslint-disable-next-line react-hooks/immutability -- this per-frame callback mutates the R3F camera in place to drive the fly-to glide (see the mutation sites below); the standard R3F pattern for a hot-path camera animation.
   useFrame(() => {
     if (!anim.current) return;
     const cam = camera as THREE.OrthographicCamera;
     const a = anim.current;
     if (a.instant) {
+      // eslint-disable-next-line react-hooks/immutability -- see the useFrame-level comment above.
       cam.position.x = a.toPos.x;
       cam.position.y = a.toPos.y;
+      // eslint-disable-next-line react-hooks/immutability -- see the useFrame-level comment above.
       cam.zoom = a.toZoom;
       cam.updateProjectionMatrix();
       anim.current = null;

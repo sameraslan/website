@@ -216,6 +216,7 @@ export function AlbumField({
     for (let i = 0; i < n; i++) {
       const p = data.positions[i];
       const [x, y] = interpolatePosition(p.audio, p.balanced, p.mood, sliderT);
+      // eslint-disable-next-line react-hooks/immutability -- arr is the ref's mutable backing Float32Array; writing into it in place avoids reallocating a ~5k-float array on every sliderT tick.
       arr[i * 2] = x;
       arr[i * 2 + 1] = y;
     }
@@ -229,6 +230,7 @@ export function AlbumField({
   // canvas resizes, from the CSS-px viewport height and the current device
   // pixel ratio (see the gl_PointSize clamp in shaders/album.ts).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability -- mutating a three.js ShaderMaterial's uniforms in place is the standard R3F pattern; the material is a long-lived GPU-backed object, not React-owned state.
     material.uniforms.u_maxSpritePx.value =
       size.height * MAX_SPRITE_VIEWPORT_FRACTION * gl.getPixelRatio();
     invalidate();
@@ -238,13 +240,17 @@ export function AlbumField({
   useEffect(() => {
     for (let i = 0; i < MAX_ATLASES; i++) {
       const tex = atlasTextures[i] ?? null;
+      // eslint-disable-next-line react-hooks/immutability -- same in-place uniform mutation pattern as above.
       material.uniforms[`u_atlas${i}`].value = tex;
       material.uniforms.u_atlasLoaded.value[i] = tex ? 1 : 0;
     }
+    // eslint-disable-next-line react-hooks/immutability -- flags the material dirty after the uniform writes above; also the R3F mutation pattern.
     material.uniformsNeedUpdate = true;
   }, [atlasTextures, material]);
 
+  // eslint-disable-next-line react-hooks/immutability -- this per-frame callback mutates material.uniforms in place throughout (see the mutation sites below); that is the standard R3F hot-path pattern, not something to restructure into setState (which would re-render React every frame instead of just redrawing the canvas).
   useFrame(() => {
+    // eslint-disable-next-line react-hooks/immutability -- see the useFrame-level comment above.
     material.uniforms.u_sliderT.value = sliderT;
     const zoomT = Math.max(
       0,

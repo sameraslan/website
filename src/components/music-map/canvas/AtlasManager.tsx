@@ -141,6 +141,18 @@ export function useAtlasTextures(
   const [textures, setTextures] = useState<(THREE.Texture | null)[]>(() =>
     urls.map(() => null),
   );
+  // Reset the texture state during render when `urls` changes (the
+  // "adjusting state when a prop changes" pattern), rather than inside the
+  // effect below: a setState call synchronous with the render that needs it
+  // avoids an extra commit versus calling it from an effect. The effect
+  // below still owns the actual side effects (disposing the previous url
+  // set's GPU textures/bitmaps), which can't move to render since it must
+  // run exactly once per change, not once per render attempt.
+  const [prevUrls, setPrevUrls] = useState(urls);
+  if (prevUrls !== urls) {
+    setPrevUrls(urls);
+    setTextures(urls.map(() => null));
+  }
   const atlasIndexByPosition = useMemo(() => buildAtlasIndexByPosition(data), [data]);
   const loadedRef = useRef<Set<number>>(new Set());
   const loadingRef = useRef(false);
@@ -166,7 +178,6 @@ export function useAtlasTextures(
       disposeLoadedAtlas(loaded);
     }
     loadedAtlasesRef.current = new Map();
-    setTextures(urls.map(() => null));
 
     return () => {
       epochRef.current += 1;
@@ -177,17 +188,10 @@ export function useAtlasTextures(
     };
   }, [urls]);
 
-  useFrame(() => {
-    if (startedRef.current) return;
-    const threshold = Math.min(
-      ATLAS_ZOOM_THRESHOLD_FIT_MULTIPLE * getOverviewFraming().zoom,
-      ATLAS_ZOOM_THRESHOLD_MAX,
-    );
-    if (camera.zoom < threshold) return;
-    startedRef.current = true;
-    loadNext();
-  });
-
+  // Declared before the useFrame below (which calls it) rather than relying
+  // on function-declaration hoisting: real hoisting makes this work at
+  // runtime either way, but keeping definition-before-use in source order
+  // matches the static analysis the react-hooks lint plugin does.
   function loadNext() {
     if (loadingRef.current) return;
     const remaining: number[] = [];
@@ -245,6 +249,17 @@ export function useAtlasTextures(
         if (epochRef.current === myEpoch) loadNext();
       });
   }
+
+  useFrame(() => {
+    if (startedRef.current) return;
+    const threshold = Math.min(
+      ATLAS_ZOOM_THRESHOLD_FIT_MULTIPLE * getOverviewFraming().zoom,
+      ATLAS_ZOOM_THRESHOLD_MAX,
+    );
+    if (camera.zoom < threshold) return;
+    startedRef.current = true;
+    loadNext();
+  });
 
   return textures;
 }

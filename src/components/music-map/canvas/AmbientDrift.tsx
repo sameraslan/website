@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -40,8 +40,12 @@ export function AmbientDrift() {
   // drift starts (rather than comparing against epoch 0, which would make
   // "wallNow - idleSince" enormous and skip the delay entirely). Real
   // interactions still set `lastInteraction`, which re-arms the resume delay.
-  const mountedAt = useRef(Date.now());
-  const start = useRef(performance.now());
+  // Lazy initializers (called once on mount, not on every render) rather
+  // than useRef(Date.now())/useRef(performance.now()): a bare useRef's
+  // argument is still evaluated on every render even though only the first
+  // call's value is kept, which reads as an impure call during render.
+  const [mountedAt] = useState(Date.now);
+  const [start] = useState(performance.now);
   const lastApplied = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   // Re-seed `lastApplied` (skip one frame's delta) whenever we re-enter the
   // drift regime, so resuming after a focus or a gate doesn't apply a large
@@ -57,23 +61,29 @@ export function AmbientDrift() {
   const wakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scheduleWake = useRef(() => {});
-  scheduleWake.current = () => {
-    if (wakeTimer.current !== null) {
-      clearTimeout(wakeTimer.current);
-      wakeTimer.current = null;
-    }
-    const { lastInteraction, lastCameraGrab, focusedId } = stateRef.current;
-    if (focusedId != null) return; // drift never runs while focused
-    const idleSince = Math.max(lastInteraction, lastCameraGrab, mountedAt.current);
-    const remaining = idleSince + TUNING.driftIdleDelayMs - Date.now();
-    wakeTimer.current = setTimeout(
-      () => {
+  // Assigning scheduleWake.current directly in the render body would write a
+  // ref during render; a no-deps layout effect keeps it just as fresh
+  // (re-synced after every render, before the mount effect below or any
+  // subscription callback can call it) without doing so during render.
+  useLayoutEffect(() => {
+    scheduleWake.current = () => {
+      if (wakeTimer.current !== null) {
+        clearTimeout(wakeTimer.current);
         wakeTimer.current = null;
-        invalidate();
-      },
-      Math.max(0, remaining),
-    );
-  };
+      }
+      const { lastInteraction, lastCameraGrab, focusedId } = stateRef.current;
+      if (focusedId != null) return; // drift never runs while focused
+      const idleSince = Math.max(lastInteraction, lastCameraGrab, mountedAt);
+      const remaining = idleSince + TUNING.driftIdleDelayMs - Date.now();
+      wakeTimer.current = setTimeout(
+        () => {
+          wakeTimer.current = null;
+          invalidate();
+        },
+        Math.max(0, remaining),
+      );
+    };
+  });
 
   useEffect(() => {
     scheduleWake.current();
@@ -92,10 +102,15 @@ export function AmbientDrift() {
   }, []);
   const reducedMotion = useReducedMotion();
 
+  // This callback mutates the R3F camera object in place (see the comment
+  // at the mutation site below); mutating three.js objects directly inside
+  // useFrame is the standard R3F pattern, not something to restructure into
+  // setState.
+  // eslint-disable-next-line react-hooks/immutability
   useFrame(() => {
     const perfNow = performance.now();
     const wallNow = Date.now();
-    const t = (perfNow - start.current) / 1000;
+    const t = (perfNow - start) / 1000;
 
     const { lastInteraction, lastCameraGrab, focusedId } = stateRef.current;
 
@@ -105,7 +120,7 @@ export function AmbientDrift() {
       return;
     }
 
-    const idleSince = Math.max(lastInteraction, lastCameraGrab, mountedAt.current);
+    const idleSince = Math.max(lastInteraction, lastCameraGrab, mountedAt);
     const interactionGated =
       reducedMotion || wallNow - idleSince < TUNING.driftIdleDelayMs;
 
@@ -134,7 +149,12 @@ export function AmbientDrift() {
 
     // Apply the *delta* between this frame's target and the last applied
     // target. Drift then sits on top of any FlyToFocus motion instead of
-    // fighting it.
+    // fighting it. Mutating the R3F camera object in place inside useFrame
+    // is the standard three.js/R3F pattern (the camera is a long-lived
+    // mutable object, not React-owned state); restructuring it into
+    // setState would re-render every frame instead of just redrawing the
+    // canvas.
+    // eslint-disable-next-line react-hooks/immutability
     camera.position.x += targetX - lastApplied.current.x;
     camera.position.y += targetY - lastApplied.current.y;
     lastApplied.current.x = targetX;

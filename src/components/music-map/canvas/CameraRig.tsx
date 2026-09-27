@@ -243,10 +243,12 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
     };
   }, [camera, gl, registerInteraction, registerCameraGrab, setDragging, invalidate]);
 
+  // eslint-disable-next-line react-hooks/immutability -- this per-frame callback mutates the R3F camera in place throughout (pan inertia and zoom below); the standard R3F pattern for a hot path that must redraw the canvas every frame without triggering a React re-render.
   useFrame((_state, delta) => {
     if (!dragging.current) {
       const speedSq = velocity.current.x * velocity.current.x + velocity.current.y * velocity.current.y;
       if (speedSq > VELOCITY_EPSILON_SQ) {
+        // eslint-disable-next-line react-hooks/immutability -- see the useFrame-level comment above.
         camera.position.x += velocity.current.x;
         camera.position.y += velocity.current.y;
         velocity.current.x *= FRICTION;
@@ -278,6 +280,7 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
         camera.position.x = nextPos.x;
         camera.position.y = nextPos.y;
       }
+      // eslint-disable-next-line react-hooks/immutability -- see the useFrame-level comment above.
       camera.zoom = nextZoom;
       camera.updateProjectionMatrix();
 

@@ -52,10 +52,12 @@ export function MusicMap() {
   // `false`), so phones never render one frame committed to the desktop
   // path before the touch check catches up (perf audit item 1g).
   const [isNarrow, setIsNarrow] = useState(isNarrowScreen);
-  const [webglOk, setWebglOk] = useState(true);
+  // Lazy initializer, checked once on mount, same as isNarrow above: this
+  // component is only ever rendered client-side (MusicMapClient's dynamic
+  // import uses ssr: false), so there is no hydration mismatch to worry
+  // about, and it avoids a setState call inside an effect body.
+  const [webglOk] = useState(isWebGLAvailable);
   const isTouch = isNarrow;
-
-  useEffect(() => setWebglOk(isWebGLAvailable()), []);
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;

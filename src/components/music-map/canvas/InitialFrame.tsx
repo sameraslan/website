@@ -84,8 +84,10 @@ export function InitialFrame() {
     const untouched = lastCameraGrab === 0 && focusedId === null;
     if (newData || (sizeChanged && untouched)) {
       framedData.current = data;
+      // eslint-disable-next-line react-hooks/immutability -- mutating the R3F camera in place (position/zoom/frustum) is the standard R3F pattern; the camera is a long-lived GPU-backed object, not React-owned state, and this is not itself inside a hook callback.
       camera.position.x = center.x;
       camera.position.y = center.y;
+      // eslint-disable-next-line react-hooks/immutability -- see the comment above.
       camera.zoom = zoom;
       camera.updateProjectionMatrix();
       setFramed(true);
@@ -96,9 +98,11 @@ export function InitialFrame() {
   // Synchronous: frustum resize plus the initial/data/size-driven framing
   // and snap. Deliberately excludes sliderT so a slider drag alone never
   // re-runs this effect; see the throttled effect below.
+  // eslint-disable-next-line react-hooks/immutability -- this effect mutates the R3F camera's frustum/position/zoom in place (see the mutation sites inside); the standard R3F pattern.
   useLayoutEffect(() => {
     if (width > 0 && height > 0) {
       const halfW = FRUSTUM_HALF_HEIGHT * (width / height);
+      // eslint-disable-next-line react-hooks/immutability -- see the effect-level comment above.
       camera.left = -halfW;
       camera.right = halfW;
       camera.top = FRUSTUM_HALF_HEIGHT;
@@ -119,6 +123,7 @@ export function InitialFrame() {
   // one) recompute framing at most once per animation frame, using
   // whichever sliderT is current when the rAF fires rather than every
   // intermediate value.
+  // eslint-disable-next-line react-hooks/immutability -- indirectly calls recomputeFraming, which mutates the R3F camera in place on the rare newData/sizeChanged branch; same R3F pattern as the effect above.
   useLayoutEffect(() => {
     if (sliderT === lastHandledSliderT.current) return;
     if (rafId.current !== null) return;
