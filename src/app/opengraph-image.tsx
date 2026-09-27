@@ -159,7 +159,7 @@ export default async function OpengraphImage() {
               lineHeight: 1.4,
             }}
           >
-            Machine learning engineer working at the intersection of AI and law.
+            Machine learning engineer currently working at the intersection of AI and law.
           </div>
           <div
             style={{

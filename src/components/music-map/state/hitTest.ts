@@ -10,6 +10,16 @@ export function hitRadiusCssPx(pointerType: string): number {
 }
 
 /**
+ * Hit radius in CSS px for a sprite drawn `spriteCssPx` wide: the pointer's
+ * minimum target, or the drawn disc itself once covers are larger than
+ * that, so the whole cover is hoverable and clickable when zoomed in, not
+ * just the 14px around its centre.
+ */
+export function spriteHitRadiusCssPx(pointerType: string, spriteCssPx: number): number {
+  return Math.max(hitRadiusCssPx(pointerType), spriteCssPx / 2);
+}
+
+/**
  * Converts a length in CSS px to world units under an orthographic camera:
  * one world unit spans `zoom * viewportHeightCssPx / frustumHeight` CSS px,
  * where `frustumHeight` is `camera.top - camera.bottom`. Shared by hover
@@ -53,4 +63,36 @@ export function nearestWithin(
     }
   }
   return best;
+}
+
+/** A hit-test candidate that wins over nearest-centre when the point is
+ * inside its own drawn disc (radius in world units). */
+export interface PriorityHit {
+  index: number;
+  radiusWorld: number;
+}
+
+/**
+ * Hit test in draw order. Sprites overlap once zoomed in, and the shader
+ * draws the focused album on top, then the hovered one; a plain nearest-
+ * centre test would name a neighbour whose centre is closer even though the
+ * cursor is on the cover drawn above it. So each `priority` candidate
+ * (topmost first; index -1 skipped) wins anywhere inside its own disc, and
+ * everything else falls back to `nearestWithin`.
+ */
+export function pickAlbum(
+  positions: Float32Array,
+  n: number,
+  x: number,
+  y: number,
+  radiusWorld: number,
+  priority: readonly PriorityHit[],
+): number {
+  for (const p of priority) {
+    if (p.index < 0 || p.index >= n) continue;
+    const dx = positions[p.index * 2] - x;
+    const dy = positions[p.index * 2 + 1] - y;
+    if (dx * dx + dy * dy < p.radiusWorld * p.radiusWorld) return p.index;
+  }
+  return nearestWithin(positions, n, x, y, radiusWorld);
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { SIZE_CURVE_POWER, spriteCssSize } from "./album";
+import { renderedSpriteCssSize, SIZE_CURVE_POWER, spriteCssSize } from "./album";
 
 describe("spriteCssSize (JS mirror of the vertex shader's size curve)", () => {
   it("is 10px at the fitted overview zoom", () => {
@@ -20,5 +20,21 @@ describe("spriteCssSize (JS mirror of the vertex shader's size curve)", () => {
 
   it("guards a zero fit zoom like the shader's max(u_fitZoom, 0.0001)", () => {
     expect(spriteCssSize(1, 0)).toBe(90);
+  });
+});
+
+describe("renderedSpriteCssSize (size curve plus the shader's device-px caps)", () => {
+  it("matches the curve when no cap applies", () => {
+    expect(renderedSpriteCssSize(1, 1, 900, 1)).toBeCloseTo(10, 10);
+  });
+
+  it("applies the 18%-of-viewport cap after the per-instance scale", () => {
+    // 90px * 1.25 = 112.5px, capped at 0.18 * 500 = 90px.
+    expect(renderedSpriteCssSize(50, 1, 500, 1, 1.25)).toBeCloseTo(90, 10);
+  });
+
+  it("applies the 240 device-px cap on a high-dpr screen", () => {
+    // 90px * 1.25 * dpr 3 = 337.5 device px, capped at 240 -> 80 CSS px.
+    expect(renderedSpriteCssSize(50, 1, 2000, 3, 1.25)).toBeCloseTo(80, 10);
   });
 });

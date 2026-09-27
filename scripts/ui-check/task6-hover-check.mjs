@@ -25,7 +25,7 @@ async function main() {
     });
 
     const tooltip = await page.evaluate(() => {
-      const el = document.querySelector('[role="status"]');
+      const el = document.querySelector('[data-tooltip="hover"]');
       if (!el) return null;
       return {
         opacity: getComputedStyle(el).opacity,
@@ -47,7 +47,7 @@ async function main() {
     await page.waitForTimeout(200);
     const after = await page.evaluate(() => {
       const c = document.querySelector('canvas');
-      const el = document.querySelector('[role="status"]');
+      const el = document.querySelector('[data-tooltip="hover"]');
       return {
         cursor: getComputedStyle(c).cursor,
         opacity: el ? getComputedStyle(el).opacity : null,

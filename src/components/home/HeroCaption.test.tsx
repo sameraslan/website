@@ -10,7 +10,7 @@ describe("HeroCaption", () => {
 
     const heading = screen.getByRole("heading", { level: 1 });
     expect(heading.textContent).toBe(
-      "Machine learning engineer working at the intersection of AI and law."
+      "Machine learning engineer currently working at the intersection of AI and law."
     );
     expect(heading.className).toContain("font-display");
 
@@ -18,9 +18,8 @@ describe("HeroCaption", () => {
       screen.getByText("Here's an evolving map of what I listen to.")
     ).toBeTruthy();
 
-    expect(
-      screen.getByText("hover to read · click for neighbours · scroll to zoom")
-    ).toBeTruthy();
+    expect(screen.getByText("hover to read · click for neighbours")).toBeTruthy();
+    expect(screen.getByText("scroll to zoom · drag to pan")).toBeTruthy();
 
     expect(screen.getByText("tap a point · pinch to zoom")).toBeTruthy();
   });

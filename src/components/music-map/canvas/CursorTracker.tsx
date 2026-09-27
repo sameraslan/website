@@ -4,12 +4,18 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
+import { renderedSpriteCssSize } from "../shaders/album";
 import { registerDebug } from "../state/debug";
-import { cssPxToWorld, MOUSE_HIT_RADIUS_CSS_PX, nearestWithin } from "../state/hitTest";
+import type { MapData } from "../data/types";
+import { cssPxToWorld, nearestWithin, pickAlbum, spriteHitRadiusCssPx } from "../state/hitTest";
 import { useMapStore } from "../state/store";
+import { getOverviewFraming } from "../state/view";
 
 /** Tooltip shows 80ms after the hover target settles (spec 4.4.3/4.4.7). */
 const HOVER_TOOLTIP_DELAY_MS = 80;
+/** After a mouse press, hover resumes once the pointer moves this far (CSS
+ * px) from where it was pressed, so click jitter doesn't count as a move. */
+const HOVER_RESUME_MOVE_PX = 4;
 
 /**
  * Converts a client (viewport) point to world coordinates under the given
@@ -28,6 +34,73 @@ export function screenToWorld(
   const worldX = (ndcX / camera.zoom) * (camera.right - camera.left) / 2 + camera.position.x;
   const worldY = (ndcY / camera.zoom) * (camera.top - camera.bottom) / 2 + camera.position.y;
   return [worldX, worldY];
+}
+
+/**
+ * Mouse hover/click radius in CSS px at the camera's current zoom: the drawn
+ * sprite's radius once covers outgrow the 14px minimum (state/hitTest.ts).
+ */
+export function mouseHitRadiusCssPx(
+  camera: THREE.OrthographicCamera,
+  viewportHeightCssPx: number,
+  pixelRatio: number,
+): number {
+  const sprite = renderedSpriteCssSize(
+    camera.zoom,
+    getOverviewFraming().zoom,
+    viewportHeightCssPx,
+    pixelRatio,
+  );
+  return spriteHitRadiusCssPx("mouse", sprite);
+}
+
+const idIndexCache = new WeakMap<MapData, Map<string, number>>();
+
+function indexOfId(data: MapData, id: string): number {
+  let byId = idIndexCache.get(data);
+  if (!byId) {
+    byId = new Map(data.positions.map((p, i) => [p.id, i]));
+    idIndexCache.set(data, byId);
+  }
+  return byId.get(id) ?? -1;
+}
+
+/**
+ * The album under a world point, shared by hover (CursorTracker) and
+ * click/tap (FocusController) so a click lands on the album the hover label
+ * names. Follows the shader's draw order (state/hitTest.ts pickAlbum): the
+ * focused album wins anywhere inside its drawn disc, then the hovered one,
+ * then the nearest centre within the pointer's hit radius.
+ */
+export function albumAt(
+  worldX: number,
+  worldY: number,
+  camera: THREE.OrthographicCamera,
+  viewportHeightCssPx: number,
+  pixelRatio: number,
+  pointerType: string,
+  positions: Float32Array,
+  hoverIndex: number,
+): number {
+  const fitZoom = getOverviewFraming().zoom;
+  const toWorld = (px: number) =>
+    cssPxToWorld(px, viewportHeightCssPx, camera.zoom, camera.top - camera.bottom);
+  const drawnRadius = (scale: number) =>
+    renderedSpriteCssSize(camera.zoom, fitZoom, viewportHeightCssPx, pixelRatio, scale) / 2;
+  const { data, focusedId } = useMapStore.getState();
+  const focusedIndex = data && focusedId ? indexOfId(data, focusedId) : -1;
+  return pickAlbum(
+    positions,
+    positions.length / 2,
+    worldX,
+    worldY,
+    toWorld(spriteHitRadiusCssPx(pointerType, drawnRadius(1) * 2)),
+    [
+      // Shader scales: focused (in its own highlight set) 1.15, hovered 1.25.
+      { index: focusedIndex, radiusWorld: toWorld(drawnRadius(1.15)) },
+      { index: hoverIndex, radiusWorld: toWorld(drawnRadius(1.25)) },
+    ],
+  );
 }
 
 /**
@@ -69,6 +142,9 @@ export function CursorTracker({
   // because it's read and cleared from both the pointer-event effect (on
   // unmount) and the useFrame hit-test gate below.
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True from a mouse press until the pointer next moves more than
+  // HOVER_RESUME_MOVE_PX from where it was pressed (see the useFrame below).
+  const hoverSuppressedRef = useRef(false);
 
   function clearHoverTimer() {
     if (hoverTimerRef.current !== null) {
@@ -85,12 +161,26 @@ export function CursorTracker({
     // between frames collapse into a single hit test against the latest
     // position, same as browser event coalescing would give us, but
     // guaranteed rather than relied upon.
+    let pressAt: [number, number] | null = null;
+    function onDown(e: PointerEvent) {
+      if (e.pointerType === "touch") return;
+      hoverSuppressedRef.current = true;
+      pressAt = [e.clientX, e.clientY];
+      invalidate();
+    }
     function onMove(e: PointerEvent) {
       // Hover has no meaning on touch: there is no "cursor" resting over a
       // point between touches, and a finger is always covering whatever it
       // could hover, so a touch pointermove (drag/pinch) must never arm the
       // hover ring or the 80ms tooltip timer (spec 4.7 / Task 11 item 3).
       if (e.pointerType === "touch") return;
+      if (
+        hoverSuppressedRef.current &&
+        (!pressAt ||
+          Math.hypot(e.clientX - pressAt[0], e.clientY - pressAt[1]) > HOVER_RESUME_MOVE_PX)
+      ) {
+        hoverSuppressedRef.current = false;
+      }
       const rect = canvas.getBoundingClientRect();
       cursorRef.current = [e.clientX - rect.left, e.clientY - rect.top];
       invalidate();
@@ -100,9 +190,11 @@ export function CursorTracker({
       cursorRef.current = null;
       invalidate();
     }
+    canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerleave", onLeave);
     return () => {
+      canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerleave", onLeave);
     };
@@ -150,7 +242,7 @@ export function CursorTracker({
                     (rect.height / 2),
               };
         return {
-          index: distPx < MOUSE_HIT_RADIUS_CSS_PX ? nearest : -1,
+          index: distPx < mouseHitRadiusCssPx(cam, rect.height, gl.getPixelRatio()) ? nearest : -1,
           nearest,
           distPx,
           screen,
@@ -189,14 +281,22 @@ export function CursorTracker({
 
     const cam = camera as THREE.OrthographicCamera;
     const [wx, wy] = cursorToWorld(c, state.size, cam);
-    const radiusWorld = cssPxToWorld(
-      MOUSE_HIT_RADIUS_CSS_PX,
-      state.size.height,
-      cam.zoom,
-      cam.top - cam.bottom,
-    );
-    const n = positionsRef.current.length / 2;
-    const idx = nearestWithin(positionsRef.current, n, wx, wy, radiusWorld);
+    // Right after a click the camera flies the focused album to the centre
+    // and some unrelated album slides under the resting cursor; hover stays
+    // off until the pointer actually moves, so that album doesn't pop up a
+    // second label next to the one just clicked.
+    const idx = hoverSuppressedRef.current
+      ? -1
+      : albumAt(
+          wx,
+          wy,
+          cam,
+          state.size.height,
+          gl.getPixelRatio(),
+          "mouse",
+          positionsRef.current,
+          hoverRef.current,
+        );
     canvas.style.cursor = idx >= 0 ? "pointer" : "";
 
     if (idx !== hoverRef.current) {

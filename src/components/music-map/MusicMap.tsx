@@ -164,7 +164,14 @@ export function MusicMap() {
       {/* Desktop hover tooltip vs. the touch bottom sheet (spec 4.7): touch
           has no hover state to follow, so it gets a fixed card instead of a
           tooltip that would try to chase a finger. */}
-      {isTouch ? <MobileSheet /> : <Tooltip />}
+      {isTouch ? (
+        <MobileSheet />
+      ) : (
+        <>
+          <Tooltip kind="focus" />
+          <Tooltip kind="hover" />
+        </>
+      )}
       {/* Bottom-right control row: always visible, not hover-revealed. On
           touch it sits above the MobileSheet (bottom: 76px vs. the sheet's
           12px + ~54px tall) so the two never overlap, and search is omitted

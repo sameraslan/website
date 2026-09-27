@@ -100,8 +100,18 @@ releases focus whenever an album is focused and no text field (the search
 input) has keyboard focus. Clicks and taps use the same hit test as hover
 (`state/hitTest.ts` `nearestWithin` over AlbumField's interpolated
 positions) with a CSS-px radius converted to world units at the current
-zoom: 14px for a mouse, 24px for touch and pen. A click farther than that
-from every disc releases focus.
+zoom: at least 14px for a mouse and 24px for touch and pen, and the drawn
+disc's radius once covers are bigger than that (`renderedSpriteCssSize` in
+`shaders/album.ts` mirrors the shader's size maths), so a whole cover is
+hoverable and clickable when zoomed in. A click farther than that from every
+disc releases focus. The shader's cursor pull is sized in screen space and
+fades out as covers fade in, so the cover being aimed at does not slide away
+from where the hit test looks for it.
+
+Desktop shows two labels: a pinned one for the focused album and a hover one
+for the album under the mouse, shown only when that is a different album, so
+a focused album's neighbours can be read one by one. Both sit just above
+their sprite's edge (below it near the top of the canvas).
 
 `FlyToFocus.tsx` captures the camera's position and zoom when focus begins
 from an unfocused state (album-to-album hops keep the original) and a release
@@ -198,9 +208,9 @@ src/components/music-map/
 │   ├── FocusController.tsx   # click/tap → focus + neighbors
 │   ├── FlyToFocus.tsx        # camera animation on focus
 │   ├── AmbientDrift.tsx      # idle Perlin drift (desktop only, not touch)
-│   └── TooltipDriver.tsx     # canvas-side driver: positions the DOM tooltip every frame
+│   └── TooltipDriver.tsx     # canvas-side driver: positions the DOM labels every frame
 ├── overlays/
-│   ├── Tooltip.tsx           # desktop hover tooltip (DOM, outside <Canvas>)
+│   ├── Tooltip.tsx           # desktop focus/hover labels (DOM, outside <Canvas>)
 │   ├── MobileSheet.tsx       # touch bottom sheet, replaces Tooltip below 640px
 │   ├── Slider.tsx            # audio/balanced/mood slider
 │   ├── SearchOverlay.tsx     # desktop-only fuzzy search (Fuse.js)
@@ -214,7 +224,7 @@ src/components/music-map/
 │   ├── hitTest.ts            # nearest-album hit testing for hover/tap
 │   ├── invalidate.ts         # bridges demand-mode invalidate() outside the fiber tree
 │   ├── debug.ts              # window.__mapDebug test hooks (see "Debug getters" above)
-│   ├── tooltipEl.ts          # DOM <-> canvas-driver bridge for the tooltip element
+│   ├── tooltipEl.ts          # DOM <-> canvas-driver bridge for the label elements
 │   ├── view.ts                # published overview framing (zoom/center/bounds) singleton
 │   ├── projection.ts         # interpolation + KNN + easing
 │   └── zoomMath.ts           # zoom-anchor math (cursor-anchored wheel/pinch zoom)

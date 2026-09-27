@@ -59,7 +59,8 @@ export interface DebugGetters {
   getHoverIndex?(): number;
   /**
    * Ground-truth hit test at a client point through the live camera:
-   * `index` is the album within the 14px mouse radius (-1 if none),
+   * `index` is the album within the mouse hit radius (14px, or the drawn
+   * cover's radius when larger; -1 if none),
    * `nearest` the closest album at any distance, and `distPx` its distance
    * in CSS px, and `screen` its client position. Verification-only.
    */

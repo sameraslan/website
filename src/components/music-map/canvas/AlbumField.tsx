@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { ALBUM_FRAGMENT_SHADER, ALBUM_VERTEX_SHADER, spriteCssSize } from "../shaders/album";
+import {
+  ALBUM_FRAGMENT_SHADER,
+  ALBUM_VERTEX_SHADER,
+  MAX_SPRITE_VIEWPORT_FRACTION,
+  spriteCssSize,
+} from "../shaders/album";
 import type { MapData, MetadataRecord, PositionRecord } from "../data/types";
 import { clusterColorsFromRegions } from "../state/clusterColors";
 import { markFirstDraw, registerDebug } from "../state/debug";
@@ -12,11 +17,6 @@ import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
 import { getOverviewFraming } from "../state/view";
 import { cursorToWorld } from "./CursorTracker";
-
-// Viewport-relative sprite cap: a single album cover should never dominate
-// more than 18% of the viewport height, even at max zoom on a short window
-// (spec 4.3 / task-8 brief).
-const MAX_SPRITE_VIEWPORT_FRACTION = 0.18;
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -59,7 +59,6 @@ export function AlbumField({
   const sliderT = useMapStore((s) => s.sliderT);
   const { gl, camera } = useThree();
   const invalidate = useThree((s) => s.invalidate);
-  const size = useThree((s) => s.size);
   const reducedMotionRef = useRef(prefersReducedMotion());
   // Tracks the previous frame's hover uniform so we only invalidate() (under
   // frameloop="demand") on an actual change, not every frame.
@@ -176,16 +175,6 @@ export function AlbumField({
     }
   }, [data, sliderT, positionsRef]);
 
-  // Viewport-relative sprite cap: recomputed on mount and whenever the
-  // canvas resizes, from the CSS-px viewport height and the current device
-  // pixel ratio (see the gl_PointSize clamp in shaders/album.ts).
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/immutability -- mutating a three.js ShaderMaterial's uniforms in place is the standard R3F pattern; the material is a long-lived GPU-backed object, not React-owned state.
-    material.uniforms.u_maxSpritePx.value =
-      size.height * MAX_SPRITE_VIEWPORT_FRACTION * gl.getPixelRatio();
-    invalidate();
-  }, [material, size.height, gl, invalidate]);
-
   // Push texture changes into uniforms
   useEffect(() => {
     for (let i = 0; i < MAX_ATLASES; i++) {
@@ -218,6 +207,14 @@ export function AlbumField({
     // curve above is relative to this, not a fixed absolute zoom (task 8
     // fix round 2).
     material.uniforms.u_fitZoom.value = getOverviewFraming().zoom;
+    // Pixel ratio and the viewport-relative sprite cap (see the gl_PointSize
+    // clamp in shaders/album.ts), read live each frame so a dpr change (a
+    // window moved to another display) or a resize can't leave them stale;
+    // renderedSpriteCssSize, which hit testing and label placement use,
+    // reads the same live values.
+    const dpr = gl.getPixelRatio();
+    material.uniforms.u_pixelRatio.value = dpr;
+    material.uniforms.u_maxSpritePx.value = state.size.height * MAX_SPRITE_VIEWPORT_FRACTION * dpr;
     material.uniforms.u_focusedAlbumIndex.value = focusedIndex;
     const mask = material.uniforms.u_neighborMask.value as Float32Array;
     mask.fill(-1);

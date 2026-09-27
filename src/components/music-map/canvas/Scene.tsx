@@ -226,7 +226,11 @@ function SceneInner({ isTouch }: { isTouch: boolean }) {
       <CameraRig zoomRef={zoomRef} />
       <FlyToFocus />
       <CursorTracker cursorRef={cursorRef} hoverRef={hoverRef} positionsRef={positionsRef} />
-      <FocusController onFocusChange={handleFocusChange} positionsRef={positionsRef} />
+      <FocusController
+        onFocusChange={handleFocusChange}
+        positionsRef={positionsRef}
+        hoverRef={hoverRef}
+      />
       {/* Drift is a desktop-only idle flourish: touch has no notion of "the
           user hasn't touched anything for a while" the way a resting mouse
           does, and drifting the camera under a finger mid-gesture would be
