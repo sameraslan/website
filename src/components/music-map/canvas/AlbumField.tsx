@@ -6,7 +6,6 @@ import * as THREE from "three";
 
 import { ALBUM_FRAGMENT_SHADER, ALBUM_VERTEX_SHADER, spriteCssSize } from "../shaders/album";
 import type { MapData, MetadataRecord, PositionRecord } from "../data/types";
-import { clusterMedians, clusterMemberCounts } from "../state/centroids";
 import { clusterColorsFromRegions } from "../state/clusterColors";
 import { markFirstDraw, registerDebug } from "../state/debug";
 import { interpolatePosition } from "../state/projection";
@@ -39,21 +38,6 @@ interface AlbumFieldProps {
    * TooltipDriver read it for hit-testing and tooltip placement.
    */
   positionsRef: React.MutableRefObject<Float32Array>;
-  /**
-   * Flat [x0,y0,...] per-cluster median positions at the current sliderT
-   * (state/centroids.ts clusterMedians, robust to the outlier group),
-   * recomputed alongside positionsRef whenever the slider changes. Read by
-   * the region-labels driver (canvas/RegionLabels.tsx) to place each label.
-   * Length is regionCount * 2; a cluster with no members gets NaN (label
-   * driver hides it).
-   */
-  centroidsRef: React.MutableRefObject<Float32Array>;
-  /**
-   * Member count per clusterId, computed once per data load (membership
-   * doesn't change with sliderT). Read by the region-labels driver to hide
-   * labels for clusters too small to mean anything (task 8 fix round 2).
-   */
-  clusterCountsRef: React.MutableRefObject<Uint32Array>;
   focusedIndex: number;
   neighborIndices: number[];
 }
@@ -69,8 +53,6 @@ export function AlbumField({
   cursorRef,
   hoverRef,
   positionsRef,
-  centroidsRef,
-  clusterCountsRef,
   focusedIndex,
   neighborIndices,
 }: AlbumFieldProps) {
@@ -78,36 +60,6 @@ export function AlbumField({
   const { gl, camera } = useThree();
   const invalidate = useThree((s) => s.invalidate);
   const size = useThree((s) => s.size);
-  const regionCount = data.regions.length;
-  // clusterId per album, rebuilt whenever data changes; read by the
-  // positions effect below to recompute per-cluster centroids on every
-  // sliderT change. Built in its own memo (not inside the geometry memo)
-  // so the ref sync below can happen in an effect rather than during render.
-  const clusterIds8 = useMemo(() => {
-    const n = data.positions.length;
-    const arr = new Uint8Array(n);
-    const metaById = new Map<string, MetadataRecord>();
-    for (const m of data.metadata) metaById.set(m.id, m);
-    for (let i = 0; i < n; i++) {
-      const meta = metaById.get(data.positions[i].id);
-      if (meta) arr[i] = meta.clusterId;
-    }
-    return arr;
-  }, [data]);
-  const clusterIdsRef = useRef<Uint8Array>(clusterIds8);
-  useEffect(() => {
-    clusterIdsRef.current = clusterIds8;
-  }, [clusterIds8]);
-  // Member count per clusterId: fixed per data load (unlike centroids, this
-  // doesn't depend on sliderT), so it's computed once here alongside
-  // clusterIds8 rather than in the per-sliderT-change effect below.
-  const clusterCounts = useMemo(
-    () => clusterMemberCounts(clusterIds8, data.positions.length, regionCount),
-    [clusterIds8, data.positions.length, regionCount],
-  );
-  useEffect(() => {
-    clusterCountsRef.current = clusterCounts;
-  }, [clusterCounts, clusterCountsRef]);
   const reducedMotionRef = useRef(prefersReducedMotion());
   // Tracks the previous frame's hover uniform so we only invalidate() (under
   // frameloop="demand") on an actual change, not every frame.
@@ -161,8 +113,8 @@ export function AlbumField({
     pointsGeom.instanceCount = n;
 
     const atlasLoadedFloats = new Float32Array(MAX_ATLASES);
-    // Dot colours come from the data (regions.json, by clusterId), the same
-    // source the region labels use, so dots and labels always agree.
+    // Dot colours come from the data (regions.json `color`, by clusterId),
+    // so the palette is set in one place (pipeline/config.yaml).
     const clusterColorsVec3 = clusterColorsFromRegions(data.regions, 8).map(
       (c) => new THREE.Vector3(...c),
     );
@@ -222,11 +174,7 @@ export function AlbumField({
       arr[i * 2] = x;
       arr[i * 2 + 1] = y;
     }
-    // Recompute per-cluster label anchors (medians) alongside positions, so
-    // the region labels driver always reads anchors consistent with the current
-    // sliderT rather than a stale value from regions.json.
-    centroidsRef.current = clusterMedians(arr, clusterIdsRef.current, n, regionCount);
-  }, [data, sliderT, positionsRef, centroidsRef, regionCount]);
+  }, [data, sliderT, positionsRef]);
 
   // Viewport-relative sprite cap: recomputed on mount and whenever the
   // canvas resizes, from the CSS-px viewport height and the current device
