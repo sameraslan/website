@@ -4,11 +4,12 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { getFullBounds } from "../state/bounds";
+import { interpolatedPositions } from "../state/bounds";
 import { bumpCommitCounter, registerDebug } from "../state/debug";
 import { setInvalidate } from "../state/invalidate";
 import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
+import { getOverviewFraming } from "../state/view";
 import { AlbumField } from "./AlbumField";
 import { AmbientDrift } from "./AmbientDrift";
 import { useAtlasTextures } from "./AtlasManager";
@@ -17,6 +18,7 @@ import { CameraRig } from "./CameraRig";
 import { CursorTracker, screenToWorld } from "./CursorTracker";
 import { FlyToFocus } from "./FlyToFocus";
 import { FocusController } from "./FocusController";
+import { InitialFrame } from "./InitialFrame";
 import { RegionLabels } from "./RegionLabels";
 import { TooltipDriver } from "./TooltipDriver";
 // Region washes deleted (see docs/superpowers/specs/2026-09-26-website-improvement-design.md
@@ -72,21 +74,22 @@ function DebugExpose() {
           const [x, y] = screenToWorld(clientX, clientY, rect, camera);
           return { x, y };
         },
-        getCloudCornersNdc: () => {
+        getFitState: () => {
+          const f = getOverviewFraming();
+          return { center: { ...f.center }, fitZoom: f.zoom, bounds: { ...f.bounds } };
+        },
+        getNdcInsideFraction: () => {
           const s = useMapStore.getState();
           if (!s.data || s.data.positions.length === 0) return null;
-          const b = getFullBounds(s.data, s.sliderT);
-          const corners: [number, number][] = [
-            [b.minX, b.minY],
-            [b.minX, b.maxY],
-            [b.maxX, b.minY],
-            [b.maxX, b.maxY],
-          ];
-          return corners.map(([x, y]) => {
-            const v = new THREE.Vector3(x, y, 0);
-            v.project(camera);
-            return { x: v.x, y: v.y };
-          });
+          const xy = interpolatedPositions(s.data, s.sliderT);
+          const v = new THREE.Vector3();
+          const n = xy.length / 2;
+          let inside = 0;
+          for (let i = 0; i < n; i++) {
+            v.set(xy[i * 2], xy[i * 2 + 1], 0).project(camera);
+            if (Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1) inside++;
+          }
+          return inside / n;
         },
       }),
     [camera],
@@ -167,7 +170,7 @@ function SceneInner() {
   // AlbumField whenever sliderT changes; read by CursorTracker (hit-testing)
   // and TooltipDriver (tooltip placement).
   const positionsRef = useRef<Float32Array>(new Float32Array(0));
-  // Flat [x0,y0,...] per-cluster mean positions at the current sliderT,
+  // Flat [x0,y0,...] per-cluster median positions at the current sliderT,
   // indexed by clusterId; owned and recomputed by AlbumField whenever
   // positionsRef is rebuilt, read every frame by the RegionLabels driver.
   const centroidsRef = useRef<Float32Array>(new Float32Array(0));
@@ -209,6 +212,10 @@ function SceneInner() {
     <>
       <DebugExpose />
       <InvalidateBridge />
+      {/* Snaps the camera to the fitted overview once per data load and
+          publishes the framing (state/view.ts) that CameraRig, AlbumField,
+          RegionLabels, AtlasManager and CameraBounds read. */}
+      <InitialFrame />
       <CameraRig zoomRef={zoomRef} />
       <FlyToFocus />
       <CursorTracker cursorRef={cursorRef} hoverRef={hoverRef} positionsRef={positionsRef} />

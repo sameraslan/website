@@ -4,34 +4,10 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { cloudCenter, fitZoom, getFullBounds } from "../state/bounds";
 import { easeOutCubic, interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
 import { TUNING } from "../state/tuning";
-import { getOverviewFraming, setOverviewFraming } from "../state/view";
-import type { MapData } from "../data/types";
-
-const MAX_ZOOM = 5.0;
-
-/**
- * Computes the "whole cloud visible" framing (fitZoom + centre) for the
- * current sliderT and stores it in state/view.ts, without touching the
- * camera. Read by CameraRig (dynamic MIN_ZOOM), shaders/album.ts's sprite
- * size curve (via AlbumField's u_fitZoom), canvas/RegionLabels.tsx (label
- * fade), and canvas/AtlasManager.tsx (lazy-load gate).
- */
-function computeAndStoreOverviewFraming(
-  data: MapData,
-  sliderT: number,
-  cam: THREE.OrthographicCamera,
-): { zoom: number; center: { x: number; y: number } } {
-  const cloud = getFullBounds(data, sliderT);
-  const center = cloudCenter(cloud);
-  const frustum = { left: cam.left, right: cam.right, top: cam.top, bottom: cam.bottom };
-  const zoom = Math.min(fitZoom(cloud, frustum), MAX_ZOOM);
-  setOverviewFraming({ zoom, center });
-  return { zoom, center };
-}
+import { getOverviewFraming } from "../state/view";
 
 interface Animation {
   startMs: number;
@@ -104,29 +80,9 @@ export function FlyToFocus() {
     didInit.current = true;
 
     if (!focusedId) {
-      if (!everFocused.current) {
-        // Fresh load, nothing ever focused: frame the camera on the whole
-        // album cloud (fitZoom + cloudCenter), not the world origin and not
-        // a fixed default zoom, so the map never opens showing only a
-        // fragment of the cloud (task 8 fix round 2: the old median-snap
-        // only moved the camera's position, leaving the fixed zoom=2.4
-        // frustum far too narrow once the real, unsampled dataset's extent
-        // turned out much wider). One-time and instant: no animation, no
-        // focus, no mode change.
-        if (firstRun) {
-          const { zoom, center } = computeAndStoreOverviewFraming(
-            data,
-            useMapStore.getState().sliderT,
-            cam,
-          );
-          cam.position.x = center.x;
-          cam.position.y = center.y;
-          cam.zoom = zoom;
-          cam.updateProjectionMatrix();
-          invalidate();
-        }
-        return;
-      }
+      // Fresh load, nothing ever focused: leave the camera where
+      // InitialFrame put it (the fitted overview framing).
+      if (!everFocused.current) return;
       const here = new THREE.Vector2(cam.position.x, cam.position.y);
       anim.current = {
         startMs: performance.now(),
@@ -199,17 +155,6 @@ export function FlyToFocus() {
     };
     invalidate();
   }, [focusedId, data, camera, invalidate]);
-
-  // Recompute the fitted overview framing (fitZoom + centre) whenever the
-  // slider moves, since each stop has its own extent, so the "reset view" /
-  // min-zoom logic (CameraRig, RegionLabels, AtlasManager) always matches
-  // the current stop. This never moves the camera itself: only the one-time
-  // initial snap above and the focus-release glide do that.
-  useEffect(() => {
-    if (!data) return;
-    const cam = camera as THREE.OrthographicCamera;
-    computeAndStoreOverviewFraming(data, sliderT, cam);
-  }, [data, sliderT, camera]);
 
   // sliderT moves every album's world position, including the focused one.
   useEffect(() => {

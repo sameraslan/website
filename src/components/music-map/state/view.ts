@@ -1,29 +1,36 @@
+import type { Bounds } from "./bounds";
 import { TUNING } from "./tuning";
 
 /**
- * The fitted "whole cloud visible" camera framing: the zoom at which the
- * entire album cloud fits the frustum with margin (state/bounds.ts's
- * fitZoom), and the world-space centre it should be framed around
- * (cloudCenter). Computed once positions load and recomputed (without
- * moving the camera) whenever sliderT changes, since each slider stop has
- * its own extent.
+ * The fitted overview framing: the album cloud's percentile bounds
+ * (state/bounds.ts getCloudBounds), their midpoint (cloudCenter), and the
+ * zoom at which that box fits the frustum with margin (fitZoom). Written by
+ * canvas/InitialFrame.tsx once per data load and again (without moving the
+ * camera) on every sliderT change, since each slider stop has its own extent.
+ *
+ * This is the single published source of the fitted zoom. Consumers:
+ * CameraRig (MIN_ZOOM = 0.8 * zoom), AlbumField (u_fitZoom), the
+ * RegionLabels driver (label fade), AtlasManager (lazy-load gate),
+ * CameraBounds (idle nudge box) and FlyToFocus (focus-release zoom).
  *
  * Plain module-level bridge, not Zustand state, mirroring state/invalidate.ts
- * and state/tooltipEl.ts: CameraRig reads the current zoom synchronously
- * inside wheel-event handlers and per-frame closures (for its dynamic
- * MIN_ZOOM), not through a React subscription.
+ * and state/tooltipEl.ts: consumers read it synchronously inside wheel
+ * handlers and per-frame closures, not through a React subscription.
  *
- * `TUNING.overviewZoom` is only the fallback used before the first real
- * computation lands (i.e. before any MapData has loaded).
+ * `TUNING.overviewZoom` is only the fallback before any MapData has loaded;
+ * InitialFrame writes the real value in a layout effect, before the first
+ * frame is drawn.
  */
 export interface OverviewFraming {
   zoom: number;
   center: { x: number; y: number };
+  bounds: Bounds;
 }
 
 let framing: OverviewFraming = {
   zoom: TUNING.overviewZoom,
   center: { x: 0, y: 0 },
+  bounds: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
 };
 
 export function setOverviewFraming(next: OverviewFraming): void {

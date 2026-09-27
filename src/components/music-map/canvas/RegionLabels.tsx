@@ -8,7 +8,7 @@ import type { RegionRecord } from "../data/types";
 import { getRegionLabelEl } from "../state/regionLabelEls";
 import { getOverviewFraming } from "../state/view";
 
-// Labels sit 14 CSS px below the centroid so they don't cover the densest
+// Labels sit 14 CSS px below the anchor so they don't cover the densest
 // dots at that region's core (spec 4.3 / task-8 brief).
 const LABEL_OFFSET_Y_PX = 14;
 
@@ -21,7 +21,7 @@ const MIN_MEMBERS_FOR_LABEL = 40;
 interface RegionLabelsProps {
   regions: RegionRecord[];
   /**
-   * Flat [x0,y0,...] per-cluster mean positions at the current sliderT,
+   * Flat [x0,y0,...] per-cluster median positions at the current sliderT,
    * owned and recomputed by AlbumField (see centroidsRef there). Indexed by
    * region.clusterId, matching regions.json's cluster ordering.
    */
@@ -34,7 +34,7 @@ interface RegionLabelsProps {
 
 /**
  * Lives inside the canvas tree, mounted by Scene.tsx alongside TooltipDriver.
- * Every rendered frame it projects each region's current centroid with
+ * Every rendered frame it projects each region's current median anchor with
  * camera.project, converts to CSS px using a cached canvas rect, and writes
  * style.transform/opacity directly onto the region's DOM <span> (rendered by
  * overlays/RegionLabels.tsx, registered via state/regionLabelEls.ts). No

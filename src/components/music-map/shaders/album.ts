@@ -1,3 +1,23 @@
+/**
+ * Exponent P of the sprite size curve
+ * `cssSize = clamp(10 * (zoom / fitZoom)^P, 4, 90)`.
+ *
+ * The real fitZoom is about 1.01 at the default sliderT 0.6 (percentile
+ * framing against the fixed 1.5 x 1.1 world-unit frustum, so it does not
+ * depend on the viewport size). At TUNING.focusZoom = 4 the ratio is
+ * 4 / 1.01 = 3.96, and a readable focused cover needs >= 60px, i.e.
+ * 3.96^P >= 6, P >= ln(6) / ln(3.96) = 1.79 / 1.38 = 1.30. Aiming for the
+ * brief's 6.5x headroom gives ln(6.5) / ln(3.96) = 1.87 / 1.38 = 1.36, so
+ * P = 1.4, which yields:
+ *   1.0x fit: 10px (overview discs)
+ *   1.9x fit: 24.6px (crossfade starts; AtlasManager's load gate)
+ *   2.5x fit: 36px (covers mostly faded in)
+ *   2.7x fit: 40px (crossfade complete)
+ *   3.96x fit (zoom 4): 68.8px (focused cover)
+ *   4.95x fit (zoom 5): 94px, clamped to 90px
+ */
+export const SIZE_CURVE_POWER = 1.4;
+
 export const ALBUM_VERTEX_SHADER = /* glsl */ `
   attribute vec2 a_pos_audio;
   attribute vec2 a_pos_balanced;
@@ -56,17 +76,12 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
     vec4 mvPos = modelViewMatrix * vec4(worldPos, 0.0, 1.0);
     gl_Position = projectionMatrix * mvPos;
 
-    // Power curve of the real camera zoom relative to u_fitZoom (the zoom at
-    // which the whole album cloud fits the frustum), not a fixed absolute
-    // zoom: the overview always reads as small tinted discs regardless of
-    // how far out fitting the whole cloud actually requires, and covers only
-    // become legible once the user zooms in relative to that fit (task 8
-    // fix round 2; round 1 used a fixed "2.4" that stopped matching once the
-    // real dataset's fit zoom turned out to be much smaller). Ratios: ~10px
-    // at the overview (zoom == fitZoom), ~24px at 2.1x fit, ~40px at 3.2x
-    // fit, ~69px at 5x fit. Clamped to [4, 90] CSS px before the scale/dpr/
-    // ring multipliers below.
-    float baseSize = clamp(10.0 * pow(u_zoom / max(u_fitZoom, 0.0001), 1.2), 4.0, 90.0);  // px
+    // Power curve of the real camera zoom relative to u_fitZoom (the fitted
+    // overview zoom, state/view.ts), so the overview always reads as ~10px
+    // tinted discs and covers become legible as the user zooms in relative
+    // to that fit. See SIZE_CURVE_POWER below for the exponent's arithmetic.
+    // Clamped to [4, 90] CSS px before the scale/dpr/ring multipliers below.
+    float baseSize = clamp(10.0 * pow(u_zoom / max(u_fitZoom, 0.0001), ${SIZE_CURVE_POWER.toFixed(2)}), 4.0, 90.0);  // px
     float scale = 1.0;
     v_dim = 0.0;
     if (u_focusedAlbumIndex >= 0.0) {

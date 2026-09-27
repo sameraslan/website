@@ -8,97 +8,74 @@ export interface Bounds {
   maxY: number;
 }
 
-let cacheKey = "";
-let cached: Bounds | null = null;
+/**
+ * Percentiles that define the album cloud's framing box. The real data has a
+ * far outlier group (nearly all in the "ambient" cluster, near x = -3.7,
+ * y = -2.3 once normalized) holding 2.0% to 2.45% of all albums at slider
+ * positions 0.25 to 0.75 (83 to 100 of 4,081 albums). A 2nd percentile lands
+ * right on that group's edge (p2 x = -1.73 at sliderT 0.6, -2.19 at 0.5),
+ * so a p2..p98 box would still frame the outliers and shrink the bulk into a
+ * corner. The 3rd/97th percentiles clear the group at every slider position
+ * while trimming only about 1% of the bulk per side.
+ */
+export const FRAME_PERCENTILE_LO = 0.03;
+export const FRAME_PERCENTILE_HI = 0.97;
+
+/** Zoom range the fitted overview zoom is clamped to (CameraRig's MAX_ZOOM is 5). */
+export const FIT_ZOOM_MIN = 0.5;
+export const FIT_ZOOM_MAX = 5;
 
 /**
- * Robust, **median-centered** bounding box of the album cloud's dense mass at
- * the current slider position.
- *
- * Each slider stop is normalized independently (median → origin, p5..p95 →
- * ±0.55), but the balanced/mood projections are heavily skewed: a long tail of
- * outliers drags a raw p2..p98 box's *center* far off into empty space (e.g.
- * (-1.6, -0.8) at sliderT 0.6) even though the dense bulk still sits at the
- * origin. Centering the camera on such a box frames a sparse void with a lone
- * album in it.
- *
- * So we center on the **median** (where the dense mass actually is) and size
- * the box from a **symmetric inter-percentile spread** around that median,
- * which is robust to the skew. The result is the populated core the camera
- * should stay within — outliers fall outside it and are never framed.
- *
- * Bounds shift with sliderT (positions interpolate between stops), so the box
- * is keyed on (count, sliderT) and memoized: the slider changes rarely
- * relative to the 60fps clamp loop that reads this.
+ * Percentile bounding box of a flat `[x0, y0, x1, y1, ...]` position array
+ * (the layout AlbumField's positionsRef uses). Sorts copies, never the
+ * caller's array. Percentile `q` reads the sorted element at
+ * `floor(q * (n - 1))`.
  */
-export function getMainBounds(
-  data: MapData,
-  sliderT: number,
-  lo = 0.1,
-  hi = 0.9,
+export function percentileBounds(
+  xy: Float32Array,
+  lo = FRAME_PERCENTILE_LO,
+  hi = FRAME_PERCENTILE_HI,
 ): Bounds {
-  const n = data.positions.length;
-  const key = `${n}:${sliderT.toFixed(3)}:${lo}:${hi}`;
-  if (key === cacheKey && cached) return cached;
-
-  const xs = new Float64Array(n);
-  const ys = new Float64Array(n);
+  const n = Math.floor(xy.length / 2);
+  if (n === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  const xs = new Float32Array(n);
+  const ys = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    const p = data.positions[i];
-    const [x, y] = interpolatePosition(p.audio, p.balanced, p.mood, sliderT);
-    xs[i] = x;
-    ys[i] = y;
+    xs[i] = xy[i * 2];
+    ys[i] = xy[i * 2 + 1];
   }
   // Typed-array sort is numeric by default.
   xs.sort();
   ys.sort();
-
-  const at = (arr: Float64Array, q: number) =>
+  const at = (arr: Float32Array, q: number) =>
     arr[Math.min(n - 1, Math.max(0, Math.floor(q * (n - 1))))];
-
-  // Median center + symmetric half-spread (inter-percentile range / 2). This
-  // ignores the skewed tail that would otherwise pull the box off-center.
-  const cx = at(xs, 0.5);
-  const cy = at(ys, 0.5);
-  const halfX = (at(xs, hi) - at(xs, lo)) / 2;
-  const halfY = (at(ys, hi) - at(ys, lo)) / 2;
-
-  cached = {
-    minX: cx - halfX,
-    maxX: cx + halfX,
-    minY: cy - halfY,
-    maxY: cy + halfY,
-  };
-  cacheKey = key;
-  return cached;
+  return { minX: at(xs, lo), maxX: at(xs, hi), minY: at(ys, lo), maxY: at(ys, hi) };
 }
 
-/**
- * True (untrimmed) bounding box of every album's position at the given
- * sliderT. Unlike `getMainBounds` (median-centered, robust to outliers, used
- * only for the idle-camera nudge), this literally includes outliers, so the
- * "whole cloud is visible" guarantee `fitZoom`/`cloudCenter` below provide is
- * real. Used only for the one-time initial camera framing.
- */
-export function getFullBounds(data: MapData, sliderT: number): Bounds {
+/** Flat `[x0, y0, ...]` interpolated positions of every album at `sliderT`. */
+export function interpolatedPositions(data: MapData, sliderT: number): Float32Array {
   const n = data.positions.length;
-  if (n === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
+  const out = new Float32Array(n * 2);
   for (let i = 0; i < n; i++) {
     const p = data.positions[i];
     const [x, y] = interpolatePosition(p.audio, p.balanced, p.mood, sliderT);
-    if (x < minX) minX = x;
-    if (x > maxX) maxX = x;
-    if (y < minY) minY = y;
-    if (y > maxY) maxY = y;
+    out[i * 2] = x;
+    out[i * 2 + 1] = y;
   }
-  return { minX, maxX, minY, maxY };
+  return out;
 }
 
-/** Midpoint of a bounding box. */
+/**
+ * The album cloud's framing box at `sliderT`: the percentile bounds of the
+ * interpolated positions. Used for the overview framing (fitZoom and
+ * cloudCenter) and for CameraBounds' idle nudge, so both keep the bulk of
+ * the cloud on screen rather than its outliers.
+ */
+export function getCloudBounds(data: MapData, sliderT: number): Bounds {
+  return percentileBounds(interpolatedPositions(data, sliderT));
+}
+
+/** Midpoint of a bounding box (the framing centre when given percentile bounds). */
 export function cloudCenter(cloud: Bounds): { x: number; y: number } {
   return { x: (cloud.minX + cloud.maxX) / 2, y: (cloud.minY + cloud.maxY) / 2 };
 }
@@ -111,24 +88,19 @@ export interface FitFrustum {
 }
 
 /**
- * The largest camera zoom at which the whole `cloud` box, padded by `margin`
- * of its own size on each side, fits inside `frustum`. Used to frame the
- * overview camera on load so the entire album cloud is visible (task 8 fix
- * round 2): the previous fixed initial zoom (2.4) combined with a
- * median-snap-only initial position showed only a corner of the cloud once
- * the full, unsampled dataset landed (positions span roughly [-1.68, 0.26] x
- * [-1.23, 0.18] at the balanced stop, far wider than the 2.4x frustum).
+ * The largest camera zoom at which the `cloud` box, padded by `margin` of its
+ * own size on each side, fits inside `frustum`, clamped to
+ * [FIT_ZOOM_MIN, FIT_ZOOM_MAX]:
+ * `min((right - left) / (w * (1 + 2 * margin)), (top - bottom) / (h * (1 + 2 * margin)))`.
  */
 export function fitZoom(cloud: Bounds, frustum: FitFrustum, margin = 0.08): number {
   // Guard against a degenerate (zero-size) cloud so a single-point dataset
-  // never divides by zero; never hit by the real album data.
+  // never divides by zero; the clamp then caps it at FIT_ZOOM_MAX.
   const width = Math.max(cloud.maxX - cloud.minX, 1e-6);
   const height = Math.max(cloud.maxY - cloud.minY, 1e-6);
-  const paddedWidth = width * (1 + 2 * margin);
-  const paddedHeight = height * (1 + 2 * margin);
-  const zoomX = (frustum.right - frustum.left) / paddedWidth;
-  const zoomY = (frustum.top - frustum.bottom) / paddedHeight;
-  return Math.min(zoomX, zoomY);
+  const zoomX = (frustum.right - frustum.left) / (width * (1 + 2 * margin));
+  const zoomY = (frustum.top - frustum.bottom) / (height * (1 + 2 * margin));
+  return Math.max(FIT_ZOOM_MIN, Math.min(FIT_ZOOM_MAX, Math.min(zoomX, zoomY)));
 }
 
 export interface ViewportWorldRect {
@@ -146,7 +118,7 @@ export interface OrthoFrustum {
 
 /**
  * Half-width/half-height of the visible viewport, in the same world units as
- * the camera's own frustum and `getMainBounds`'s box. `THREE.Viewport`'s
+ * the camera's own frustum and `getCloudBounds`'s box. `THREE.Viewport`'s
  * `getCurrentViewport` is built for perspective cameras and returns figures
  * in the wrong scale for this manual orthographic camera, which was the root
  * cause of `CameraBounds` treating an in-view album cloud as "off screen".

@@ -6,7 +6,7 @@ import * as THREE from "three";
 
 import { ALBUM_FRAGMENT_SHADER, ALBUM_VERTEX_SHADER, CLUSTER_COLORS_RGB } from "../shaders/album";
 import type { MapData, MetadataRecord, PositionRecord } from "../data/types";
-import { clusterCentroids, clusterMemberCounts } from "../state/centroids";
+import { clusterMedians, clusterMemberCounts } from "../state/centroids";
 import { markFirstDraw } from "../state/debug";
 import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
@@ -37,7 +37,8 @@ interface AlbumFieldProps {
    */
   positionsRef: React.MutableRefObject<Float32Array>;
   /**
-   * Flat [x0,y0,...] per-cluster mean positions at the current sliderT,
+   * Flat [x0,y0,...] per-cluster median positions at the current sliderT
+   * (state/centroids.ts clusterMedians, robust to the outlier group),
    * recomputed alongside positionsRef whenever the slider changes. Read by
    * the region-labels driver (canvas/RegionLabels.tsx) to place each label.
    * Length is regionCount * 2; a cluster with no members gets NaN (label
@@ -168,7 +169,8 @@ export function AlbumField({
         u_sliderT: { value: 0.5 },
         u_zoomT: { value: 0 },
         u_zoom: { value: 2.4 },
-        u_fitZoom: { value: 2.4 },
+        // Published by InitialFrame before the first frame; never 0.
+        u_fitZoom: { value: getOverviewFraming().zoom },
         u_pixelRatio: { value: gl.getPixelRatio() },
         u_focusedAlbumIndex: { value: -1 },
         u_neighborMask: { value: new Float32Array(12).fill(-1) },
@@ -205,10 +207,10 @@ export function AlbumField({
       arr[i * 2] = x;
       arr[i * 2 + 1] = y;
     }
-    // Recompute per-cluster centroids alongside positions, so the region
-    // labels driver always reads centroids consistent with the current
+    // Recompute per-cluster label anchors (medians) alongside positions, so
+    // the region labels driver always reads anchors consistent with the current
     // sliderT rather than a stale value from regions.json.
-    centroidsRef.current = clusterCentroids(arr, clusterIdsRef.current, n, regionCount);
+    centroidsRef.current = clusterMedians(arr, clusterIdsRef.current, n, regionCount);
   }, [data, sliderT, positionsRef, centroidsRef, regionCount]);
 
   // Viewport-relative sprite cap: recomputed on mount and whenever the

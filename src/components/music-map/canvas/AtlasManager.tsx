@@ -24,9 +24,9 @@ loader.setOptions({ imageOrientation: "none", premultiplyAlpha: "none" });
 // Expressed as a multiple of the fitted overview zoom (task 8 fix round 2),
 // not a fixed absolute zoom (round 1's "3.0" assumed a fixed 2.4 overview
 // zoom, which stopped matching once the real dataset's fit zoom turned out
-// much smaller): just below where the shader's crossfade starts (1.6x fit,
-// see RegionLabels and shaders/album.ts), so no atlas request lands before
-// the user has actually zoomed in.
+// much smaller): at 1.9x fit the sprite is about 24.6px, where the shader's
+// disc-to-cover crossfade starts (see SIZE_CURVE_POWER in shaders/album.ts),
+// so no atlas request lands before the user has actually zoomed in.
 const ATLAS_ZOOM_THRESHOLD_FIT_MULTIPLE = 1.9;
 
 function configureAtlasTexture(bitmap: ImageBitmap): THREE.Texture {

@@ -4,8 +4,9 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { getMainBounds, nudgeVector, viewportWorldRect } from "../state/bounds";
+import { nudgeVector, viewportWorldRect } from "../state/bounds";
 import { useMapStore } from "../state/store";
+import { getOverviewFraming } from "../state/view";
 
 // How hard to pull the camera back toward the album box each frame. Soft so a
 // manual over-pan eases back in instead of snapping, and so ambient drift sits
@@ -43,7 +44,6 @@ export function CameraBounds() {
     lastInteraction: useMapStore.getState().lastInteraction,
     lastCameraGrab: useMapStore.getState().lastCameraGrab,
     dragging: useMapStore.getState().dragging,
-    sliderT: useMapStore.getState().sliderT,
   });
   useEffect(
     () =>
@@ -52,7 +52,6 @@ export function CameraBounds() {
         stateRef.current.lastInteraction = s.lastInteraction;
         stateRef.current.lastCameraGrab = s.lastCameraGrab;
         stateRef.current.dragging = s.dragging;
-        stateRef.current.sliderT = s.sliderT;
       }),
     [],
   );
@@ -61,7 +60,7 @@ export function CameraBounds() {
     const data = useMapStore.getState().data;
     if (!data || data.positions.length === 0) return;
 
-    const { mode, lastInteraction, lastCameraGrab, dragging, sliderT } = stateRef.current;
+    const { mode, lastInteraction, lastCameraGrab, dragging } = stateRef.current;
     // Only constrain the ambient/idle camera. Focus fly-tos (mode "focus"),
     // an active drag, and any recent camera grab (drag or wheel) own the
     // camera while they run/settle.
@@ -73,7 +72,10 @@ export function CameraBounds() {
 
     const cam = state.camera as THREE.OrthographicCamera;
     const viewport = viewportWorldRect(cam);
-    const cloud = getMainBounds(data, sliderT);
+    // The same percentile bounds the overview framing fits to (published by
+    // InitialFrame, recomputed on every sliderT change), so the idle nudge
+    // keeps the bulk of the cloud on screen, not its outliers.
+    const cloud = getOverviewFraming().bounds;
     const nudge = nudgeVector(
       { x: cam.position.x, y: cam.position.y },
       viewport,

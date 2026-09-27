@@ -34,13 +34,20 @@ export interface DebugGetters {
    */
   getWorldAt?(clientX: number, clientY: number): { x: number; y: number } | null;
   /**
-   * NDC-projected (camera.project) coordinates of the four corners of the
-   * true, untrimmed album cloud bounding box (state/bounds.ts's
-   * getFullBounds) at the current sliderT. Verification-only: lets
-   * Playwright confirm the whole cloud is actually visible at the initial
-   * framing without duplicating the fit-zoom math in the test script.
+   * The published overview framing (state/view.ts): the percentile cloud
+   * bounds, their midpoint and the fitted zoom. Verification-only: after
+   * load, getCameraState() should equal { ...center, zoom: fitZoom }.
    */
-  getCloudCornersNdc?(): { x: number; y: number }[] | null;
+  getFitState?(): {
+    center: { x: number; y: number };
+    fitZoom: number;
+    bounds: { minX: number; maxX: number; minY: number; maxY: number };
+  };
+  /**
+   * Fraction of all albums whose current position projects inside NDC
+   * [-1, 1] on both axes through the live camera. Verification-only.
+   */
+  getNdcInsideFraction?(): number | null;
   /**
    * performance.now() timestamp of the first time AlbumField rendered with
    * real data, i.e. the first frame where dots could plausibly be on screen.

@@ -20,11 +20,10 @@ const MAX_ZOOM = 5.0;
 // means anything now the overview zoom itself varies with the dataset).
 const MIN_ZOOM_FIT_MULTIPLE = 0.8;
 
-/** Dynamic zoom-out floor: 0.8x the fitted overview zoom, never above
- * MAX_ZOOM (a fit zoom above 5 would otherwise invert the [min, max] range). */
+/** Dynamic zoom-out floor: 0.8x the fitted overview zoom. fitZoom is already
+ * clamped to [0.5, 5] (state/bounds.ts), so this never exceeds MAX_ZOOM. */
 function getMinZoom(): number {
-  const fitZoom = Math.min(getOverviewFraming().zoom, MAX_ZOOM);
-  return MIN_ZOOM_FIT_MULTIPLE * fitZoom;
+  return MIN_ZOOM_FIT_MULTIPLE * getOverviewFraming().zoom;
 }
 const PAN_SENSITIVITY = 0.0025;
 // Trackpad pinch (ctrlKey) uses half the sensitivity of a mouse wheel notch
