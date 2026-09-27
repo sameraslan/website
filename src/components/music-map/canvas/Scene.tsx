@@ -1,10 +1,11 @@
 "use client";
 
 import { Canvas, useThree } from "@react-three/fiber";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
-import { registerDebug } from "../state/debug";
+import { bumpCommitCounter, registerDebug } from "../state/debug";
+import { setInvalidate } from "../state/invalidate";
 import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
 import { AlbumField } from "./AlbumField";
@@ -48,12 +49,25 @@ function DebugExpose() {
   return null;
 }
 
+// Bridges R3F's demand-mode invalidate() out to state/invalidate.ts, so DOM
+// overlays outside the <Canvas> (the Slider, and the Zustand store's
+// setSliderT) can request a render without importing @react-three/fiber.
+function InvalidateBridge() {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    setInvalidate(invalidate);
+    return () => setInvalidate(null);
+  }, [invalidate]);
+  return null;
+}
+
 export function Scene() {
   const data = useMapStore((s) => s.data);
   if (!data) return null;
   return (
     <Canvas
       orthographic
+      frameloop="demand"
       camera={{
         manual: true,
         zoom: 2.4,
@@ -65,7 +79,8 @@ export function Scene() {
         top: 0.55,
         bottom: -0.55,
       }}
-      gl={{ alpha: false, antialias: true }}
+      gl={{ alpha: false, antialias: false }}
+      dpr={[1, 2]}
       style={{ position: "absolute", inset: 0 }}
       onCreated={({ gl }) => {
         // Our ShaderMaterials write sRGB-authored colors straight to the
@@ -89,29 +104,46 @@ export function Scene() {
 
 function SceneInner() {
   const data = useMapStore((s) => s.data)!;
-  const [zoomT, setZoomT] = useState(0);
-  const [cursorWorld, setCursorWorld] = useState<[number, number] | null>(null);
+  const invalidate = useThree((s) => s.invalidate);
+  // Hot-path camera/cursor state lives in refs, not React state: pointermove
+  // and zoom frames must never trigger a SceneInner re-render (see
+  // docs/superpowers/notes/2026-09-26-music-map-perf-audit.md items 2a/2b).
+  // CameraRig writes zoomRef.current every frame from the real camera.zoom;
+  // CursorTracker writes cursorRef.current on pointermove. AlbumField reads
+  // both in its own useFrame to set uniforms.
+  const zoomRef = useRef(2.4);
+  const cursorRef = useRef<[number, number] | null>(null);
   const [focus, setFocus] = useState<{ index: number; neighbors: number[] }>({
     index: -1,
     neighbors: [],
   });
-  // Map zoomT (normalized [0, 1]) back to an approximate camera.zoom so the
-  // atlas loader's threshold reads identically to the live camera state.
-  const camZoom = 0.5 + zoomT * 7.5;
-  const textures = useAtlasTextures(data.atlasUrls, camZoom);
+  const textures = useAtlasTextures(data.atlasUrls);
 
   const handleFocusChange = useCallback(
-    (i: number, n: number[]) => setFocus({ index: i, neighbors: n }),
-    [],
+    (i: number, n: number[]) => {
+      setFocus({ index: i, neighbors: n });
+      // Focus changes are rare (click/escape), but under frameloop="demand"
+      // the resulting prop change into AlbumField's useFrame closure still
+      // needs an explicit render to actually draw.
+      invalidate();
+    },
+    [invalidate],
   );
+
+  // Dev-only: counts SceneInner commits so ui-check's profile-moves.mjs can
+  // assert pointermove causes zero React re-renders inside the canvas tree.
+  useEffect(() => {
+    bumpCommitCounter();
+  });
 
   return (
     <>
       <DebugExpose />
-      <CameraRig onZoomT={setZoomT} />
+      <InvalidateBridge />
+      <CameraRig zoomRef={zoomRef} />
       <FlyToFocus />
       <ProjectionBridge />
-      <CursorTracker onWorld={setCursorWorld} />
+      <CursorTracker cursorRef={cursorRef} />
       <FocusController onFocusChange={handleFocusChange} />
       <AmbientDrift />
       {/* region washes removed; the paper clear color matches the site so the
@@ -121,8 +153,8 @@ function SceneInner() {
       <AlbumField
         data={data}
         atlasTextures={textures}
-        zoomT={zoomT}
-        cursorWorld={cursorWorld}
+        zoomRef={zoomRef}
+        cursorRef={cursorRef}
         focusedIndex={focus.index}
         neighborIndices={focus.neighbors}
       />

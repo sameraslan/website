@@ -25,6 +25,14 @@ export interface DebugGetters {
 declare global {
   interface Window {
     __mapDebug?: DebugGetters;
+    /**
+     * Dev-only counter of SceneInner React commits. Bumped once per commit
+     * from a no-deps useEffect in Scene.tsx. Used by
+     * scripts/ui-check/profile-moves.mjs to verify pointermove no longer
+     * triggers React re-renders inside the canvas tree once cursor/zoom
+     * state moves to refs (see docs/superpowers/sdd task-5).
+     */
+    __mapCommits?: number;
   }
 }
 
@@ -35,4 +43,11 @@ export function registerDebug(getters: DebugGetters): () => void {
   return () => {
     delete window.__mapDebug;
   };
+}
+
+/** Bumps the dev-only commit counter. No-op in production. */
+export function bumpCommitCounter(): void {
+  if (process.env.NODE_ENV === "production") return;
+  if (typeof window === "undefined") return;
+  window.__mapCommits = (window.__mapCommits ?? 0) + 1;
 }

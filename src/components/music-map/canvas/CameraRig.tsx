@@ -14,14 +14,18 @@ const MAX_ZOOM = 5.0;
 const PAN_SENSITIVITY = 0.0025;
 const ZOOM_SENSITIVITY = 0.0015;
 const FRICTION = 0.92;
+// Below this squared speed (world units/frame, squared) inertia is treated as
+// settled: stop nudging the camera and stop re-invalidating every frame, or
+// frameloop="demand" would never go idle after a pan.
+const VELOCITY_EPSILON_SQ = 1e-10;
 
-export function CameraRig({ onZoomT }: { onZoomT?: (t: number) => void }) {
+export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number> }) {
   const camera = useThree((s) => s.camera) as THREE.OrthographicCamera;
   const gl = useThree((s) => s.gl);
+  const invalidate = useThree((s) => s.invalidate);
   const dragging = useRef(false);
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
   const velocity = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const lastZoomT = useRef(-1);
 
   const registerInteraction = useMapStore((s) => s.registerInteraction);
   const registerCameraGrab = useMapStore((s) => s.registerCameraGrab);
@@ -55,6 +59,7 @@ export function CameraRig({ onZoomT }: { onZoomT?: (t: number) => void }) {
       camera.position.x -= dx * scale;
       camera.position.y += dy * scale;
       velocity.current = { x: -dx * scale, y: dy * scale };
+      invalidate();
     };
     const onUp = () => {
       dragging.current = false;
@@ -67,6 +72,7 @@ export function CameraRig({ onZoomT }: { onZoomT?: (t: number) => void }) {
       const factor = 1 - e.deltaY * ZOOM_SENSITIVITY;
       camera.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, camera.zoom * factor));
       camera.updateProjectionMatrix();
+      invalidate();
     };
 
     canvas.addEventListener("pointerdown", onDown);
@@ -81,22 +87,25 @@ export function CameraRig({ onZoomT }: { onZoomT?: (t: number) => void }) {
       canvas.removeEventListener("pointerleave", onUp);
       canvas.removeEventListener("wheel", onWheel);
     };
-  }, [camera, gl, registerInteraction, registerCameraGrab]);
+  }, [camera, gl, registerInteraction, registerCameraGrab, invalidate]);
 
   useFrame(() => {
     if (!dragging.current) {
-      camera.position.x += velocity.current.x;
-      camera.position.y += velocity.current.y;
-      velocity.current.x *= FRICTION;
-      velocity.current.y *= FRICTION;
-    }
-    if (onZoomT) {
-      const t = Math.max(0, Math.min(1, (camera.zoom - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)));
-      if (Math.abs(t - lastZoomT.current) > 0.0001) {
-        lastZoomT.current = t;
-        onZoomT(t);
+      const speedSq = velocity.current.x * velocity.current.x + velocity.current.y * velocity.current.y;
+      if (speedSq > VELOCITY_EPSILON_SQ) {
+        camera.position.x += velocity.current.x;
+        camera.position.y += velocity.current.y;
+        velocity.current.x *= FRICTION;
+        velocity.current.y *= FRICTION;
+        // Inertia still has visible speed: keep the demand loop alive for
+        // another frame.
+        invalidate();
+      } else {
+        velocity.current.x = 0;
+        velocity.current.y = 0;
       }
     }
+    zoomRef.current = camera.zoom;
   });
 
   return null;

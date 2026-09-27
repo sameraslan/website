@@ -16,19 +16,22 @@ function prefersReducedMotion(): boolean {
 interface AlbumFieldProps {
   data: MapData;
   atlasTextures: (THREE.Texture | null)[];
-  zoomT: number;
-  cursorWorld: [number, number] | null;
+  /** Real camera.zoom (0.5..5), written every frame by CameraRig. */
+  zoomRef: React.MutableRefObject<number>;
+  cursorRef: React.MutableRefObject<[number, number] | null>;
   focusedIndex: number;
   neighborIndices: number[];
 }
 
 const MAX_ATLASES = 5;
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 5.0;
 
 export function AlbumField({
   data,
   atlasTextures,
-  zoomT,
-  cursorWorld,
+  zoomRef,
+  cursorRef,
   focusedIndex,
   neighborIndices,
 }: AlbumFieldProps) {
@@ -123,6 +126,10 @@ export function AlbumField({
 
   useFrame(() => {
     material.uniforms.u_sliderT.value = sliderT;
+    const zoomT = Math.max(
+      0,
+      Math.min(1, (zoomRef.current - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)),
+    );
     material.uniforms.u_zoomT.value = zoomT;
     material.uniforms.u_focusedAlbumIndex.value = focusedIndex;
     const mask = material.uniforms.u_neighborMask.value as Float32Array;
@@ -136,7 +143,7 @@ export function AlbumField({
     // continuous animation that some vestibular-sensitive users find
     // distracting. matchMedia is read on mount and cached in the closure;
     // the rare media-query change at runtime isn't worth a listener.
-    const c = cursorWorld;
+    const c = cursorRef.current;
     material.uniforms.u_cursorActive.value = c && !reducedMotionRef.current ? 1 : 0;
     if (c) {
       material.uniforms.u_cursor.value.set(c[0], c[1]);

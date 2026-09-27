@@ -1,10 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { TextureLoader } from "three";
 
+import { requestRender } from "../state/invalidate";
+
 const loader = new TextureLoader();
+
+// Permissive: any zoom past the initial value, so covers from later sheets
+// aren't stuck as black holes the moment the user zooms in.
+const ATLAS_ZOOM_THRESHOLD = 1.05;
 
 function configureAtlasTexture(tex: THREE.Texture) {
   // Pipeline atlases are laid out with row 0 at the top (PIL pixel space),
@@ -22,11 +29,20 @@ function configureAtlasTexture(tex: THREE.Texture) {
   tex.needsUpdate = true;
 }
 
-export function useAtlasTextures(urls: string[], camZoom: number) {
+/**
+ * Loads atlas-0 eagerly, then loads the rest once the camera crosses
+ * ATLAS_ZOOM_THRESHOLD. Reads camera.zoom directly off the live THREE camera
+ * inside useFrame (no React state or prop feeds the zoom in), and only ever
+ * flips the `textures` state array when a texture actually finishes loading
+ * or the threshold is crossed for the first time — not once per frame.
+ */
+export function useAtlasTextures(urls: string[]) {
+  const camera = useThree((s) => s.camera) as THREE.OrthographicCamera;
   const [textures, setTextures] = useState<(THREE.Texture | null)[]>(() =>
     urls.map(() => null),
   );
   const loadingRef = useRef<Set<number>>(new Set());
+  const pastThresholdRef = useRef(false);
 
   // Eager-load atlas-0
   useEffect(() => {
@@ -40,19 +56,24 @@ export function useAtlasTextures(urls: string[], camZoom: number) {
         next[0] = tex;
         return next;
       });
+      requestRender();
     });
     return () => {
       cancelled = true;
     };
   }, [urls]);
 
-  // Load later atlases as zoom crosses a threshold. The threshold is permissive
-  // (any zoom past the initial value) so covers from later sheets aren't stuck
-  // as black holes the moment the user zooms in.
-  useEffect(() => {
-    if (camZoom < 1.05) return;
+  // Load later atlases once zoom crosses the threshold. Guarded by
+  // pastThresholdRef so this only fires once; useFrame only runs on rendered
+  // frames (frameloop="demand"), which happen whenever the camera actually
+  // moves (wheel/drag/fly-to all invalidate), so the check still runs
+  // promptly without needing its own invalidate loop.
+  useFrame(() => {
+    if (pastThresholdRef.current) return;
+    if (camera.zoom < ATLAS_ZOOM_THRESHOLD) return;
+    pastThresholdRef.current = true;
     for (let i = 1; i < urls.length; i++) {
-      if (textures[i] || loadingRef.current.has(i)) continue;
+      if (loadingRef.current.has(i)) continue;
       loadingRef.current.add(i);
       loader.loadAsync(urls[i]).then((tex) => {
         configureAtlasTexture(tex);
@@ -61,9 +82,10 @@ export function useAtlasTextures(urls: string[], camZoom: number) {
           next[i] = tex;
           return next;
         });
+        requestRender();
       });
     }
-  }, [camZoom, urls, textures]);
+  });
 
   return textures;
 }

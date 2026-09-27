@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
 import type { SliderStopId } from "../data/types";
+import { requestRender } from "./invalidate";
 
 export type MapMode = "loading" | "idle" | "interactive" | "focus";
 
@@ -90,6 +91,10 @@ export const useMapStore = create<MapStore>()(
       const clamped = Math.max(0, Math.min(1, t));
       set({ sliderT: clamped });
       saveToSession({ sliderT: clamped });
+      // Under frameloop="demand" nothing else re-renders the canvas on a
+      // slider change: FlyToFocus's retarget and AlbumField's u_sliderT
+      // uniform both need a frame to actually draw.
+      requestRender();
     },
     registerInteraction: () => set({ lastInteraction: Date.now() }),
     registerCameraGrab: () => set({ lastCameraGrab: Date.now() }),

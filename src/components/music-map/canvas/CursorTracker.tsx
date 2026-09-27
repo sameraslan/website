@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 export function CursorTracker({
-  onWorld,
+  cursorRef,
 }: {
-  onWorld: (xy: [number, number] | null) => void;
+  cursorRef: React.MutableRefObject<[number, number] | null>;
 }) {
   const { gl, camera } = useThree();
-  const lastWorld = useRef<[number, number] | null>(null);
+  const invalidate = useThree((s) => s.invalidate);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -21,12 +21,12 @@ export function CursorTracker({
       const cam = camera as THREE.OrthographicCamera;
       const worldX = (ndcX / cam.zoom) * (cam.right - cam.left) / 2 + cam.position.x;
       const worldY = (ndcY / cam.zoom) * (cam.top - cam.bottom) / 2 + cam.position.y;
-      lastWorld.current = [worldX, worldY];
-      onWorld([worldX, worldY]);
+      cursorRef.current = [worldX, worldY];
+      invalidate();
     }
     function onLeave() {
-      lastWorld.current = null;
-      onWorld(null);
+      cursorRef.current = null;
+      invalidate();
     }
     canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerleave", onLeave);
@@ -34,7 +34,7 @@ export function CursorTracker({
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerleave", onLeave);
     };
-  }, [gl, camera, onWorld]);
+  }, [gl, camera, cursorRef, invalidate]);
 
   return null;
 }

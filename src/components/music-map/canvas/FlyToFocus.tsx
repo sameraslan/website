@@ -56,6 +56,7 @@ function arcControlPoint(from: THREE.Vector2, to: THREE.Vector2): THREE.Vector2 
 
 export function FlyToFocus() {
   const { camera } = useThree();
+  const invalidate = useThree((s) => s.invalidate);
   const data = useMapStore((s) => s.data);
   const focusedId = useMapStore((s) => s.focusedId);
   const sliderT = useMapStore((s) => s.sliderT);
@@ -89,6 +90,7 @@ export function FlyToFocus() {
           cam.position.x = (b.minX + b.maxX) / 2;
           cam.position.y = (b.minY + b.maxY) / 2;
           cam.updateProjectionMatrix();
+          invalidate();
         }
         return;
       }
@@ -104,6 +106,7 @@ export function FlyToFocus() {
         toZoom: TUNING.overviewZoom,
         instant: prefersReducedMotion(),
       };
+      invalidate();
       return;
     }
 
@@ -141,6 +144,7 @@ export function FlyToFocus() {
         toZoom,
         instant: prefersReducedMotion(),
       };
+      invalidate();
       return;
     }
 
@@ -156,7 +160,8 @@ export function FlyToFocus() {
       toZoom,
       instant: prefersReducedMotion(),
     };
-  }, [focusedId, data, camera]);
+    invalidate();
+  }, [focusedId, data, camera, invalidate]);
 
   // sliderT moves every album's world position, including the focused one.
   useEffect(() => {
@@ -174,6 +179,7 @@ export function FlyToFocus() {
       a.toPos.set(tx, ty);
       a.ctrl.x += dx;
       a.ctrl.y += dy;
+      invalidate();
       return;
     }
     // No glide in flight: the fly-to already landed, but the slider just
@@ -196,7 +202,8 @@ export function FlyToFocus() {
       toZoom: cam.zoom,
       instant: prefersReducedMotion(),
     };
-  }, [sliderT, data, focusedId, camera]);
+    invalidate();
+  }, [sliderT, data, focusedId, camera, invalidate]);
 
   useFrame(() => {
     if (!anim.current) return;
@@ -228,7 +235,12 @@ export function FlyToFocus() {
     cam.position.y = w0 * a.fromPos.y + w1 * a.ctrl.y + w2 * a.toPos.y;
     cam.zoom = a.fromZoom + (a.toZoom - a.fromZoom) * k;
     cam.updateProjectionMatrix();
-    if (t >= 1) anim.current = null;
+    if (t >= 1) {
+      anim.current = null;
+    } else {
+      // Glide still in flight: keep the demand loop alive next frame.
+      invalidate();
+    }
   });
 
   return null;

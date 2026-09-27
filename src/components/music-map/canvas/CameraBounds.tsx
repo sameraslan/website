@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
 import { getMainBounds } from "../state/bounds";
@@ -16,6 +16,9 @@ const EASE = 0.1;
 const MARGIN = 0.04;
 // Leave manual pan + its inertia alone for a moment before reclaiming bounds.
 const RELEASE_MS = 500;
+// Below this squared distance the correction is treated as settled; stop
+// invalidating so frameloop="demand" can go idle.
+const SETTLE_DIST_SQ = 1e-10;
 
 /**
  * Keeps the *automatic* camera (ambient drift / settle) within the main mass
@@ -27,6 +30,7 @@ const RELEASE_MS = 500;
  * the scene so this runs after drift/tour have moved the camera this frame.
  */
 export function CameraBounds() {
+  const invalidate = useThree((s) => s.invalidate);
   const stateRef = useRef({
     mode: useMapStore.getState().mode,
     lastInteraction: useMapStore.getState().lastInteraction,
@@ -70,8 +74,13 @@ export function CameraBounds() {
 
     const tx = Math.max(loX, Math.min(hiX, cam.position.x));
     const ty = Math.max(loY, Math.min(hiY, cam.position.y));
-    cam.position.x += (tx - cam.position.x) * EASE;
-    cam.position.y += (ty - cam.position.y) * EASE;
+    const dx = (tx - cam.position.x) * EASE;
+    const dy = (ty - cam.position.y) * EASE;
+    if (dx * dx + dy * dy < SETTLE_DIST_SQ) return;
+    cam.position.x += dx;
+    cam.position.y += dy;
+    // Still correcting: keep the demand loop alive until it settles.
+    invalidate();
   });
 
   return null;
