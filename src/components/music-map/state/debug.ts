@@ -49,6 +49,26 @@ export interface DebugGetters {
    */
   getNdcInsideFraction?(): number | null;
   /**
+   * Base sprite size in CSS px from the size curve (shaders/album.ts
+   * spriteCssSize), evaluated two ways: `published` from the live camera
+   * zoom and the published fit (state/view.ts), `uniform` from the values
+   * actually sitting in the material's u_zoom/u_fitZoom. `effective` also
+   * applies the shader's device-px caps (240, u_maxSpritePx) and the GPU's
+   * ALIASED_POINT_SIZE_RANGE max, back in CSS px. Verification-only.
+   */
+  getSpriteCssSize?(): {
+    published: number;
+    uniform: number;
+    effective: number;
+    cameraZoom: number;
+    publishedFitZoom: number;
+    uZoom: number;
+    uFitZoom: number;
+    pixelRatio: number;
+    maxSpritePx: number;
+    pointSizeRange: [number, number];
+  };
+  /**
    * performance.now() timestamp of the first time AlbumField rendered with
    * real data, i.e. the first frame where dots could plausibly be on screen.
    * Used by the Fast-3G first-draw verification script (task 9); set once by
@@ -71,14 +91,15 @@ declare global {
   }
 }
 
-export function registerDebug(getters: DebugGetters): () => void {
+export function registerDebug(getters: Partial<DebugGetters>): () => void {
   if (process.env.NODE_ENV === "production") return () => {};
   if (typeof window === "undefined") return () => {};
   // Merge rather than overwrite: markFirstDraw() below may have already set
   // firstDrawAt on window.__mapDebug before this effect runs (render order
   // is not guaranteed relative to markFirstDraw's call site), and a plain
-  // overwrite here would erase it.
-  window.__mapDebug = { ...window.__mapDebug, ...getters };
+  // overwrite here would erase it. Components other than DebugExpose (e.g.
+  // AlbumField's getSpriteCssSize) add single getters the same way.
+  window.__mapDebug = { ...window.__mapDebug, ...getters } as DebugGetters;
   return () => {
     delete window.__mapDebug;
   };

@@ -18,6 +18,16 @@
  */
 export const SIZE_CURVE_POWER = 1.4;
 
+/**
+ * JS mirror of the vertex shader's base sprite size in CSS px (before the
+ * focus/hover scale, dpr and point-size caps). Used by the dev-only
+ * `getSpriteCssSize()` debug getter; keep in sync with `baseSize` below.
+ */
+export function spriteCssSize(zoom: number, fitZoom: number): number {
+  const s = 10 * Math.pow(zoom / Math.max(fitZoom, 0.0001), SIZE_CURVE_POWER);
+  return Math.min(90, Math.max(4, s));
+}
+
 export const ALBUM_VERTEX_SHADER = /* glsl */ `
   attribute vec2 a_pos_audio;
   attribute vec2 a_pos_balanced;
@@ -73,7 +83,20 @@ export const ALBUM_VERTEX_SHADER = /* glsl */ `
     float falloff = 1.0 - smoothstep(0.0, pullRadius, d);
     worldPos += normalize(toCursor + vec2(0.0001)) * (falloff * falloff * pullStrength);
 
-    vec4 mvPos = modelViewMatrix * vec4(worldPos, 0.0, 1.0);
+    // Draw-order layers via depth (the material writes depth, LessEqual
+    // test). All albums share one instanced draw, so without this a later
+    // instance paints over an earlier one; in focus mode a highlighted
+    // neighbour at 1.15x could cover the focused album entirely, showing the
+    // wrong cover under the focused album's tooltip (task 8 fix round 5).
+    // Layers, toward the camera: focused 0.3 > hovered 0.2 > highlighted
+    // neighbour 0.1 > everything else 0.0. Same-layer sprites keep plain
+    // painter's order, so the overview (all 0.0) is unchanged.
+    float layer = 0.0;
+    if (u_focusedAlbumIndex >= 0.0 && isHighlighted(instanceIndex)) layer = 0.1;
+    if (abs(u_hoverIndex - instanceIndex) < 0.5) layer = 0.2;
+    if (abs(u_focusedAlbumIndex - instanceIndex) < 0.5) layer = 0.3;
+
+    vec4 mvPos = modelViewMatrix * vec4(worldPos, layer, 1.0);
     gl_Position = projectionMatrix * mvPos;
 
     // Power curve of the real camera zoom relative to u_fitZoom (the fitted

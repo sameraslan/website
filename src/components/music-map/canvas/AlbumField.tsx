@@ -4,11 +4,11 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { ALBUM_FRAGMENT_SHADER, ALBUM_VERTEX_SHADER } from "../shaders/album";
+import { ALBUM_FRAGMENT_SHADER, ALBUM_VERTEX_SHADER, spriteCssSize } from "../shaders/album";
 import type { MapData, MetadataRecord, PositionRecord } from "../data/types";
 import { clusterMedians, clusterMemberCounts } from "../state/centroids";
 import { clusterColorsFromRegions } from "../state/clusterColors";
-import { markFirstDraw } from "../state/debug";
+import { markFirstDraw, registerDebug } from "../state/debug";
 import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
 import { getOverviewFraming } from "../state/view";
@@ -73,7 +73,7 @@ export function AlbumField({
   neighborIndices,
 }: AlbumFieldProps) {
   const sliderT = useMapStore((s) => s.sliderT);
-  const { gl } = useThree();
+  const { gl, camera } = useThree();
   const invalidate = useThree((s) => s.invalidate);
   const size = useThree((s) => s.size);
   const regionCount = data.regions.length;
@@ -169,7 +169,14 @@ export function AlbumField({
       vertexShader: ALBUM_VERTEX_SHADER,
       fragmentShader: ALBUM_FRAGMENT_SHADER,
       transparent: true,
-      depthWrite: false,
+      // Depth carries the focus/hover draw-order layers (see `layer` in the
+      // vertex shader). Three's default depthFunc is LessEqual, so sprites
+      // in the same layer still draw in plain instance order; the fragment
+      // shader discards outside the disc, so the sprite quad's corners never
+      // write depth.
+      depthWrite: true,
+      depthTest: true,
+      depthFunc: THREE.LessEqualDepth,
       uniforms: {
         u_sliderT: { value: 0.5 },
         u_zoomT: { value: 0 },
@@ -298,6 +305,44 @@ export function AlbumField({
   useEffect(() => {
     markFirstDraw();
   }, []);
+
+  // Dev-only: exposes the sprite size the shader is actually computing, from
+  // the live material uniforms as well as from the camera + published fit
+  // (see DebugGetters.getSpriteCssSize). No-op in production.
+  useEffect(() => {
+    registerDebug({
+        getSpriteCssSize: () => {
+          const u = material.uniforms;
+          const dpr = u.u_pixelRatio.value as number;
+          const maxSpritePx = u.u_maxSpritePx.value as number;
+          const ctx = gl.getContext();
+          const range = Array.from(
+            ctx.getParameter(ctx.ALIASED_POINT_SIZE_RANGE) as Float32Array,
+          ) as [number, number];
+          const uniform = spriteCssSize(u.u_zoom.value, u.u_fitZoom.value);
+          const deviceCap = Math.min(240, maxSpritePx, range[1]);
+          return {
+            published: spriteCssSize(camera.zoom, getOverviewFraming().zoom),
+            uniform,
+            effective: Math.min(uniform * dpr, deviceCap) / dpr,
+            cameraZoom: camera.zoom,
+            publishedFitZoom: getOverviewFraming().zoom,
+            uZoom: u.u_zoom.value,
+            uFitZoom: u.u_fitZoom.value,
+            pixelRatio: dpr,
+            maxSpritePx,
+            pointSizeRange: range,
+          };
+        },
+    });
+    // Remove only this getter; registerDebug's own cleanup would delete the
+    // whole window.__mapDebug object, including DebugExpose's getters.
+    return () => {
+      if (typeof window !== "undefined" && window.__mapDebug) {
+        delete window.__mapDebug.getSpriteCssSize;
+      }
+    };
+  }, [material, gl, camera]);
 
   // Frustum-cull off: the geometry's only position attribute is the
   // single 0-vertex stub for instanced draw, so Three's auto-computed
