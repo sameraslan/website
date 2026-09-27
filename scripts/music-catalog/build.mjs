@@ -21,6 +21,12 @@ const meta = rd(`${CATALOG}/metadata.json`);
 const positions = rd(`${CATALOG}/positions.json`);
 const matches = rd(`${WORK}/matches.json`); // catalog id -> { rym: row }
 const ov = fs.existsSync(`${HERE}/overrides.json`) ? rd(`${HERE}/overrides.json`) : { remove: [], add: [] };
+// catalog id -> { id, cover } | { file }: the upstream Spotify URI is a
+// different album (a soundtrack, tribute or cover sharing a title word). With
+// `id`, swap in the right album's id and cover art; with `file` (album not on
+// Spotify), use a local cover and drop the Spotify link. An optional `artist`
+// corrects the credit. Positions still come from the catalog id's features.
+const coverFixes = fs.existsSync(`${HERE}/cover-fixes.json`) ? rd(`${HERE}/cover-fixes.json`) : {};
 
 // catalog id -> RYM year
 const yearById = new Map();
@@ -47,16 +53,28 @@ for (let i = 0; i < kept.length; i++) {
   const m = kept[i];
   const sheet = Math.floor(i / PER_SHEET), slot = i % PER_SHEET;
   if (!sheets[sheet]) sheets[sheet] = [];
-  const src = (origAtlas[m.atlasIndex] ??= sharp(`${CATALOG}/atlas-${m.atlasIndex}.webp`));
-  const [u, v] = m.atlasUV;
-  const tile = await src.clone()
-    .extract({ left: Math.round(u * SHEET), top: Math.round(v * SHEET), width: THUMB, height: THUMB })
-    .png().toBuffer();
+  const fix = coverFixes[m.id];
+  let tile;
+  if (fix?.file) {
+    tile = await sharp(path.join(HERE, fix.file)).resize(THUMB, THUMB).png().toBuffer();
+  } else if (fix) {
+    const res = await fetch(fix.cover);
+    if (!res.ok) throw new Error(`cover fetch ${res.status} for ${fix.id}`);
+    tile = await sharp(Buffer.from(await res.arrayBuffer())).resize(THUMB, THUMB).png().toBuffer();
+  } else {
+    const src = (origAtlas[m.atlasIndex] ??= sharp(`${CATALOG}/atlas-${m.atlasIndex}.webp`));
+    const [u, v] = m.atlasUV;
+    tile = await src.clone()
+      .extract({ left: Math.round(u * SHEET), top: Math.round(v * SHEET), width: THUMB, height: THUMB })
+      .png().toBuffer();
+  }
   const col = slot % PER_ROW, row = Math.floor(slot / PER_ROW);
   sheets[sheet].push({ input: tile, left: col * THUMB, top: row * THUMB });
   newMeta.push({
     ...m,
-    artist: cleanArtist(m.artist),
+    ...(fix?.file && { spotifyUrl: "" }),
+    ...(fix?.id && { id: fix.id, spotifyUrl: `https://open.spotify.com/album/${fix.id.split(":").pop()}` }),
+    artist: fix?.artist ?? cleanArtist(m.artist),
     year: yearById.get(m.id),
     atlasIndex: sheet,
     atlasUV: [(col * THUMB) / SHEET, (row * THUMB) / SHEET, THUMB / SHEET, THUMB / SHEET],
@@ -69,7 +87,9 @@ for (let s = 0; s < sheets.length; s++) {
     .composite(sheets[s]).webp({ quality: 80 }).toFile(path.join(out, `atlas-${s}.webp`));
 }
 const keptSet = new Set(kept.map((m) => m.id));
-const newPos = positions.filter((p) => keptSet.has(p.id));
+const newPos = positions
+  .filter((p) => keptSet.has(p.id))
+  .map((p) => (coverFixes[p.id]?.id ? { ...p, id: coverFixes[p.id].id } : p));
 fs.writeFileSync(path.join(out, "metadata.json"), JSON.stringify(newMeta));
 fs.writeFileSync(path.join(out, "positions.json"), JSON.stringify(newPos));
 console.log(`albums ${newMeta.length}, positions ${newPos.length}, sheets ${sheets.length}`);
