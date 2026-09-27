@@ -45,7 +45,10 @@ export function HeroCaption() {
         Here&apos;s an evolving map of what I listen to.
       </p>
       <p className="font-mono text-tiny uppercase text-ink-muted">
-        hover to read · click for neighbours · scroll to zoom
+        <span className="sm:hidden">tap a point · pinch to zoom</span>
+        <span className="hidden sm:inline">
+          hover to read · click for neighbours · scroll to zoom
+        </span>
       </p>
     </div>
   );

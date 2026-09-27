@@ -21,5 +21,7 @@ describe("HeroCaption", () => {
     expect(
       screen.getByText("hover to read · click for neighbours · scroll to zoom")
     ).toBeTruthy();
+
+    expect(screen.getByText("tap a point · pinch to zoom")).toBeTruthy();
   });
 });
