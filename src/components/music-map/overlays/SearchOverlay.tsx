@@ -156,7 +156,9 @@ export function SearchOverlay() {
                     borderBottom: "1px solid #e1dac9",
                   }}
                 >
-                  <strong>{m.title}</strong> · {m.artist} · {m.year}
+                  {/* year 0 means unknown in metadata.json: omit it and its separator. */}
+                  <strong>{m.title}</strong> · {m.artist}
+                  {m.year > 0 && ` · ${m.year}`}
                 </li>
               ))}
             </ul>

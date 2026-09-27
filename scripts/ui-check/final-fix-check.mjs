@@ -58,6 +58,26 @@ async function main() {
       await context.close();
     }
 
+    if (run('skip')) {
+      // Skip link target exists, receives focus, and the next Tab leaves the map.
+      results.skip = {};
+      for (const path of ['/', '/music']) {
+        const { context, page } = await openMap(browser, { path });
+        await page.focus('.music-map-skip-link');
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(300);
+        const active = await page.evaluate(() => document.activeElement?.id);
+        await page.keyboard.press('Tab');
+        const next = await page.evaluate(() => {
+          const el = document.activeElement;
+          const map = document.getElementById('after-music-map').parentElement;
+          return { tag: el?.tagName, text: (el?.textContent || '').trim().slice(0, 40), insideMap: map.contains(el) };
+        });
+        results.skip[path] = { targets: await page.evaluate(() => document.querySelectorAll('#after-music-map').length), activeAfterEnter: active, nextTab: next, title: await page.title() };
+        await context.close();
+      }
+    }
+
     if (run('escsearch')) {
       // Escape inside the search input closes search but keeps focus; a
       // second Escape (input blurred) releases focus.

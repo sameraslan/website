@@ -31,4 +31,27 @@ describe("SearchOverlay", () => {
     fireEvent.mouseDown(screen.getByText(/For Emma, Forever Ago/));
     expect(useMapStore.getState().focusedId).toBe("a");
   });
+
+  it("shows the year when known and omits it (and its separator) when year is 0", () => {
+    const withUnknownYear = {
+      ...fixture,
+      metadata: [
+        ...fixture.metadata,
+        { id: "c", title: "Untitled Tape", artist: "Nobody Known", year: 0, spotifyUrl: "", clusterId: 0, atlasIndex: 0, atlasUV: [0, 0, 0.1, 0.1] },
+      ],
+    };
+    useMapStore.setState({ data: withUnknownYear as any, focusedId: null });
+    const { unmount } = render(<SearchOverlay />);
+    fireEvent.click(screen.getByRole("button", { name: /search the music map/i }));
+    const input = screen.getByPlaceholderText(/search/i);
+
+    fireEvent.change(input, { target: { value: "untitled tape" } });
+    const unknown = screen.getByText(/Untitled Tape/).closest("li")!;
+    expect(unknown.textContent).toBe("Untitled Tape · Nobody Known");
+
+    fireEvent.change(input, { target: { value: "bon iver" } });
+    const known = screen.getByText(/For Emma, Forever Ago/).closest("li")!;
+    expect(known.textContent).toBe("For Emma, Forever Ago · Bon Iver · 2008");
+    unmount();
+  });
 });

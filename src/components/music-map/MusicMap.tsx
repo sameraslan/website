@@ -184,6 +184,25 @@ export function MusicMap() {
         <Slider />
         {!isTouch && <SearchOverlay />}
       </div>
+      {/* Skip-link target, last in the map's DOM so the next Tab after
+          following the link lands on whatever comes after the map (the
+          caption on `/`, the essay on `/music`). tabIndex -1 lets the
+          fragment navigation actually move focus here. Pinned to the
+          bottom edge so the jump scrolls to the end of the map, not its top. */}
+      <span
+        id="after-music-map"
+        tabIndex={-1}
+        style={{
+          position: "absolute",
+          left: 0,
+          bottom: 0,
+          width: 1,
+          height: 1,
+          overflow: "hidden",
+          clipPath: "inset(50%)",
+          outline: "none",
+        }}
+      />
     </div>
   );
 }

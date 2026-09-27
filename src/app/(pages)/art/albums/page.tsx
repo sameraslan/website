@@ -2,7 +2,7 @@ import { ArtSectionShell } from '@/components/content/ArtSectionShell';
 import { ArtCover } from '@/components/content/ArtCover';
 import { getAlbums } from '@/lib/art-server';
 
-export const metadata = { title: 'albums: samer aslan' };
+export const metadata = { title: 'albums · samer aslan' };
 
 export default function AlbumsPage() {
   const items = getAlbums();
