@@ -11,6 +11,15 @@ export interface DebugCameraState {
 
 export interface DebugGetters {
   getCameraState(): DebugCameraState;
+  /**
+   * World position ({x, y}) of the currently focused album at the current
+   * sliderT, or null if nothing is focused. Used by fix-verification scripts
+   * to check the camera hasn't desynced from the focused album after a
+   * slider change; not needed by the app itself.
+   */
+  getFocusedAlbumPos?(): { x: number; y: number } | null;
+  /** Current sliderT. Verification-only, mirrors the debug getters above. */
+  getSliderT?(): number;
 }
 
 declare global {

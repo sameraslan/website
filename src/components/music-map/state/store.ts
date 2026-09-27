@@ -15,9 +15,10 @@ export interface MapStore {
   lastInteraction: number;
   /**
    * Last timestamp (ms) the user actually grabbed the camera: pointerdown
-   * that starts a drag, wheel zoom, or a slider drag. Hover/pointermove
-   * alone never sets this. `FlyToFocus` only cancels its glide against this
-   * timestamp, so an idle mouse twitch after a click can't kill the fly-to.
+   * that starts a drag, or wheel zoom only (not a slider drag). Hover/
+   * pointermove alone never sets this. `FlyToFocus` only cancels its glide
+   * against this timestamp, so an idle mouse twitch after a click can't
+   * kill the fly-to.
    */
   lastCameraGrab: number;
 

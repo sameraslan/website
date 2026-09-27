@@ -28,6 +28,12 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+// Short retarget ease used when the slider moves a focused album's position
+// after the glide to it has already finished (no animation in flight). Long
+// enough to read as a smooth correction, short enough that it never feels
+// like a fresh fly-to.
+const SLIDER_RETARGET_DURATION_MS = 120;
+
 /**
  * Control point for a curved glide: the straight midpoint pushed sideways
  * (perpendicular to the travel direction) by a randomized fraction of the
@@ -152,23 +158,45 @@ export function FlyToFocus() {
     };
   }, [focusedId, data, camera]);
 
-  // sliderT moves every album's world position, including the focused one. If
-  // it changes while a glide is already in flight, update the animation's
-  // target in place rather than restarting the glide (which would reset the
-  // timing and re-trigger the curve on every slider tick).
+  // sliderT moves every album's world position, including the focused one.
   useEffect(() => {
     if (!data || !focusedId) return;
-    const a = anim.current;
-    if (!a) return;
     const target = data.positions.find((p) => p.id === focusedId);
     if (!target) return;
     const [tx, ty] = interpolatePosition(target.audio, target.balanced, target.mood, sliderT);
-    const dx = tx - a.toPos.x;
-    const dy = ty - a.toPos.y;
-    a.toPos.set(tx, ty);
-    a.ctrl.x += dx;
-    a.ctrl.y += dy;
-  }, [sliderT, data, focusedId]);
+    const a = anim.current;
+    if (a) {
+      // A glide is already in flight: update its target in place rather than
+      // restarting (which would reset the timing and re-trigger the curve on
+      // every slider tick).
+      const dx = tx - a.toPos.x;
+      const dy = ty - a.toPos.y;
+      a.toPos.set(tx, ty);
+      a.ctrl.x += dx;
+      a.ctrl.y += dy;
+      return;
+    }
+    // No glide in flight: the fly-to already landed, but the slider just
+    // moved the focused album's world position out from under the camera.
+    // Ease the camera back onto it with a short retarget so it never
+    // desyncs from the album it's supposedly parked on. This does not
+    // register a camera grab and does not touch focus/mode.
+    const cam = camera as THREE.OrthographicCamera;
+    const fromPos = new THREE.Vector2(cam.position.x, cam.position.y);
+    const toPos = new THREE.Vector2(tx, ty);
+    if (fromPos.distanceToSquared(toPos) < 1e-10) return;
+    anim.current = {
+      startMs: performance.now(),
+      startWall: Date.now(),
+      durationMs: SLIDER_RETARGET_DURATION_MS,
+      fromPos,
+      toPos,
+      ctrl: fromPos.clone().add(toPos).multiplyScalar(0.5),
+      fromZoom: cam.zoom,
+      toZoom: cam.zoom,
+      instant: prefersReducedMotion(),
+    };
+  }, [sliderT, data, focusedId, camera]);
 
   useFrame(() => {
     if (!anim.current) return;

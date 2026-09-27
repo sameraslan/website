@@ -18,14 +18,14 @@ function noise2D(x: number, y: number): number {
 /**
  * Gentle idle wander of the overview camera. Only runs when nothing is
  * focused and the user has been idle (no cursor move, drag, wheel, or slider
- * drag) for `TUNING.driftIdleDelayMs`. Never sets `focusedId` or `mode` —
- * it only nudges `camera.position`, so it can never wash out the map or
- * leave focus stuck on an album the way the old auto-tour did.
+ * drag) for `TUNING.driftIdleDelayMs`. Never sets `focusedId` or `mode`; it
+ * only nudges `camera.position`, so it can never wash out the map or leave
+ * focus stuck on an album the way the old auto-tour did.
  */
 export function AmbientDrift() {
   const camera = useThree((s) => s.camera) as THREE.OrthographicCamera;
   // mountedAt seeds the idle gate. Leaving it at 0 means the initial-load
-  // settle delay is skipped — drift begins the moment the map is `idle` (data
+  // settle delay is skipped: drift begins the moment the map is `idle` (data
   // loaded) so the page feels alive after the idle delay elapses. Real
   // interactions still set `lastInteraction`, which re-arms the resume delay.
   const mountedAt = useRef(0);
@@ -77,7 +77,7 @@ export function AmbientDrift() {
     const targetY = ny * TUNING.driftAmplitude;
 
     if (interactionGated || !noiseSeeded.current) {
-      // Track without applying — when drift resumes, the delta stays small.
+      // Track without applying: when drift resumes, the delta stays small.
       lastApplied.current.x = targetX;
       lastApplied.current.y = targetY;
       noiseSeeded.current = true;

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as THREE from "three";
 
 import { registerDebug } from "../state/debug";
+import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
 import { AlbumField } from "./AlbumField";
 import { AmbientDrift } from "./AmbientDrift";
@@ -32,6 +33,15 @@ function DebugExpose() {
           y: camera.position.y,
           zoom: camera.zoom,
         }),
+        getSliderT: () => useMapStore.getState().sliderT,
+        getFocusedAlbumPos: () => {
+          const s = useMapStore.getState();
+          if (!s.focusedId || !s.data) return null;
+          const p = s.data.positions.find((q) => q.id === s.focusedId);
+          if (!p) return null;
+          const [x, y] = interpolatePosition(p.audio, p.balanced, p.mood, s.sliderT);
+          return { x, y };
+        },
       }),
     [camera],
   );

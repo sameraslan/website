@@ -29,7 +29,7 @@ export function CameraRig({ onZoomT }: { onZoomT?: (t: number) => void }) {
   useEffect(() => {
     const canvas = gl.domElement;
     // Tracks whether the current drag has moved yet, so the grab is only
-    // registered once the pointer actually moves with the button down —
+    // registered once the pointer actually moves with the button down,
     // matching "pointerdown-drag" rather than every click.
     let dragMoved = false;
 
