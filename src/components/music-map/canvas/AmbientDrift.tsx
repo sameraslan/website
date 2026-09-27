@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { interpolatePosition } from "../state/projection";
 import { useMapStore } from "../state/store";
-import { useTuningStore } from "../state/tuning";
+import { TUNING } from "../state/tuning";
 
 function noise2D(x: number, y: number): number {
   return (
@@ -16,143 +15,194 @@ function noise2D(x: number, y: number): number {
   );
 }
 
+/**
+ * Gentle idle wander of the overview camera. Only runs when nothing is
+ * focused, the mouse is not over the canvas, and the user has been idle (no
+ * drag, wheel, or slider drag, and no pointer leaving the canvas) for
+ * `TUNING.driftIdleDelayMs`. A mouse resting on the map never sees it move:
+ * drift under a stationary cursor would slide albums out from under it. Never sets `focusedId` or `mode`; it
+ * only nudges `camera.position`, so it can never wash out the map or leave
+ * focus stuck on an album the way the old auto-tour did.
+ *
+ * Under frameloop="demand" useFrame only runs on a rendered frame, and a
+ * rendered frame only happens after invalidate(). Nothing else invalidates
+ * merely because time passed, so this component arms a plain setTimeout for
+ * "idle delay has now elapsed" and calls invalidate() itself once when it
+ * fires; that produces exactly one rendered frame, at which point useFrame
+ * below reads the (now unblocked) drift gate and starts calling invalidate()
+ * every frame to keep animating. This keeps the canvas fully silent (zero
+ * renders) while genuinely idle, which the idle-render screenshot check
+ * (2s vs 6s, both well before the 10s delay) depends on.
+ */
 export function AmbientDrift() {
   const camera = useThree((s) => s.camera) as THREE.OrthographicCamera;
-  // mountedAt seeds the idle gate. Leaving it at 0 means the initial-load
-  // settle delay is skipped — drift begins the moment the map is `idle` (data
-  // loaded) so the page feels alive immediately. Real interactions still set
-  // `lastInteraction`, which re-arms the post-interaction resume delay.
-  const mountedAt = useRef(0);
-  const start = useRef(performance.now());
+  const invalidate = useThree((s) => s.invalidate);
+  const gl = useThree((s) => s.gl);
+  // Whether a mouse or pen is over the canvas right now (set on
+  // pointerenter/pointermove, cleared on pointerleave, pointercancel and on
+  // unmount), and
+  // when it last left, which restarts the idle delay.
+  const pointerInside = useRef(false);
+  const pointerLeftAt = useRef(0);
+  // mountedAt seeds the idle gate at the wall-clock time this component
+  // mounted, so a fresh page load waits the full driftIdleDelayMs before
+  // drift starts (rather than comparing against epoch 0, which would make
+  // "wallNow - idleSince" enormous and skip the delay entirely). Real
+  // interactions still set `lastInteraction`, which re-arms the resume delay.
+  // Lazy initializers (called once on mount, not on every render) rather
+  // than useRef(Date.now())/useRef(performance.now()): a bare useRef's
+  // argument is still evaluated on every render even though only the first
+  // call's value is kept, which reads as an impure call during render.
+  const [mountedAt] = useState(Date.now);
+  // performance.now (unlike Date.now) is not callable unbound: it needs
+  // `this` to be the Performance object, so it's wrapped in an arrow rather
+  // than passed as a bare reference.
+  const [start] = useState(() => performance.now());
   const lastApplied = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   // Re-seed `lastApplied` (skip one frame's delta) whenever we re-enter the
-  // noise regime, so switching back from the focus orbit doesn't apply a large
+  // drift regime, so resuming after a focus or a gate doesn't apply a large
   // one-frame jump.
   const noiseSeeded = useRef(false);
-  // Read store state via refs updated through a subscription so the high-
-  // frequency `lastInteraction` and `mode` updates don't churn React.
+  // Read store state via a subscription so the high-frequency
+  // `lastInteraction` updates don't churn React.
   const stateRef = useRef({
     lastInteraction: useMapStore.getState().lastInteraction,
-    mode: useMapStore.getState().mode,
+    lastCameraGrab: useMapStore.getState().lastCameraGrab,
     focusedId: useMapStore.getState().focusedId,
   });
-  // Wall-clock time the current focus began — used to know when the glide has
-  // landed so the orbit can take over.
-  const focusStartedAt = useRef<number | null>(
-    useMapStore.getState().focusedId ? Date.now() : null,
-  );
-  useEffect(() => {
-    return useMapStore.subscribe((s) => {
-      if (s.focusedId !== stateRef.current.focusedId) {
-        focusStartedAt.current = s.focusedId ? Date.now() : null;
+  const wakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleWake = useRef(() => {});
+  // Assigning scheduleWake.current directly in the render body would write a
+  // ref during render; a no-deps layout effect keeps it just as fresh
+  // (re-synced after every render, before the mount effect below or any
+  // subscription callback can call it) without doing so during render.
+  useLayoutEffect(() => {
+    scheduleWake.current = () => {
+      if (wakeTimer.current !== null) {
+        clearTimeout(wakeTimer.current);
+        wakeTimer.current = null;
       }
+      const { lastInteraction, lastCameraGrab, focusedId } = stateRef.current;
+      if (focusedId != null) return; // drift never runs while focused
+      if (pointerInside.current) return; // re-armed on pointerleave/cancel
+      const idleSince = Math.max(lastInteraction, lastCameraGrab, mountedAt, pointerLeftAt.current);
+      const remaining = idleSince + TUNING.driftIdleDelayMs - Date.now();
+      wakeTimer.current = setTimeout(
+        () => {
+          wakeTimer.current = null;
+          invalidate();
+        },
+        Math.max(0, remaining),
+      );
+    };
+  });
+
+  useEffect(() => {
+    scheduleWake.current();
+    const unsubscribe = useMapStore.subscribe((s) => {
       stateRef.current.lastInteraction = s.lastInteraction;
-      stateRef.current.mode = s.mode;
+      stateRef.current.lastCameraGrab = s.lastCameraGrab;
       stateRef.current.focusedId = s.focusedId;
+      // Any interaction, camera grab, or focus change moves the idle
+      // deadline: re-arm the wake timer against the new value.
+      scheduleWake.current();
     });
+    return () => {
+      unsubscribe();
+      if (wakeTimer.current !== null) clearTimeout(wakeTimer.current);
+    };
   }, []);
-  // Tuning params: read via ref so slider drags don't trigger re-renders here.
-  const tuneRef = useRef(useTuningStore.getState());
-  useEffect(() => useTuningStore.subscribe((s) => (tuneRef.current = s)), []);
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+    function onInside(e: PointerEvent) {
+      if (e.pointerType === "touch") return;
+      pointerInside.current = true;
+    }
+    function onLeave(e: PointerEvent) {
+      if (e.pointerType === "touch") return;
+      pointerInside.current = false;
+      pointerLeftAt.current = Date.now();
+      scheduleWake.current();
+    }
+    canvas.addEventListener("pointerenter", onInside);
+    canvas.addEventListener("pointermove", onInside);
+    canvas.addEventListener("pointerleave", onLeave);
+    // A cancelled pointer (pen lifted out of range, OS gesture) may never
+    // send pointerleave; without this the flag could stick and block drift.
+    canvas.addEventListener("pointercancel", onLeave);
+    return () => {
+      canvas.removeEventListener("pointerenter", onInside);
+      canvas.removeEventListener("pointermove", onInside);
+      canvas.removeEventListener("pointerleave", onLeave);
+      canvas.removeEventListener("pointercancel", onLeave);
+      pointerInside.current = false;
+    };
+  }, [gl]);
   const reducedMotion = useReducedMotion();
 
-  // World position of the album we're currently parked on (null if none).
-  const albumCenter = (): [number, number] | null => {
-    const s = useMapStore.getState();
-    const id = s.focusedId;
-    if (!id || !s.data) return null;
-    const p = s.data.positions.find((q) => q.id === id);
-    if (!p) return null;
-    return interpolatePosition(p.audio, p.balanced, p.mood, s.sliderT);
-  };
-
+  // This callback mutates the R3F camera object in place (see the comment
+  // at the mutation site below); mutating three.js objects directly inside
+  // useFrame is the standard R3F pattern, not something to restructure into
+  // setState.
+  // eslint-disable-next-line react-hooks/immutability
   useFrame(() => {
     const perfNow = performance.now();
     const wallNow = Date.now();
-    const t = (perfNow - start.current) / 1000;
-    const tune = tuneRef.current;
+    const t = (perfNow - start) / 1000;
 
-    const { lastInteraction, mode } = stateRef.current;
-    const idleSince = Math.max(lastInteraction, mountedAt.current);
-    const interactionGated =
-      reducedMotion || wallNow - idleSince < tune.driftIdleDelayMs;
+    const { lastInteraction, lastCameraGrab, focusedId } = stateRef.current;
 
-    // --- Focus regime: once the glide to an album has landed, slowly circle
-    // that album for the rest of the hold. FlyToFocus owns the camera during
-    // the glide itself; we only take over after focusFlyDurationMs so the nice
-    // curved approach isn't disturbed.
-    if (mode === "focus" && focusStartedAt.current != null) {
-      const sinceFocus = wallNow - focusStartedAt.current;
-      const arrived = sinceFocus >= tune.focusFlyDurationMs;
-      if (arrived && !interactionGated) {
-        const center = albumCenter();
-        // Scale the orbit radius by 1/zoom (relative to focusZoom) so the
-        // circle covers the same fraction of the viewport at any zoom — when
-        // the user has manually zoomed in, the circle stays gentle instead of
-        // swinging the album halfway across the screen.
-        const zoomScale = tune.focusZoom / Math.max(0.001, camera.zoom);
-        const orbitR = tune.orbitRadius * zoomScale;
-        // Only orbit if the camera is still parked near the album. If the user
-        // panned well away during the hold, don't yank it back into a circle —
-        // leave it be and let AutoTour glide somewhere fresh. (Threshold scales
-        // with the zoom-adjusted radius so it doesn't misfire when zoomed out.)
-        const nearAlbum =
-          center != null &&
-          Math.hypot(
-            camera.position.x - center[0],
-            camera.position.y - center[1],
-          ) <= orbitR * 3;
-        if (center && nearAlbum) {
-          const sinceArrival = sinceFocus - tune.focusFlyDurationMs;
-          // Ease the radius in with a smoothstep so the orbit *velocity* starts
-          // at zero — a linear ramp jumps straight to a constant outward speed
-          // the instant the glide lands, which reads as an abrupt jerk to the
-          // right. Smoothstep blends the circle smoothly out of the glide.
-          const u = Math.min(1, sinceArrival / 2_500);
-          const ramp = u * u * (3 - 2 * u);
-          const r = orbitR * ramp;
-          const orbPhase =
-            (sinceArrival / 1_000) * tune.orbitFreqHz * 2.0 * Math.PI;
-          camera.position.x = center[0] + Math.cos(orbPhase) * r;
-          camera.position.y = center[1] + Math.sin(orbPhase) * r;
-        }
-      }
-      // Either way, keep the noise regime unseeded so returning to overview
-      // drift re-seeds cleanly without a jump.
+    // Drift is overview-only: no orbiting a focused album, ever.
+    if (focusedId != null) {
       noiseSeeded.current = false;
       return;
     }
 
-    // --- Overview / idle regime: gentle noise wander, applied as a delta on
-    // top of any other motion so it never fights FlyToFocus.
-    const phase = t * tune.driftFreqHz * 2.0 * Math.PI;
-    const nx = noise2D(phase, phase * 0.73);
-    const ny = noise2D(phase * 0.91 + 17.3, phase * 1.07 + 41.9);
-    let targetX = nx * tune.driftAmplitude;
-    let targetY = ny * tune.driftAmplitude;
+    const idleSince = Math.max(lastInteraction, lastCameraGrab, mountedAt, pointerLeftAt.current);
+    const interactionGated =
+      reducedMotion ||
+      pointerInside.current ||
+      wallNow - idleSince < TUNING.driftIdleDelayMs;
 
-    // Optional circular orbit layered on the overview drift (dev presets).
-    if (tune.orbitEnabled) {
-      const orbPhase = t * tune.orbitFreqHz * 2.0 * Math.PI;
-      targetX += Math.cos(orbPhase) * tune.orbitRadius;
-      targetY += Math.sin(orbPhase) * tune.orbitRadius;
+    if (interactionGated) {
+      // Not yet time to drift: the wake timer (armed above) will invalidate
+      // exactly once the delay elapses. Don't invalidate here, that would
+      // turn frameloop="demand" back into "always" while idle.
+      noiseSeeded.current = false;
+      return;
     }
 
-    if (interactionGated || !noiseSeeded.current) {
-      // Track without applying — when drift resumes, the delta stays small.
+    const phase = t * TUNING.driftFreqHz * 2.0 * Math.PI;
+    const nx = noise2D(phase, phase * 0.73);
+    const ny = noise2D(phase * 0.91 + 17.3, phase * 1.07 + 41.9);
+    const targetX = nx * TUNING.driftAmplitude;
+    const targetY = ny * TUNING.driftAmplitude;
+
+    if (!noiseSeeded.current) {
+      // Track without applying: when drift resumes, the delta stays small.
       lastApplied.current.x = targetX;
       lastApplied.current.y = targetY;
       noiseSeeded.current = true;
+      invalidate();
       return;
     }
 
     // Apply the *delta* between this frame's target and the last applied
     // target. Drift then sits on top of any FlyToFocus motion instead of
-    // fighting it.
+    // fighting it. Mutating the R3F camera object in place inside useFrame
+    // is the standard three.js/R3F pattern (the camera is a long-lived
+    // mutable object, not React-owned state); restructuring it into
+    // setState would re-render every frame instead of just redrawing the
+    // canvas.
+    // eslint-disable-next-line react-hooks/immutability
     camera.position.x += targetX - lastApplied.current.x;
     camera.position.y += targetY - lastApplied.current.y;
     lastApplied.current.x = targetX;
     lastApplied.current.y = targetY;
+    // Drift is active: keep the demand loop alive every frame while it runs.
+    invalidate();
   });
 
   return null;

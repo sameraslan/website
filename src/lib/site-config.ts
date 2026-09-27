@@ -2,8 +2,6 @@ export type NavItem = { label: string; href: string };
 
 export const siteConfig = {
   name: 'samer aslan',
-  tagline:
-    'a map of how my listening sounds. points sit by sonic similarity, not by genre tag. it’s also the first thing on the site because it’s the easiest way in.',
   meta: {
     title: 'samer aslan',
     description: 'personal site of samer aslan — engineer, researcher, listener.',
@@ -20,6 +18,11 @@ export const siteConfig = {
     { label: 'github',   href: 'https://github.com/sameraslan' },
     { label: 'linkedin', href: 'https://www.linkedin.com/in/sameraslan/' },
   ] as NavItem[],
+  facts: {
+    now: 'AI and law, Bloomberg LP',
+    before: 'Johns Hopkins, CLSP and Dynamic Perception Lab',
+    where: 'Brooklyn, New York',
+  },
 };
 
 export type SiteConfig = typeof siteConfig;

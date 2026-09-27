@@ -3,14 +3,22 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Scene } from "./canvas/Scene";
-import { fetchMapData } from "./data/loader";
+import { startPrefetch } from "./data/loader";
 import { LoadingState } from "./overlays/LoadingState";
 import { MobileFallback } from "./overlays/MobileFallback";
+import { MobileSheet } from "./overlays/MobileSheet";
+import { RegionLabels } from "./overlays/RegionLabels";
 import { SearchOverlay } from "./overlays/SearchOverlay";
 import { Slider } from "./overlays/Slider";
 import { Tooltip } from "./overlays/Tooltip";
-import { TuneHud } from "./overlays/TuneHud";
+import { NARROW_MEDIA_QUERY } from "./state/breakpoints";
 import { useMapStore } from "./state/store";
+
+function isNarrowScreen(): boolean {
+  if (typeof window === "undefined") return false;
+  if (typeof window.matchMedia !== "function") return false;
+  return window.matchMedia(NARROW_MEDIA_QUERY).matches;
+}
 
 function isWebGLAvailable(): boolean {
   if (typeof window === "undefined") return true;
@@ -23,10 +31,16 @@ function isWebGLAvailable(): boolean {
 }
 
 /**
- * Music map — a 2D embedding of ~5k albums where proximity encodes similarity.
+ * Music map, a 2D embedding of ~5k albums where proximity encodes similarity.
  * Renders a full WebGL canvas with overlays for search, tooltip, and a
  * sonic-to-mood slider. Data is loaded from `/data/*.json` + atlas sheets at
  * mount; the component takes no props in v1. See README.md in this directory.
+ *
+ * Below the narrow breakpoint (`NARROW_MEDIA_QUERY`, <640px) the map still
+ * mounts, in a touch variant (Task 11 / spec 4.7): search is omitted, the
+ * desktop hover tooltip is replaced by `MobileSheet`, and `Scene`/`CameraRig`
+ * get an `isTouch` flag that caps dpr, drops idle drift, and adds pinch. Only
+ * a genuinely missing WebGL context still falls back to the static image.
  */
 export function MusicMap() {
   const mode = useMapStore((s) => s.mode);
@@ -34,29 +48,36 @@ export function MusicMap() {
   const setData = useMapStore((s) => s.setData);
   const setMode = useMapStore((s) => s.setMode);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isNarrow, setIsNarrow] = useState(false);
-  const [webglOk, setWebglOk] = useState(true);
-  // The slider + search are chrome, not content — reveal them only while the
-  // pointer is over the map (or while search has focus, so mid-typing the
-  // controls don't vanish if the cursor drifts off-canvas).
-  const [hovered, setHovered] = useState(false);
-  const [chromeFocused, setChromeFocused] = useState(false);
-  const chromeVisible = hovered || chromeFocused;
-
-  useEffect(() => setWebglOk(isWebGLAvailable()), []);
+  // Initialised from matchMedia directly (not a useEffect that starts at
+  // `false`), so phones never render one frame committed to the desktop
+  // path before the touch check catches up (perf audit item 1g).
+  const [isNarrow, setIsNarrow] = useState(isNarrowScreen);
+  // Lazy initializer, checked once on mount, same as isNarrow above: this
+  // component is only ever rendered client-side (MusicMapClient's dynamic
+  // import uses ssr: false), so there is no hydration mismatch to worry
+  // about, and it avoids a setState call inside an effect body.
+  const [webglOk] = useState(isWebGLAvailable);
+  const isTouch = isNarrow;
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
-    setIsNarrow(mq.matches);
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(NARROW_MEDIA_QUERY);
     const onChange = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
   useEffect(() => {
-    if (isNarrow) return;
+    // Narrow screens now mount the real map too (Task 11 item 1), so this
+    // fetches on mount there as well; only the module-scope prefetch in
+    // MusicMapClient.tsx still skips narrow (it can't know the map will
+    // actually be used before the breakpoint check runs on the client).
+    // A client navigation between `/` and `/music` shares the singleton
+    // store; if it already has data (from the previous mount, or from the
+    // module-scope prefetch already having resolved), skip fetching again.
+    if (data) return;
     let cancelled = false;
-    fetchMapData("/data")
+    startPrefetch("/data")
       .then((d) => {
         if (!cancelled) setData(d);
       })
@@ -67,16 +88,13 @@ export function MusicMap() {
     return () => {
       cancelled = true;
     };
-  }, [isNarrow, setData, setMode]);
+  }, [data, setData, setMode]);
 
-  if (isNarrow) return <MobileFallback />;
   if (!webglOk) return <MobileFallback />;
 
   return (
     <div
       ref={containerRef}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       style={{
         position: "relative",
         width: "100%",
@@ -86,7 +104,7 @@ export function MusicMap() {
       }}
     >
       {/* Skip-link. Off-screen by default via clip-path (instead of left:-9999,
-          which the site's global `transition: all 0.2s` would animate over —
+          which the site's global `transition: all 0.2s` would animate over,
           and during the transition the link sits offscreen well past the test
           window). `:focus`/`:focus-visible` reveal it via clip-path:none. We
           also pin position with !important so the global transition can't
@@ -126,8 +144,8 @@ export function MusicMap() {
         Skip the music map
       </a>
       {mode === "loading" && <LoadingState />}
-      {data && <Scene />}
-      {/* Edge feather — a paper-colored gradient that is transparent through
+      {data && <Scene isTouch={isTouch} />}
+      {/* Edge feather, a paper-colored gradient that is transparent through
           the center and fades to solid #faf6ec at all four edges, so the
           canvas dissolves into the page instead of ending at a hard border.
           Sits above the canvas but below the chrome/tooltip (DOM order), and
@@ -144,24 +162,47 @@ export function MusicMap() {
           `,
         }}
       />
-      <Tooltip containerRef={containerRef} />
+      {data && <RegionLabels regions={data.regions} />}
+      {/* Desktop hover tooltip vs. the touch bottom sheet (spec 4.7): touch
+          has no hover state to follow, so it gets a fixed card instead of a
+          tooltip that would try to chase a finger. */}
+      {isTouch ? <MobileSheet /> : <Tooltip />}
+      {/* Bottom-right control row: always visible, not hover-revealed. On
+          touch it sits above the MobileSheet (bottom: 76px vs. the sheet's
+          12px + ~54px tall) so the two never overlap, and search is omitted
+          entirely (spec 4.7: "search is omitted on mobile"). */}
       <div
-        onFocusCapture={() => setChromeFocused(true)}
-        onBlurCapture={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-            setChromeFocused(false);
-          }
-        }}
         style={{
-          opacity: chromeVisible ? 1 : 0,
-          pointerEvents: chromeVisible ? "auto" : "none",
-          transition: "opacity 220ms ease",
+          position: "absolute",
+          right: isTouch ? 16 : 48,
+          bottom: isTouch ? 76 : 40,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
         }}
       >
         <Slider />
-        <SearchOverlay />
+        {!isTouch && <SearchOverlay />}
       </div>
-      <TuneHud />
+      {/* Skip-link target, last in the map's DOM so the next Tab after
+          following the link lands on whatever comes after the map (the
+          caption on `/`, the essay on `/music`). tabIndex -1 lets the
+          fragment navigation actually move focus here. Pinned to the
+          bottom edge so the jump scrolls to the end of the map, not its top. */}
+      <span
+        id="after-music-map"
+        tabIndex={-1}
+        style={{
+          position: "absolute",
+          left: 0,
+          bottom: 0,
+          width: 1,
+          height: 1,
+          overflow: "hidden",
+          clipPath: "inset(50%)",
+          outline: "none",
+        }}
+      />
     </div>
   );
 }

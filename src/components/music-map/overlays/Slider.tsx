@@ -44,32 +44,32 @@ export function Slider() {
     track.addEventListener("pointerdown", onDown);
     track.addEventListener("pointermove", onMove);
     track.addEventListener("pointerup", onUp);
+    // A cancelled pointer (OS gesture, palm rejection, capture lost) ends
+    // the drag the same way a release does, so the handle never stays stuck
+    // following later moves.
+    track.addEventListener("pointercancel", onUp);
     return () => {
       track.removeEventListener("pointerdown", onDown);
       track.removeEventListener("pointermove", onMove);
       track.removeEventListener("pointerup", onUp);
+      track.removeEventListener("pointercancel", onUp);
     };
   }, [setSliderT, discreteOnly]);
 
   return (
     <div
       style={{
-        position: "absolute",
-        left: "50%",
-        bottom: 24,
-        transform: "translateX(-50%)",
-        background: "rgba(250, 246, 236, 0.92)",
-        backdropFilter: "blur(8px)",
-        border: "1px solid #e1dac9",
-        borderRadius: 999,
-        padding: "10px 20px",
+        height: 36,
+        background: "color-mix(in srgb, var(--color-paper-soft) 92%, transparent)",
+        border: "1px solid var(--color-rule)",
+        padding: "0 14px",
         display: "flex",
         alignItems: "center",
-        gap: 14,
-        fontFamily: "ui-monospace, Menlo, monospace",
-        fontSize: 10,
-        color: "#6b5e47",
-        letterSpacing: "0.12em",
+        gap: 10,
+        fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+        fontSize: "var(--text-tiny)",
+        color: "var(--color-ink-muted)",
+        letterSpacing: "var(--text-tiny--letter-spacing)",
         textTransform: "uppercase",
       }}
       role="group"
@@ -84,7 +84,7 @@ export function Slider() {
           // Visual track is a thin bar; the surrounding 24px box widens the
           // pointer hit area so playwright (and human) drags don't have to
           // hit a 3-px line.
-          background: "linear-gradient(to bottom, transparent 0, transparent calc(50% - 1px), #e1dac9 calc(50% - 1px), #e1dac9 calc(50% + 1px), transparent calc(50% + 1px))",
+          background: "linear-gradient(to bottom, transparent 0, transparent calc(50% - 1px), var(--color-rule) calc(50% - 1px), var(--color-rule) calc(50% + 1px), transparent calc(50% + 1px))",
           position: "relative",
           cursor: "pointer",
           touchAction: "none",
@@ -96,8 +96,8 @@ export function Slider() {
             left: `${sliderT * 100}%`,
             top: "50%",
             transform: "translate(-50%, -50%)",
-            width: 10,
-            height: 10,
+            width: 9,
+            height: 9,
             borderRadius: 5,
             background: "#231d14",
             pointerEvents: "none",

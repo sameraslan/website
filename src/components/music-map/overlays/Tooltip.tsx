@@ -1,65 +1,56 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
-import { interpolatePosition } from "../state/projection";
+import type { MetadataRecord } from "../data/types";
+import { setTooltipEl } from "../state/tooltipEl";
 import { useMapStore } from "../state/store";
 
-export function Tooltip({
-  containerRef,
-}: {
-  containerRef: React.RefObject<HTMLDivElement | null>;
-}) {
+/**
+ * Renders once. Content (title/artist/year) is plain React state that only
+ * changes on hover-enter/leave or focus change, never per frame. Position
+ * and visibility are written imperatively by the canvas-side TooltipDriver
+ * (see canvas/TooltipDriver.tsx) directly onto the root element via a ref
+ * registered in state/tooltipEl.ts, so a fly-to or drift frame can move the
+ * tooltip without going through React at all.
+ *
+ * `opacity`/`transform` are deliberately left out of the React-managed style
+ * object below (only set once via the ref effect) so that a re-render here
+ * (on hover/focus change) never clobbers what TooltipDriver just wrote.
+ */
+export function Tooltip() {
   const data = useMapStore((s) => s.data);
   const focusedId = useMapStore((s) => s.focusedId);
-  const sliderT = useMapStore((s) => s.sliderT);
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const hoveredId = useMapStore((s) => s.hoveredId);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!data || !focusedId) {
-      setPos(null);
-      return;
+    setTooltipEl(ref.current);
+    if (ref.current) {
+      ref.current.style.opacity = "0";
     }
-    const album = data.positions.find((p) => p.id === focusedId);
-    if (!album) return;
-    function update() {
-      const canvas = containerRef.current?.querySelector("canvas");
-      if (!canvas) return;
-      const event = new CustomEvent("music-map:request-project", {
-        detail: { worldXY: interpolatePosition(album!.audio, album!.balanced, album!.mood, sliderT) },
-      });
-      canvas.dispatchEvent(event);
-      rafRef.current = requestAnimationFrame(update);
-    }
-    rafRef.current = requestAnimationFrame(update);
+    return () => setTooltipEl(null);
+  }, []);
 
-    function onResolved(e: Event) {
-      const detail = (e as CustomEvent).detail as { screenX: number; screenY: number };
-      setPos({ x: detail.screenX, y: detail.screenY });
-    }
-    const canvas = containerRef.current?.querySelector("canvas");
-    canvas?.addEventListener("music-map:project-result", onResolved as EventListener);
+  const metaById = useMemo(() => {
+    const m = new Map<string, MetadataRecord>();
+    if (data) for (const rec of data.metadata) m.set(rec.id, rec);
+    return m;
+  }, [data]);
 
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      canvas?.removeEventListener("music-map:project-result", onResolved as EventListener);
-    };
-  }, [data, focusedId, sliderT, containerRef]);
-
-  if (!focusedId || !pos || !data) return null;
-  const meta = data.metadata.find((m) => m.id === focusedId);
-  if (!meta) return null;
+  // Focus wins over hover when both are set.
+  const targetId = focusedId ?? hoveredId;
+  const meta = targetId ? metaById.get(targetId) : undefined;
 
   return (
     <div
+      ref={ref}
       role="status"
       aria-live="polite"
       style={{
         position: "absolute",
-        left: pos.x,
-        top: pos.y - 60,
-        transform: "translate(-50%, 0)",
+        left: 0,
+        top: 0,
         padding: "6px 10px",
         background: "rgba(250, 246, 236, 0.95)",
         border: "1px solid #e1dac9",
@@ -70,9 +61,15 @@ export function Tooltip({
         whiteSpace: "nowrap",
         pointerEvents: "none",
         boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+        willChange: "transform, opacity",
       }}
     >
-      <b>{meta.title}</b> · {meta.artist} · {meta.year}
+      {meta && (
+        <>
+          <b>{meta.title}</b> · {meta.artist}
+          {meta.year > 0 ? ` · ${meta.year}` : null}
+        </>
+      )}
     </div>
   );
 }

@@ -5,8 +5,19 @@ import { SiteFooter } from '@/components/layout/SiteFooter';
 import { siteConfig } from '@/lib/site-config';
 
 export const metadata = {
+  metadataBase: new URL('https://www.sameraslan.com'),
   title: siteConfig.meta.title,
   description: siteConfig.meta.description,
+  openGraph: {
+    title: siteConfig.meta.title,
+    description: siteConfig.meta.description,
+    url: '/',
+    siteName: siteConfig.name,
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -17,11 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="bg-paper text-ink antialiased min-h-screen flex flex-col">
         <SiteHeader />
-        <main className="flex-1">
-          <div className="mx-auto max-w-page px-6 sm:px-10 md:px-16 py-10">
-            {children}
-          </div>
-        </main>
+        <main className="flex-1">{children}</main>
         <SiteFooter />
       </body>
     </html>

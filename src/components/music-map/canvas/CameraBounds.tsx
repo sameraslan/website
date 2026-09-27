@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
-import { getMainBounds } from "../state/bounds";
+import { nudgeVector, viewportWorldRect, visibleFractionThreshold } from "../state/bounds";
 import { useMapStore } from "../state/store";
+import { getOverviewFraming, isFramed } from "../state/view";
 
 // How hard to pull the camera back toward the album box each frame. Soft so a
 // manual over-pan eases back in instead of snapping, and so ambient drift sits
@@ -14,64 +15,109 @@ const EASE = 0.1;
 // A touch of fringe past the trimmed cluster edge so edge albums aren't jammed
 // against the viewport border.
 const MARGIN = 0.04;
-// Leave manual pan + its inertia alone for a moment before reclaiming bounds.
+// Leave manual pan/zoom + its inertia alone for a moment before reclaiming
+// bounds, and never act at all while a drag is actively in progress.
 const RELEASE_MS = 500;
+// Below this squared distance the correction is treated as settled; stop
+// invalidating so frameloop="demand" can go idle.
+const SETTLE_DIST_SQ = 1e-10;
 
 /**
- * Keeps the *automatic* camera (ambient drift / settle) within the main mass
- * of albums so it never wanders into empty space. Viewport-aware: it clamps so
- * the visible frame stays inside the album box, not just the camera center.
+ * Keeps the *automatic* camera (ambient drift / settle) from wandering
+ * entirely off the main mass of albums. Viewport-aware: computes the visible
+ * viewport in the same world units as the camera's own frustum
+ * (`viewportWorldRect`, see state/bounds.ts) and only corrects when the album
+ * cloud's bounding box is mostly out of view (under 60% of it visible at or
+ * below the fitted zoom, under 25% when zoomed in past it; see
+ * `visibleFractionThreshold`) rather than clamping the camera into the box on
+ * every frame. A user who zooms out to see the whole cloud, or pans to an
+ * edge region while most of the cloud stays in view, is never yanked back.
  *
- * Only acts while the map is idle and the user hasn't interacted recently —
- * manual panning and click-to-focus fly-tos are left untouched. Mount LAST in
- * the scene so this runs after drift/tour have moved the camera this frame.
+ * Only acts while the map is idle, no drag is in progress, and the user
+ * hasn't grabbed the camera (drag or wheel) recently: manual panning,
+ * zooming, and click-to-focus fly-tos are left untouched. Mount LAST in the
+ * scene so this runs after ambient drift has moved the camera this frame.
  */
 export function CameraBounds() {
+  const invalidate = useThree((s) => s.invalidate);
   const stateRef = useRef({
     mode: useMapStore.getState().mode,
     lastInteraction: useMapStore.getState().lastInteraction,
-    sliderT: useMapStore.getState().sliderT,
+    lastCameraGrab: useMapStore.getState().lastCameraGrab,
+    dragging: useMapStore.getState().dragging,
   });
-  useEffect(
-    () =>
-      useMapStore.subscribe((s) => {
-        stateRef.current.mode = s.mode;
-        stateRef.current.lastInteraction = s.lastInteraction;
-        stateRef.current.sliderT = s.sliderT;
-      }),
-    [],
-  );
+  useEffect(() => {
+    // frameloop="demand": once a drag, wheel or release settles, nothing
+    // renders again until the next input (and drift no longer runs under a
+    // resting mouse), so the gates below would never be re-checked. Wake
+    // one frame just after RELEASE_MS whenever a gate input changes.
+    let wake: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = useMapStore.subscribe((s) => {
+      const prev = stateRef.current;
+      const changed =
+        prev.mode !== s.mode ||
+        prev.lastInteraction !== s.lastInteraction ||
+        prev.lastCameraGrab !== s.lastCameraGrab ||
+        prev.dragging !== s.dragging;
+      prev.mode = s.mode;
+      prev.lastInteraction = s.lastInteraction;
+      prev.lastCameraGrab = s.lastCameraGrab;
+      prev.dragging = s.dragging;
+      if (!changed) return;
+      if (wake !== null) clearTimeout(wake);
+      wake = setTimeout(() => {
+        wake = null;
+        invalidate();
+      }, RELEASE_MS + 20);
+    });
+    return () => {
+      unsubscribe();
+      if (wake !== null) clearTimeout(wake);
+    };
+  }, [invalidate]);
 
   useFrame((state) => {
     const data = useMapStore.getState().data;
     if (!data || data.positions.length === 0) return;
+    // Never nudge before InitialFrame has applied the fit snap for this data.
+    if (!isFramed()) return;
 
-    const { mode, lastInteraction, sliderT } = stateRef.current;
-    // Only constrain the ambient/idle camera. Focus fly-tos (mode "focus") and
-    // active manual panning own the camera while they run.
+    const { mode, lastInteraction, lastCameraGrab, dragging } = stateRef.current;
+    // Only constrain the ambient/idle camera. Focus fly-tos (mode "focus"),
+    // an active drag, and any recent camera grab (drag or wheel) own the
+    // camera while they run/settle.
     if (mode !== "idle") return;
-    if (Date.now() - lastInteraction < RELEASE_MS) return;
+    if (dragging) return;
+    const now = Date.now();
+    if (now - lastInteraction < RELEASE_MS) return;
+    if (now - lastCameraGrab < RELEASE_MS) return;
 
     const cam = state.camera as THREE.OrthographicCamera;
-    const vp = state.viewport.getCurrentViewport(cam, [0, 0, 0]);
-    const halfW = vp.width / 2;
-    const halfH = vp.height / 2;
-    const b = getMainBounds(data, sliderT);
+    const viewport = viewportWorldRect(cam);
+    // The same percentile bounds the overview framing fits to (published by
+    // InitialFrame, recomputed on every sliderT change), so the idle nudge
+    // keeps the bulk of the cloud on screen, not its outliers.
+    const framing = getOverviewFraming();
+    const cloud = framing.bounds;
+    // Stricter at or below the fitted zoom (60% of the cloud's box must be
+    // in view) than when zoomed in past it (25%): see
+    // visibleFractionThreshold in state/bounds.ts.
+    const nudge = nudgeVector(
+      { x: cam.position.x, y: cam.position.y },
+      viewport,
+      cloud,
+      MARGIN,
+      visibleFractionThreshold(cam.zoom, framing.zoom),
+    );
+    if (!nudge) return;
 
-    // Keep the visible viewport inside the album box. When the box is smaller
-    // than the viewport (zoomed far out) the range inverts — fall back to
-    // centering on the box midpoint.
-    let loX = b.minX - MARGIN + halfW;
-    let hiX = b.maxX + MARGIN - halfW;
-    if (loX > hiX) loX = hiX = (b.minX + b.maxX) / 2;
-    let loY = b.minY - MARGIN + halfH;
-    let hiY = b.maxY + MARGIN - halfH;
-    if (loY > hiY) loY = hiY = (b.minY + b.maxY) / 2;
-
-    const tx = Math.max(loX, Math.min(hiX, cam.position.x));
-    const ty = Math.max(loY, Math.min(hiY, cam.position.y));
-    cam.position.x += (tx - cam.position.x) * EASE;
-    cam.position.y += (ty - cam.position.y) * EASE;
+    const dx = nudge.x * EASE;
+    const dy = nudge.y * EASE;
+    if (dx * dx + dy * dy < SETTLE_DIST_SQ) return;
+    cam.position.x += dx;
+    cam.position.y += dy;
+    // Still correcting: keep the demand loop alive until it settles.
+    invalidate();
   });
 
   return null;
