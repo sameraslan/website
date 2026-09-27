@@ -22,3 +22,13 @@ node scripts/music-catalog/build.mjs /tmp/catalog /tmp/rym
 row attached to the right catalog id, or names it cannot align, such as
 "native [romanized]" artist strings). Review `unmatched.json` after a new
 export and add entries there as needed.
+
+`cover-fixes.json` maps catalog ids whose upstream Spotify URI is a different
+album (e.g. "Suicide" pointing at *Suicide Squad: The Album*) to the right
+album's id and cover URL. `build.mjs` downloads those covers (network needed)
+and rewrites the id in metadata and positions. Albums with no Spotify release
+use a local cover from `covers/` instead (from the Cover Art Archive; the
+`source` field records where) and get an empty `spotifyUrl`, which hides the
+link. Positions still come from the
+wrong album's audio features, which cannot be refetched (Spotify's
+audio-features endpoint returns 403).
