@@ -29,6 +29,7 @@ import { TooltipDriver } from "./TooltipDriver";
 // channel. No-op in production (see state/debug.ts).
 function DebugExpose() {
   const camera = useThree((s) => s.camera) as THREE.OrthographicCamera;
+  const gl = useThree((s) => s.gl);
   useEffect(
     () =>
       registerDebug({
@@ -36,6 +37,10 @@ function DebugExpose() {
           x: camera.position.x,
           y: camera.position.y,
           zoom: camera.zoom,
+        }),
+        getRendererInfo: () => ({
+          textures: gl.info.memory.textures,
+          geometries: gl.info.memory.geometries,
         }),
         getSliderT: () => useMapStore.getState().sliderT,
         getFocusedAlbumPos: () => {
@@ -92,7 +97,7 @@ function DebugExpose() {
           return inside / n;
         },
       }),
-    [camera],
+    [camera, gl],
   );
   return null;
 }

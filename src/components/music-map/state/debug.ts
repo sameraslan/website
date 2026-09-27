@@ -56,6 +56,13 @@ export interface DebugGetters {
    * applies the shader's device-px caps (240, u_maxSpritePx) and the GPU's
    * ALIASED_POINT_SIZE_RANGE max, back in CSS px. Verification-only.
    */
+  /**
+   * The renderer's own resource accounting (`renderer.info.memory`), for
+   * verifying GPU texture growth stays lazy: 0 or 1 non-atlas textures
+   * before the first zoom, growing one atlas sheet at a time as AtlasManager
+   * loads them in. Verification-only.
+   */
+  getRendererInfo?(): { textures: number; geometries: number };
   getSpriteCssSize?(): {
     published: number;
     uniform: number;
@@ -91,8 +98,20 @@ declare global {
   }
 }
 
+// Escape hatch for a production-build performance check (Task 13): a
+// verification run needs the real debug getters against `next start`, not
+// the dev server, since dev's unbundled chunks are not representative of
+// production timing. Set NEXT_PUBLIC_MAP_DEBUG=1 to opt a production build
+// into registering window.__mapDebug; unset (the default) still keeps the
+// cost at zero in a normal production build.
+function debugAllowedInProduction(): boolean {
+  return process.env.NEXT_PUBLIC_MAP_DEBUG === "1";
+}
+
 export function registerDebug(getters: Partial<DebugGetters>): () => void {
-  if (process.env.NODE_ENV === "production") return () => {};
+  if (process.env.NODE_ENV === "production" && !debugAllowedInProduction()) {
+    return () => {};
+  }
   if (typeof window === "undefined") return () => {};
   // Merge rather than overwrite: markFirstDraw() below may have already set
   // firstDrawAt on window.__mapDebug before this effect runs (render order
