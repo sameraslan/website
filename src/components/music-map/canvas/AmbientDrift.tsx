@@ -45,7 +45,10 @@ export function AmbientDrift() {
   // argument is still evaluated on every render even though only the first
   // call's value is kept, which reads as an impure call during render.
   const [mountedAt] = useState(Date.now);
-  const [start] = useState(performance.now);
+  // performance.now (unlike Date.now) is not callable unbound: it needs
+  // `this` to be the Performance object, so it's wrapped in an arrow rather
+  // than passed as a bare reference.
+  const [start] = useState(() => performance.now());
   const lastApplied = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   // Re-seed `lastApplied` (skip one frame's delta) whenever we re-enter the
   // drift regime, so resuming after a focus or a gate doesn't apply a large
