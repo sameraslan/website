@@ -1,4 +1,5 @@
 import MusicMapClient from "@/components/music-map/MusicMapClient";
+import { NARROW_MEDIA_QUERY } from "@/components/music-map/state/breakpoints";
 
 import { HeroCaption } from "./HeroCaption";
 
@@ -6,6 +7,12 @@ import { HeroCaption } from "./HeroCaption";
  * Full-bleed home hero (Option B): the music map fills the viewport below
  * the (overlaid) header, edge to edge, with the caption card floating
  * bottom-left. The map's own overlays (slider, search) sit bottom-right.
+ *
+ * Below 640px (spec 4.7 / Task 11) this collapses to the "Home · phone"
+ * artboard: the map drops out of the absolute stack into normal flow at a
+ * fixed 390px tall, directly under the (now non-overlaid, see SiteHeader)
+ * header, with the caption content flowing below it rather than floating on
+ * top.
  */
 export function HomeHero() {
   return (
@@ -19,12 +26,8 @@ export function HomeHero() {
         overflow: "hidden",
       }}
     >
-      {/* Below 640px the map area drops out of the absolute stack and into
-          normal flow (MobileFallback sizes itself), so the caption below it
-          isn't clipped by the fixed 100vh hero height. Rough for now; Task 11
-          refines mobile layout. */}
       <style>{`
-        @media (max-width: 640px) {
+        @media ${NARROW_MEDIA_QUERY} {
           .home-hero {
             height: auto;
             min-height: 0;
@@ -32,6 +35,8 @@ export function HomeHero() {
           }
           .home-hero-map {
             position: static !important;
+            height: 390px !important;
+            width: 100% !important;
           }
         }
       `}</style>

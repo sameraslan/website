@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { anchoredZoom } from "./zoomMath";
+import { anchoredZoom, MAX_ZOOM, MIN_ZOOM, pinchZoom } from "./zoomMath";
 
 /** Orthographic screen offset from centre, in the camera's frustum units. */
 function project(world: [number, number], cam: { x: number; y: number; zoom: number }) {
@@ -40,5 +40,26 @@ describe("anchoredZoom", () => {
 
     expect(after[0]).toBeCloseTo(before[0], 10);
     expect(after[1]).toBeCloseTo(before[1], 10);
+  });
+});
+
+describe("pinchZoom", () => {
+  it("scales startZoom by the ratio of current distance to start distance", () => {
+    expect(pinchZoom(100, 200, 2)).toBeCloseTo(4, 10);
+    expect(pinchZoom(200, 100, 2)).toBeCloseTo(1, 10);
+    expect(pinchZoom(100, 100, 3)).toBeCloseTo(3, 10);
+  });
+
+  it("clamps the result to MAX_ZOOM when pinching out far", () => {
+    expect(pinchZoom(10, 1000, 3)).toBe(MAX_ZOOM);
+  });
+
+  it("clamps the result to MIN_ZOOM when pinching in far", () => {
+    expect(pinchZoom(1000, 10, 3)).toBe(MIN_ZOOM);
+  });
+
+  it("guards against a zero or negative start distance", () => {
+    expect(pinchZoom(0, 100, 2)).toBe(MAX_ZOOM);
+    expect(pinchZoom(-5, 100, 2)).toBe(MAX_ZOOM);
   });
 });

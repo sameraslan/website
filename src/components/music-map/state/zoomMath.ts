@@ -32,3 +32,26 @@ export function anchoredZoom(
     y: cursorWorld[1] - (cursorWorld[1] - cam.y) * ratio,
   };
 }
+
+/** Fixed clamp range for a raw two-finger pinch gesture (Task 11, spec 4.7).
+ * Distinct from CameraRig's dynamic MIN_ZOOM_FIT_MULTIPLE floor, which
+ * depends on the loaded dataset's fitted overview zoom; `pinchZoom` is pure
+ * math with no access to that state, so it clamps to the same fixed [0.5, 5]
+ * range the rest of the zoom pipeline (state/bounds.ts) uses as its outer
+ * bound. CameraRig clamps again with its own dynamic floor after calling
+ * this, so the two clamps compose correctly. */
+export const MIN_ZOOM = 0.5;
+export const MAX_ZOOM = 5.0;
+
+/**
+ * Two-finger pinch zoom: the zoom factor is the ratio of the current
+ * inter-finger distance to the distance when the pinch started, applied to
+ * the zoom the camera was at when the pinch started (not the current zoom),
+ * so re-reading `startDist`/`startZoom` every frame from the pinch's origin
+ * gives a stable, non-compounding result. Clamped to [MIN_ZOOM, MAX_ZOOM].
+ */
+export function pinchZoom(startDist: number, currDist: number, startZoom: number): number {
+  if (!(startDist > 0)) return MAX_ZOOM;
+  const factor = currDist / startDist;
+  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, startZoom * factor));
+}

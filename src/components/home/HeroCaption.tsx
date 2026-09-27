@@ -1,7 +1,11 @@
+import { NARROW_MEDIA_QUERY } from "@/components/music-map/state/breakpoints";
+
 /**
  * Caption card for the home hero (Option B). Sits bottom-left over the music
- * map on desktop; collapses to static, full-width flow below 640px (rough
- * for now, Task 11 refines mobile layout).
+ * map on desktop. Below 640px (spec 4.7 / Task 11) it drops the card chrome
+ * entirely (no background, no border) and renders as plain content in
+ * normal flow below the map, padded like the rest of the site's pages
+ * rather than like a floating card.
  */
 export function HeroCaption() {
   return (
@@ -22,10 +26,15 @@ export function HeroCaption() {
       }}
     >
       <style>{`
-        @media (max-width: 640px) {
+        @media ${NARROW_MEDIA_QUERY} {
           .hero-caption {
             position: static !important;
             width: auto !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 28px 24px 40px !important;
+            background: none !important;
+            border: none !important;
           }
         }
       `}</style>

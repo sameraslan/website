@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import { siteConfig } from '@/lib/site-config';
+import { NOT_NARROW_MEDIA_QUERY } from '@/components/music-map/state/breakpoints';
 
 function isActiveFor(item: { href: string }, pathname: string) {
   if (item.href === '/') return pathname === '/';
@@ -15,21 +16,24 @@ export function SiteHeader() {
   const overlay = pathname === '/';
 
   return (
-    <header
-      className={overlay ? 'z-20' : 'border-b border-rule'}
-      style={
-        overlay
-          ? {
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              background:
-                'linear-gradient(to bottom, #faf6ec 55%, rgba(250,246,236,0) 100%)',
+    <header className={overlay ? 'home-hero-header z-20' : 'border-b border-rule'}>
+      {/* Overlaid header is a desktop-only affordance (spec 4.7 / Task 11):
+          below 640px the header sits in normal flow above the 390px map
+          instead of floating over it, so the map's own top edge (and its
+          region labels) aren't hidden under header chrome. */}
+      {overlay && (
+        <style>{`
+          @media ${NOT_NARROW_MEDIA_QUERY} {
+            .home-hero-header {
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              background: linear-gradient(to bottom, #faf6ec 55%, rgba(250,246,236,0) 100%);
             }
-          : undefined
-      }
-    >
+          }
+        `}</style>
+      )}
       <div className="mx-auto max-w-page flex items-baseline justify-between gap-6 px-6 sm:px-10 md:px-16 pt-6 pb-4">
         <Link
           href="/"

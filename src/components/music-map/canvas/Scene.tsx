@@ -109,7 +109,7 @@ function InvalidateBridge() {
   return null;
 }
 
-export function Scene() {
+export function Scene({ isTouch = false }: { isTouch?: boolean }) {
   const data = useMapStore((s) => s.data);
   if (!data) return null;
   return (
@@ -131,8 +131,15 @@ export function Scene() {
         bottom: -FRUSTUM_HALF_HEIGHT,
       }}
       gl={{ alpha: false, antialias: false }}
-      dpr={[1, 2]}
-      style={{ position: "absolute", inset: 0 }}
+      // Touch devices cap dpr at 1.5 (not 2): phones already push more
+      // pixels per point than desktop, and the pinch/pan gesture path draws
+      // every frame, so keeping fill-rate down matters more than it does on
+      // a mouse-driven desktop where dpr=2 is cheap by comparison (spec 4.7).
+      dpr={[1, isTouch ? 1.5 : 2]}
+      // Touch-action: none so the browser never hijacks a one- or two-finger
+      // gesture on the canvas for native scroll/zoom; CameraRig owns pan and
+      // pinch entirely via pointer events (Task 11 item 2).
+      style={{ position: "absolute", inset: 0, touchAction: "none" }}
       onCreated={({ gl }) => {
         // Our ShaderMaterials write sRGB-authored colors straight to the
         // framebuffer (Three.js does not auto-inject the linear->sRGB
@@ -148,12 +155,12 @@ export function Scene() {
         gl.setClearColor(paper, 1);
       }}
     >
-      <SceneInner />
+      <SceneInner isTouch={isTouch} />
     </Canvas>
   );
 }
 
-function SceneInner() {
+function SceneInner({ isTouch }: { isTouch: boolean }) {
   const data = useMapStore((s) => s.data)!;
   const invalidate = useThree((s) => s.invalidate);
   // Hot-path camera/cursor state lives in refs, not React state: pointermove
@@ -223,7 +230,11 @@ function SceneInner() {
       <FlyToFocus />
       <CursorTracker cursorRef={cursorRef} hoverRef={hoverRef} positionsRef={positionsRef} />
       <FocusController onFocusChange={handleFocusChange} />
-      <AmbientDrift />
+      {/* Drift is a desktop-only idle flourish: touch has no notion of "the
+          user hasn't touched anything for a while" the way a resting mouse
+          does, and drifting the camera under a finger mid-gesture would be
+          actively disorienting (spec 4.7). */}
+      {!isTouch && <AmbientDrift />}
       {/* region washes removed; the paper clear color matches the site so the
           map blends into the page rather than sitting on a colored field */}
       <AlbumField

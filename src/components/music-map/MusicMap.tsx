@@ -6,6 +6,7 @@ import { Scene } from "./canvas/Scene";
 import { startPrefetch } from "./data/loader";
 import { LoadingState } from "./overlays/LoadingState";
 import { MobileFallback } from "./overlays/MobileFallback";
+import { MobileSheet } from "./overlays/MobileSheet";
 import { RegionLabels } from "./overlays/RegionLabels";
 import { SearchOverlay } from "./overlays/SearchOverlay";
 import { Slider } from "./overlays/Slider";
@@ -34,6 +35,12 @@ function isWebGLAvailable(): boolean {
  * Renders a full WebGL canvas with overlays for search, tooltip, and a
  * sonic-to-mood slider. Data is loaded from `/data/*.json` + atlas sheets at
  * mount; the component takes no props in v1. See README.md in this directory.
+ *
+ * Below the narrow breakpoint (`NARROW_MEDIA_QUERY`, <640px) the map still
+ * mounts, in a touch variant (Task 11 / spec 4.7): search is omitted, the
+ * desktop hover tooltip is replaced by `MobileSheet`, and `Scene`/`CameraRig`
+ * get an `isTouch` flag that caps dpr, drops idle drift, and adds pinch. Only
+ * a genuinely missing WebGL context still falls back to the static image.
  */
 export function MusicMap() {
   const mode = useMapStore((s) => s.mode);
@@ -46,6 +53,7 @@ export function MusicMap() {
   // path before the touch check catches up (perf audit item 1g).
   const [isNarrow, setIsNarrow] = useState(isNarrowScreen);
   const [webglOk, setWebglOk] = useState(true);
+  const isTouch = isNarrow;
 
   useEffect(() => setWebglOk(isWebGLAvailable()), []);
 
@@ -58,7 +66,10 @@ export function MusicMap() {
   }, []);
 
   useEffect(() => {
-    if (isNarrow) return;
+    // Narrow screens now mount the real map too (Task 11 item 1), so this
+    // fetches on mount there as well; only the module-scope prefetch in
+    // MusicMapClient.tsx still skips narrow (it can't know the map will
+    // actually be used before the breakpoint check runs on the client).
     // A client navigation between `/` and `/music` shares the singleton
     // store; if it already has data (from the previous mount, or from the
     // module-scope prefetch already having resolved), skip fetching again.
@@ -75,9 +86,8 @@ export function MusicMap() {
     return () => {
       cancelled = true;
     };
-  }, [isNarrow, data, setData, setMode]);
+  }, [data, setData, setMode]);
 
-  if (isNarrow) return <MobileFallback />;
   if (!webglOk) return <MobileFallback />;
 
   return (
@@ -132,7 +142,7 @@ export function MusicMap() {
         Skip the music map
       </a>
       {mode === "loading" && <LoadingState />}
-      {data && <Scene />}
+      {data && <Scene isTouch={isTouch} />}
       {/* Edge feather, a paper-colored gradient that is transparent through
           the center and fades to solid #faf6ec at all four edges, so the
           canvas dissolves into the page instead of ending at a hard border.
@@ -151,20 +161,26 @@ export function MusicMap() {
         }}
       />
       {data && <RegionLabels regions={data.regions} />}
-      <Tooltip />
-      {/* Bottom-right control row: always visible, not hover-revealed. */}
+      {/* Desktop hover tooltip vs. the touch bottom sheet (spec 4.7): touch
+          has no hover state to follow, so it gets a fixed card instead of a
+          tooltip that would try to chase a finger. */}
+      {isTouch ? <MobileSheet /> : <Tooltip />}
+      {/* Bottom-right control row: always visible, not hover-revealed. On
+          touch it sits above the MobileSheet (bottom: 76px vs. the sheet's
+          12px + ~54px tall) so the two never overlap, and search is omitted
+          entirely (spec 4.7: "search is omitted on mobile"). */}
       <div
         style={{
           position: "absolute",
-          right: 48,
-          bottom: 40,
+          right: isTouch ? 16 : 48,
+          bottom: isTouch ? 76 : 40,
           display: "flex",
           alignItems: "center",
           gap: 8,
         }}
       >
         <Slider />
-        <SearchOverlay />
+        {!isTouch && <SearchOverlay />}
       </div>
     </div>
   );

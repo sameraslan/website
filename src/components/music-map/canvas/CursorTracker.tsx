@@ -66,12 +66,18 @@ export function CursorTracker({
     // position, same as browser event coalescing would give us, but
     // guaranteed rather than relied upon.
     function onMove(e: PointerEvent) {
+      // Hover has no meaning on touch: there is no "cursor" resting over a
+      // point between touches, and a finger is always covering whatever it
+      // could hover, so a touch pointermove (drag/pinch) must never arm the
+      // hover ring or the 80ms tooltip timer (spec 4.7 / Task 11 item 3).
+      if (e.pointerType === "touch") return;
       const rect = canvas.getBoundingClientRect();
       const cam = camera as THREE.OrthographicCamera;
       cursorRef.current = screenToWorld(e.clientX, e.clientY, rect, cam);
       invalidate();
     }
-    function onLeave() {
+    function onLeave(e: PointerEvent) {
+      if (e.pointerType === "touch") return;
       cursorRef.current = null;
       invalidate();
     }

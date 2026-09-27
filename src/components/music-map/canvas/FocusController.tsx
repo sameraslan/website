@@ -13,6 +13,12 @@ import {
 
 const HIT_RADIUS = 0.04;
 const NEIGHBOR_K = 10;
+/** A gesture counts as a tap (not a drag/pinch) below this squared movement
+ * (in CSS px, so 8px matches spec 4.7's "< 8px movement"). */
+const TAP_MOVE_SQ = 8 * 8;
+/** A gesture counts as a tap only if pointerdown-to-pointerup takes less
+ * than this (spec 4.7's "< 300ms"). */
+const TAP_MAX_MS = 300;
 
 interface FocusControllerProps {
   /** Receives the resolved focused-index and neighbor indices each render. */
@@ -30,11 +36,11 @@ export function FocusController({ onFocusChange }: FocusControllerProps) {
     if (!data) return;
     const canvas = gl.domElement;
 
-    function onClick(e: MouseEvent) {
+    function hitTestAndFocus(clientX: number, clientY: number) {
       if (!data) return;
       const rect = canvas.getBoundingClientRect();
-      const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      const ndcY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+      const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+      const ndcY = -(((clientY - rect.top) / rect.height) * 2 - 1);
       const cam = camera as THREE.OrthographicCamera;
       const worldX = (ndcX / cam.zoom) * (cam.right - cam.left) / 2 + cam.position.x;
       const worldY = (ndcY / cam.zoom) * (cam.top - cam.bottom) / 2 + cam.position.y;
@@ -46,8 +52,56 @@ export function FocusController({ onFocusChange }: FocusControllerProps) {
       }
     }
 
-    canvas.addEventListener("click", onClick);
-    return () => canvas.removeEventListener("click", onClick);
+    // Tap-to-focus, unified for mouse and touch (spec 4.7 / Task 11 item 3):
+    // a "tap" is a short pointerdown-to-pointerup on the same pointer, with
+    // < 8px of movement and < 300ms elapsed. Tracked independently of
+    // CameraRig's own pointer bookkeeping (both simply listen on the same
+    // canvas). A second pointer joining mid-gesture (a pinch) cancels the
+    // tap outright, so a two-finger zoom can never also toggle focus.
+    let activeCount = 0;
+    let tapStart: { pointerId: number; x: number; y: number; t: number } | null = null;
+    let cancelled = false;
+
+    function onPointerDown(e: PointerEvent) {
+      activeCount++;
+      if (activeCount === 1) {
+        tapStart = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
+        cancelled = false;
+      } else {
+        // A second pointer means this whole gesture is a pinch, not a tap.
+        cancelled = true;
+        tapStart = null;
+      }
+    }
+    function onPointerMove(e: PointerEvent) {
+      if (!tapStart || e.pointerId !== tapStart.pointerId) return;
+      const dx = e.clientX - tapStart.x;
+      const dy = e.clientY - tapStart.y;
+      if (dx * dx + dy * dy > TAP_MOVE_SQ) cancelled = true;
+    }
+    function onPointerUp(e: PointerEvent) {
+      activeCount = Math.max(0, activeCount - 1);
+      if (tapStart && e.pointerId === tapStart.pointerId && !cancelled) {
+        const elapsed = performance.now() - tapStart.t;
+        if (elapsed < TAP_MAX_MS) hitTestAndFocus(e.clientX, e.clientY);
+      }
+      if (activeCount === 0) tapStart = null;
+    }
+    function onPointerCancel() {
+      activeCount = Math.max(0, activeCount - 1);
+      tapStart = null;
+    }
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointercancel", onPointerCancel);
+    return () => {
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", onPointerUp);
+      canvas.removeEventListener("pointercancel", onPointerCancel);
+    };
   }, [data, camera, gl, sliderT, focus]);
 
   // Recompute the neighbor index list whenever focus or slider changes

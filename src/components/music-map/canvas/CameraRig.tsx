@@ -6,7 +6,7 @@ import * as THREE from "three";
 
 import { useMapStore } from "../state/store";
 import { getOverviewFraming } from "../state/view";
-import { anchoredZoom } from "../state/zoomMath";
+import { anchoredZoom, pinchZoom } from "../state/zoomMath";
 import { screenToWorld } from "./CursorTracker";
 
 // Capped at 5 so a high-DPR viewport stays under the ~256 GL_POINTS sprite
@@ -48,18 +48,30 @@ function clampZoom(z: number): number {
   return Math.max(getMinZoom(), Math.min(MAX_ZOOM, z));
 }
 
+function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
 export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number> }) {
   const camera = useThree((s) => s.camera) as THREE.OrthographicCamera;
   const gl = useThree((s) => s.gl);
   const invalidate = useThree((s) => s.invalidate);
   const dragging = useRef(false);
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
-  const pointerId = useRef<number | null>(null);
   const velocity = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   // Last few move deltas (world units, already scaled), newest last. Averaged
   // on release into the fling velocity, so a single jittery final move can't
   // dominate the fling.
   const moveHistory = useRef<{ x: number; y: number }[]>([]);
+
+  // All currently-down pointers, keyed by pointerId (screen px). Used to
+  // detect a two-finger pinch: single-pointer pan is handled by the existing
+  // dragging/lastPointer refs above, driven only while this map holds
+  // exactly one entry.
+  const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchActive = useRef(false);
+  const pinchStartDist = useRef(0);
+  const pinchStartZoom = useRef(1);
 
   // Target zoom the frame loop eases camera.zoom toward. Kept in sync with
   // camera.zoom whenever no wheel gesture is in flight, so it never fights
@@ -82,23 +94,68 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
     let dragMoved = false;
 
     const onDown = (e: PointerEvent) => {
-      dragging.current = true;
-      dragMoved = false;
-      lastPointer.current = { x: e.clientX, y: e.clientY };
-      pointerId.current = e.pointerId;
-      velocity.current = { x: 0, y: 0 };
-      moveHistory.current = [];
-      // Captures the pointer to the canvas so drag events keep arriving even
-      // once the pointer leaves the canvas bounds (spec 4.4.5); released on
-      // pointerup/pointercancel below.
+      // Captures the pointer to the canvas so drag/pinch events keep
+      // arriving even once a finger leaves the canvas bounds (spec 4.4.5);
+      // released per-pointer on pointerup/pointercancel below.
       canvas.setPointerCapture(e.pointerId);
-      setDragging(true);
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       registerInteraction();
-      registerCameraGrab();
+
+      if (pointers.current.size === 1) {
+        dragging.current = true;
+        dragMoved = false;
+        lastPointer.current = { x: e.clientX, y: e.clientY };
+        velocity.current = { x: 0, y: 0 };
+        moveHistory.current = [];
+        setDragging(true);
+        registerCameraGrab();
+      } else if (pointers.current.size === 2) {
+        // A second finger arrived mid-gesture: this is now a pinch, not a
+        // pan. Cancel any in-flight single-finger drag so it can't leave
+        // stale velocity behind (no fling after a pinch, spec/Task 11
+        // item 2), then start the pinch from the two current points.
+        dragging.current = false;
+        setDragging(false);
+        lastPointer.current = null;
+        velocity.current = { x: 0, y: 0 };
+        moveHistory.current = [];
+        const pts = Array.from(pointers.current.values());
+        pinchStartDist.current = dist(pts[0], pts[1]);
+        pinchStartZoom.current = camera.zoom;
+        pinchActive.current = true;
+        registerCameraGrab();
+      }
+      // A 3rd+ pointer is ignored: the existing pinch (or pan) continues
+      // driven by whichever two/one pointers were already tracked.
     };
     const onMove = (e: PointerEvent) => {
       registerInteraction();
-      if (!dragging.current || !lastPointer.current) return;
+      if (!pointers.current.has(e.pointerId)) return;
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (pinchActive.current && pointers.current.size === 2) {
+        const pts = Array.from(pointers.current.values());
+        const currDist = dist(pts[0], pts[1]);
+        const midX = (pts[0].x + pts[1].x) / 2;
+        const midY = (pts[0].y + pts[1].y) / 2;
+        const rect = canvas.getBoundingClientRect();
+        const midWorld = screenToWorld(midX, midY, rect, camera);
+        const rawZoom = pinchZoom(pinchStartDist.current, currDist, pinchStartZoom.current);
+        const nextZoom = clampZoom(rawZoom);
+        const nextPos = anchoredZoom(
+          { x: camera.position.x, y: camera.position.y, zoom: camera.zoom },
+          midWorld,
+          nextZoom,
+        );
+        camera.position.x = nextPos.x;
+        camera.position.y = nextPos.y;
+        camera.zoom = nextZoom;
+        camera.updateProjectionMatrix();
+        invalidate();
+        return;
+      }
+
+      if (!dragging.current || !lastPointer.current || pointers.current.size !== 1) return;
       if (!dragMoved) {
         dragMoved = true;
         registerCameraGrab();
@@ -117,25 +174,43 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
       }
       invalidate();
     };
-    const endDrag = () => {
-      dragging.current = false;
-      setDragging(false);
-      lastPointer.current = null;
-      if (pointerId.current !== null && canvas.hasPointerCapture(pointerId.current)) {
-        canvas.releasePointerCapture(pointerId.current);
+    const endDrag = (e: PointerEvent) => {
+      pointers.current.delete(e.pointerId);
+      if (canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId);
       }
-      pointerId.current = null;
-      const hist = moveHistory.current;
-      if (hist.length > 0) {
-        let sx = 0;
-        let sy = 0;
-        for (const v of hist) {
-          sx += v.x;
-          sy += v.y;
+
+      if (pointers.current.size < 2) {
+        // Pinch ends the moment fewer than two fingers remain.
+        pinchActive.current = false;
+      }
+
+      if (pointers.current.size === 0) {
+        dragging.current = false;
+        setDragging(false);
+        lastPointer.current = null;
+        const hist = moveHistory.current;
+        if (hist.length > 0) {
+          let sx = 0;
+          let sy = 0;
+          for (const v of hist) {
+            sx += v.x;
+            sy += v.y;
+          }
+          velocity.current = { x: sx / hist.length, y: sy / hist.length };
         }
-        velocity.current = { x: sx / hist.length, y: sy / hist.length };
+        moveHistory.current = [];
+      } else {
+        // One finger remains after a pinch (or a 3rd+ pointer lifted): don't
+        // resume a seamless pan from here, and don't fling — the remaining
+        // finger's position vs. the lifted one would otherwise read as a
+        // sudden jump. A fresh pointerdown starts a clean pan.
+        dragging.current = false;
+        setDragging(false);
+        lastPointer.current = null;
+        velocity.current = { x: 0, y: 0 };
+        moveHistory.current = [];
       }
-      moveHistory.current = [];
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
