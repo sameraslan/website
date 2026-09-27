@@ -2,9 +2,11 @@
  * Exponent P of the sprite size curve
  * `cssSize = clamp(10 * (zoom / fitZoom)^P, 4, 90)`.
  *
- * The real fitZoom is about 1.01 at the default sliderT 0.6 (percentile
- * framing against the fixed 1.5 x 1.1 world-unit frustum, so it does not
- * depend on the viewport size). At TUNING.focusZoom = 4 the ratio is
+ * The real fitZoom is about 1.01 at the default sliderT 0.6 on a 1440 x 900
+ * viewport (percentile framing against a frustum 1.1 world units tall and
+ * 1.1 * aspect wide, see InitialFrame, so it shifts with the viewport's
+ * aspect ratio once the width becomes the limiting axis). At
+ * TUNING.focusZoom = 4 the ratio is
  * 4 / 1.01 = 3.96, and a readable focused cover needs >= 60px, i.e.
  * 3.96^P >= 6, P >= ln(6) / ln(3.96) = 1.79 / 1.38 = 1.30. Aiming for the
  * brief's 6.5x headroom gives ln(6.5) / ln(3.96) = 1.87 / 1.38 = 1.36, so
@@ -192,14 +194,16 @@ export const ALBUM_FRAGMENT_SHADER = /* glsl */ `
     // Ring geometry, expressed in gl_PointCoord's r-space. One device pixel
     // measured against the sprite's on-screen diameter (v_screenSize, in
     // device px) is 1/v_screenSize in this space, since r=0.5 spans half
-    // that diameter. The hovered sprite is already 1.25x bigger (see the
-    // vertex shader), so the ring hugs the enlarged disc, not the base size.
+    // that diameter. The point sprite is a square clipped at r=0.5 on its
+    // edges, so everything, rings included, must fit inside r <= 0.5: on a
+    // hovered sprite (already 1.25x bigger, see the vertex shader) the disc
+    // ends 3px short of the sprite edge, a 1px ink ring follows, and a 2px
+    // paper ring runs out to r=0.5.
     float pxR = 1.0 / max(v_screenSize, 1.0);
-    float inkOuter = 0.5 + pxR;              // 1px ink ring at the disc edge
-    float paperOuter = inkOuter + 2.0 * pxR; // 2px paper ring beyond it
-    float outerEdge = v_hovered > 0.5 ? paperOuter : 0.5;
+    float discEdge = v_hovered > 0.5 ? 0.5 - 3.0 * pxR : 0.5;
+    float inkOuter = 0.5 - 2.0 * pxR;
 
-    float discMask = 1.0 - smoothstep(outerEdge - aa, outerEdge, r);
+    float discMask = 1.0 - smoothstep(0.5 - aa, 0.5, r);
     if (discMask <= 0.0) discard;
     // Dot mode is the full cluster color at full strength, no ink mix, so
     // the overview reads as coloured structure (spec 4.3).
@@ -236,12 +240,15 @@ export const ALBUM_FRAGMENT_SHADER = /* glsl */ `
     // v_dim (paper mix) only applies in focus mode, unchanged from before.
     col = mix(col, paper, v_dim);
 
-    // Ring band: r in (0.5, paperOuter] on a hovered sprite. inkMask fades
+    // Ring band: r in (discEdge, 0.5] on a hovered sprite. inkMask fades
     // from ink (right at the disc edge) to paper (further out), giving a
-    // 1px ink ring immediately outside the disc and a 2px paper ring beyond it.
-    if (v_hovered > 0.5 && r > 0.5) {
+    // 1px ink ring immediately outside the disc and a 2px paper ring beyond
+    // it. The ring takes the same v_dim paper mix as the disc, so a hovered
+    // but dimmed album in focus mode does not show a full-strength ring.
+    if (v_hovered > 0.5) {
       float inkMask = 1.0 - smoothstep(inkOuter - aa, inkOuter, r);
-      col = mix(paper, ink, inkMask);
+      vec3 ringCol = mix(mix(paper, ink, inkMask), paper, v_dim);
+      col = mix(col, ringCol, smoothstep(discEdge - aa, discEdge, r));
     }
 
     gl_FragColor = vec4(col, discMask);
