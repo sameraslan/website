@@ -18,6 +18,11 @@ export const siteConfig = {
     { label: 'github',   href: 'https://github.com/sameraslan' },
     { label: 'linkedin', href: 'https://www.linkedin.com/in/sameraslan/' },
   ] as NavItem[],
+  facts: {
+    now: 'AI and law, Bloomberg LP',
+    before: 'Johns Hopkins, CLSP and Dynamic Perception Lab',
+    where: 'Brooklyn, New York',
+  },
 };
 
 export type SiteConfig = typeof siteConfig;
