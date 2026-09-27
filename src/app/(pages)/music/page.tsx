@@ -2,7 +2,7 @@ import MusicMapClient from '@/components/music-map/MusicMapClient';
 import { CrossLinkCard } from '@/components/content/CrossLinkCard';
 import { PageTitle } from '@/components/content/PageTitle';
 
-export const metadata = { title: 'music — samer aslan' };
+export const metadata = { title: 'music: samer aslan' };
 
 export default function MusicPage() {
   return (

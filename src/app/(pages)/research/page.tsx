@@ -2,7 +2,7 @@ import { loadEntries } from '@/lib/content';
 import { EntryRow } from '@/components/content/EntryRow';
 import { PageTitle } from '@/components/content/PageTitle';
 
-export const metadata = { title: 'research — samer aslan' };
+export const metadata = { title: 'research: samer aslan' };
 
 export default async function ResearchPage() {
   const entries = await loadEntries('research');

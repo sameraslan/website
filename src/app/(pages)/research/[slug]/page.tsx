@@ -13,9 +13,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   try {
     const entry = await loadEntry('research', slug);
-    return { title: `${entry.title} — samer aslan`, description: entry.subtitle };
+    return { title: `${entry.title}: samer aslan`, description: entry.subtitle };
   } catch {
-    return { title: 'research — samer aslan' };
+    return { title: 'research: samer aslan' };
   }
 }
 

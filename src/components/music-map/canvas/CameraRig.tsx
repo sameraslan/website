@@ -202,7 +202,7 @@ export function CameraRig({ zoomRef }: { zoomRef: React.MutableRefObject<number>
         moveHistory.current = [];
       } else {
         // One finger remains after a pinch (or a 3rd+ pointer lifted): don't
-        // resume a seamless pan from here, and don't fling — the remaining
+        // resume a seamless pan from here, and don't fling, the remaining
         // finger's position vs. the lifted one would otherwise read as a
         // sudden jump. A fresh pointerdown starts a clean pan.
         dragging.current = false;

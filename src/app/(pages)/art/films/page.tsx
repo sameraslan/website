@@ -2,7 +2,7 @@ import { ArtSectionShell } from '@/components/content/ArtSectionShell';
 import { ArtCover } from '@/components/content/ArtCover';
 import { getFilms } from '@/lib/art-server';
 
-export const metadata = { title: 'films — samer aslan' };
+export const metadata = { title: 'films: samer aslan' };
 
 export default function FilmsPage() {
   const items = getFilms();

@@ -34,8 +34,8 @@ async function main() {
   // projects a real album's world position using the *desktop* middle-index
   // convention, which on the narrower mobile frustum can land off-canvas
   // (confirmed separately: a touchscreen.tap at a negative/out-of-viewport
-  // coordinate is silently dropped, producing no pointer events at all —
-  // real touch hardware can't produce negative coordinates either, so this
+  // coordinate is silently dropped, producing no pointer events at all.
+  // Real touch hardware can't produce negative coordinates either, so this
   // is a fixture limitation, not a Task 11 bug). Grid-search a handful of
   // on-canvas points instead and use whichever one actually lands on an
   // album (the cloud is dense enough that several will).
@@ -64,7 +64,7 @@ async function main() {
 
   // 3. Two-finger pinch via CDP dispatchTouchEvent: zoom should increase,
   // and the pinch itself must not change focus (still the same title, not
-  // reverted to the hint) — spec/Task 11 item 2's "a pinch must not trigger
+  // reverted to the hint), per spec/Task 11 item 2's "a pinch must not trigger
   // focus".
   const before = await page.evaluate(() => window.__mapDebug.getCameraState());
   const cdp = await context.newCDPSession(page);

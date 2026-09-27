@@ -111,7 +111,7 @@ export function AmbientDrift() {
 
     if (interactionGated) {
       // Not yet time to drift: the wake timer (armed above) will invalidate
-      // exactly once the delay elapses. Don't invalidate here — that would
+      // exactly once the delay elapses. Don't invalidate here, that would
       // turn frameloop="demand" back into "always" while idle.
       noiseSeeded.current = false;
       return;

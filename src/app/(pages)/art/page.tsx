@@ -2,7 +2,7 @@ import { PageTitle } from '@/components/content/PageTitle';
 import { ArtTeaserRow } from '@/components/content/ArtTeaserRow';
 import { getAlbums, getFilms, getBooks } from '@/lib/art-server';
 
-export const metadata = { title: 'art — samer aslan' };
+export const metadata = { title: 'art: samer aslan' };
 
 export default function ArtPage() {
   const albums = getAlbums();

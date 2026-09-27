@@ -215,16 +215,16 @@ export const ALBUM_FRAGMENT_SHADER = /* glsl */ `
       // Dot mode: full cluster color
       col = dotColor;
     } else {
-      // Cover mode — sample atlas in [0,1] using atlasUV
+      // Cover mode: sample atlas in [0,1] using atlasUV
       vec2 uvInAtlas = v_atlasOrigin + gl_PointCoord * v_atlasSize;
       vec4 cover = sampleAtlas(int(v_atlasIndex), uvInAtlas);
       vec3 coverColor;
       if (cover.a < 0.5) {
-        // Atlas not loaded yet — keep the dot color so the album never
+        // Atlas not loaded yet, keep the dot color so the album never
         // collapses to pure black while we wait for textures.
         coverColor = dotColor;
       } else {
-        // Multiply blend with paper — sits in the page
+        // Multiply blend with paper: sits in the page
         coverColor = paper * cover.rgb;
       }
       // Crossfade from the disc color to the cover between 24 and 40 CSS px

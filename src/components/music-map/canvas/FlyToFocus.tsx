@@ -16,7 +16,7 @@ interface Animation {
   durationMs: number;
   fromPos: THREE.Vector2;
   toPos: THREE.Vector2;
-  /** Quadratic-bezier control point — bows the path into a curve. */
+  /** Quadratic-bezier control point, bows the path into a curve. */
   ctrl: THREE.Vector2;
   fromZoom: number;
   toZoom: number;
@@ -61,7 +61,7 @@ export function FlyToFocus() {
   const focusedId = useMapStore((s) => s.focusedId);
   const sliderT = useMapStore((s) => s.sliderT);
   const anim = useRef<Animation | null>(null);
-  // Whether any focus has happened yet — gates the initial release so we don't
+  // Whether any focus has happened yet: gates the initial release so we don't
   // pin the camera to the world origin before the tour places it.
   const everFocused = useRef(false);
   // First effect run = the mount. focusedId is never restored from the
