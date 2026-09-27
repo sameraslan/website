@@ -1,10 +1,9 @@
 /**
  * Single source of truth for the mobile/desktop breakpoint used across the
  * music map's load path: MusicMapClient.tsx's module-scope prefetch guard,
- * MusicMap.tsx's isNarrow check, and page.tsx's preload `media` attribute
- * (as the mirrored min-width query) all need the same 640px cutoff to agree,
- * or a phone can end up fetching the desktop payload from one of them while
- * the others correctly skip it.
+ * MusicMap.tsx's isNarrow check, and SiteHeader.tsx's layout switch all need
+ * the same 640px cutoff to agree, or a phone can end up fetching the desktop
+ * payload from one of them while the others correctly skip it.
  */
 export const NARROW_MEDIA_QUERY = "(max-width: 639px)";
 
