@@ -39,10 +39,10 @@ export function HeroCaption() {
         }
       `}</style>
       <h1 className="font-display font-normal text-[27px] leading-[1.2]">
-        Machine learning engineer currently working at the intersection of AI and law.
+        Hey, I&apos;m Samer. I build AI for lawyers at Bloomberg and do research in neuroscience and AI.
       </h1>
       <p className="font-serif text-[15.5px] leading-[1.5] text-ink">
-        Here&apos;s an evolving map of what I listen to.
+        Enjoy playing around with this music map of my album listening.
       </p>
       <p className="font-mono text-tiny uppercase text-ink-muted">
         <span className="sm:hidden">tap a point · pinch to zoom</span>

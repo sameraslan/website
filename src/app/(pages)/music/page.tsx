@@ -21,14 +21,20 @@ export default function MusicPage() {
             How was this built?
           </h2>
           <p className="font-serif text-[0.97rem] leading-[1.6] text-ink">
-            I&apos;m constantly on the hunt for new mind-blowing albums, but I couldn&apos;t find an album recommender where, given an album I like, I get the <em>k</em> most similar albums to listen to. There were some song or artist recommenders out there, but they all seemed to use user co-occurrence (how often two songs are listened to by the same person). This felt like cheating, since we&apos;re looking at user data to create similarity between the music, rather than at the music itself. This prompted me to build recmyrecord in my junior year of college, an album recommender system that uses real audio features like valence, danceability, and energy, as well as music descriptors, to create similarity between albums. Each album is a vector of <em>n</em> features, each of which represents an audio feature or music description, where the music descriptions are weighted by frequency of user selection in rateyourmusic.com, a website I use to track my music listening and find new music (almost too often!). The albums themselves come from the top 5,000 albums on rateyourmusic, and this map shows the ones from that set I&apos;ve rated. The map is a visual display of these audio vectors: I use t-SNE, a dimensionality reduction algorithm, to place albums with similar vectors close to one another in 2D space, and albums with different vectors further apart.
+            I&apos;m constantly on the hunt for new mind-blowing albums, but I couldn&apos;t find a recommender where I give it an album I like and get back the <em>k</em> most similar albums. The song and artist recommenders I found all seemed to use user co-occurrence (how often two songs are played by the same person). That felt like cheating, since it builds similarity out of listeners&apos; habits instead of the music itself.
+          </p>
+          <p className="mt-3 font-serif text-[0.97rem] leading-[1.6] text-ink">
+            So in my junior year of college I built recmyrecord, an album recommender that works from the music. Each album is a vector of <em>n</em> features: audio features like valence, danceability, and energy, plus music descriptors from rateyourmusic.com (RYM), weighted by how often users apply them. The albums come from RYM&apos;s top 5,000, and RYM is also where I track my listening and find new music (almost too often!).
+          </p>
+          <p className="mt-3 font-serif text-[0.97rem] leading-[1.6] text-ink">
+            This map shows the albums from that set I&apos;ve rated. It uses t-SNE, a dimensionality reduction algorithm, to place albums with similar vectors close together in 2D and push dissimilar ones farther apart.
           </p>
         </div>
         <CrossLinkCard
           href="https://www.recmyrecord.com"
           external
           title="RecMyRecord"
-          description="The album recommender version of this map, built as a fun project in college."
+          description="Give it an album you like and get the most similar ones back, using the same features as this map."
         />
       </div>
     </section>
