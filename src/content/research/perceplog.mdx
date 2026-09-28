@@ -1,0 +1,26 @@
+---
+title: "PercepLog"
+subtitle: "LLM-augmented backward chaining for legal reasoning"
+year: 2026
+role: "Researcher"
+affiliation: "Bloomberg LP"
+venue: "EMNLP 2026"
+stack: ["Neuro-symbolic reasoning", "Legal reasoning", "Backward chaining"]
+order: 3
+---
+
+PercepLog answers statutory reasoning questions with a symbolic backward-chaining prover that asks an LLM for facts from the case text only when a goal needs them. A common neuro-symbolic approach translates the whole case into a logic program such as Prolog before reasoning, and that translation can hallucinate facts and miss needed ones, especially in long, noisy case text.
+
+## How it works
+
+A lightweight Prolog-style engine written in Python runs classical backward chaining over Prolog rules. The rules are either translated from the statutes by an LLM or taken from the benchmark's ground-truth programs, and the prover works over the original case text.
+
+The LLM acts as a fact oracle. When the prover needs a fact for a goal such as `married_to(X1, X2)`, the LLM reads the case text and returns every matching argument tuple as JSON, for example `[["alice","bob"]]`, which is then unified with the goal. If no fact matches, the prover expands the goal through matching rules and proves their body goals recursively.
+
+## Why it's interesting
+
+On DeonticBench, 6,232 statutory reasoning cases in five legal domains, PercepLog improves on direct LLM answers by about 58% on average, and on full translation into Prolog by 16%, across five LLM backbones. Because extraction is driven by the goal, irrelevant sentences in the case have little effect. When each case in the hard SARA binary split is padded with 18 to 26 sentences from other tax cases, such as "In 2015, Alice's income was $312.", PercepLog with ground-truth rules scores about 90% on every backbone, while translating the full case into Prolog facts under the same rules scores around 68 to 73%.
+
+## Status
+
+PercepLog was accepted to Findings of EMNLP 2026, and the code and data will be released on GitHub.

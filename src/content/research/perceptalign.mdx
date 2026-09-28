@@ -7,7 +7,7 @@ affiliation: "Johns Hopkins"
 stack: ["PyTorch", "Transformers", "Spectrograms"]
 links:
   github: "https://github.com/sameraslan/PerceptAlign"
-order: 3
+order: 5
 ---
 
 PerceptAlign generates a soundtrack for a silent video and aligns each sound to the moment its on-screen event happens. Prior video-to-audio models, including SpecVQGAN, usually produce semantically relevant audio but misalign its timing: a video of a hammer is paired with the right sound, but the impact does not coincide with the onset of that sound. PerceptAlign adds a timing signal to the generation process itself rather than aligning audio to video after the fact.
@@ -16,13 +16,19 @@ PerceptAlign generates a soundtrack for a silent video and aligns each sound to 
 
 The model builds on SpecVQGAN's codebook and transformer design. A VQGAN encodes and reconstructs mel spectrograms into a discrete codebook, and a transformer autoregressively samples codebook entries conditioned on visual features. Those features are optical flow frames from denseflow and RGB features from a BN-Inception network.
 
-The timing signal comes from a Perceptual Alignment Loss (PAL), which extends the temporal binding window the human brain uses to accept small audio-visual asynchrony. PAL upsamples the visual features by linear interpolation to match the spectrogram's temporal dimension, 212 video frames against 848 audio frames, then passes both through a local feature extractor of two Conv1D-BN-GELU blocks with L2 normalization. It computes a cross-correlation between the audio and visual embeddings across a window of offsets within each of S segments, softmax-normalizes the offsets with temperature τ, and sums them under a Gaussian-weighted temporal binding window that tolerates slight misalignment while rewarding a zero offset. PAL is the negative log of the mean weighted sum across segments.
+The timing signal comes from a Perceptual Alignment Loss (PAL). It extends the temporal binding window, the range of audio-visual asynchrony within which the human brain still perceives sound and image as one event.
 
-The total objective is a linear combination of codebook cross-entropy and PAL, LTL = α·LCE + β·LPAL, so fidelity and timing are scored as separate terms. Generation runs in real time, carried over from SpecVQGAN's codebook sampling. Timing is evaluated with Dynamic Time Warping under a Euclidean distance, alongside KL divergence, Pearson correlation, and mean squared error.
+PAL first upsamples the visual features by linear interpolation to match the spectrogram's length: 212 video frames against 848 audio frames. Both streams then pass through a local feature extractor of two Conv1D-BN-GELU blocks with L2 normalization.
+
+The spectrogram is split into S segments. Within each segment, PAL computes the cross-correlation between the audio and visual embeddings over a window of time offsets and softmax-normalizes it with temperature τ. The normalized values are then summed under a Gaussian-weighted binding window, which tolerates slight misalignment while rewarding a zero offset. The loss is the negative log of the mean weighted sum across segments.
+
+The total objective is a weighted sum of codebook cross-entropy and PAL, LTL = α·LCE + β·LPAL, so fidelity and timing are scored as separate terms. Generation runs in real time, carried over from SpecVQGAN's codebook sampling. Timing is evaluated with Dynamic Time Warping under a Euclidean distance, alongside KL divergence, Pearson correlation, and mean squared error.
 
 ## Why it's interesting
 
-PAL improves every reported metric over the SpecVQGAN baseline on both the synthetic FlashDot dataset, which pairs a flashing red dot with a 1kHz sine wave to isolate the timing task, and the open-domain VAS dataset. A cross-correlation window of K = 10 works best on both datasets even though larger expected offsets seemed to call for a wider window. Segmentation helps up to 32 segments for the 848-frame spectrograms and gives no further gain beyond that, and a τ between 1 and 3 with a 0.7-to-1.0 PAL-to-CE weighting balances the two losses.
+PAL improves every reported metric over the SpecVQGAN baseline on two datasets: FlashDot, a synthetic dataset that pairs a flashing red dot with a 1kHz sine wave to isolate the timing task, and the open-domain VAS dataset.
+
+A cross-correlation window of K = 10 works best on both, even though larger expected offsets seemed to call for a wider window. Segmentation helps up to 32 segments for the 848-frame spectrograms and gives no further gain beyond that.
 
 ## Status
 

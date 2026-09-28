@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { siteConfig } from '@/lib/site-config';
 
@@ -13,26 +14,68 @@ export function AboutHeader() {
           style={{ textWrap: 'pretty' as never }}
         >
           <p className="m-0">
-            I&apos;m passionate about using knowledge about the human brain to
-            build models that blend machine learning with engineering to
-            develop innovative solutions that create meaningful and positive
-            experiences for people. These days, I work at the intersection of
-            AI and law.
+            Hey, I&apos;m Samer. I&apos;m a machine learning engineer at
+            Bloomberg and the technical lead on BLaw AI, Bloomberg Law&apos;s AI
+            agent. It&apos;s basically Claude Code for lawyers: an agent that
+            takes an attorney through a legal matter from start to finish.
+            Before Bloomberg, I studied computer science, cognitive science,
+            and computer engineering at Johns Hopkins.
           </p>
 
-          <p className="mt-4 m-0">My non-tech interests include:</p>
-          <ul className="mt-2 mb-0 pl-5 list-disc marker:text-ink-dim space-y-1">
-            <li>Human psychology, behaviour, and consciousness</li>
-            <li>The brain and its role in sensation and perception</li>
-            <li>Art, especially music and its influence on cognition</li>
-            <li>The intersection of nutrition and human well-being</li>
-          </ul>
+          <p className="mt-4 m-0">
+            I&apos;m mostly interested in where neuroscience and AI overlap,
+            especially how ideas from the brain can make AI systems more
+            robust. In law, I{' '}
+            <a
+              href="https://arxiv.org/abs/2605.16052"
+              target="_blank"
+              rel="noreferrer"
+              className="text-moss hover:text-moss-deep transition-colors"
+            >
+              pair LLMs with deterministic, logic-based methods
+            </a>{' '}
+            to reduce hallucinations and make their reasoning more consistent.
+          </p>
+
+          <p className="mt-4 m-0">
+            I&apos;m also a visiting researcher at the Visual Inference Lab at
+            Columbia, where I work on{' '}
+            <Link href="/research/unimap" className="text-moss hover:text-moss-deep transition-colors">
+              UniMap
+            </Link>
+            , a new, more intuitive way to visualize complex high-dimensional
+            data. The rough idea is a cross between a word cloud and PCA.
+          </p>
+
+          <p className="mt-4 m-0">
+            Outside of work, I like exploring art and seeing how far I can
+            stretch my taste, in music, film, visual art, and books.
+            Music-wise, I&apos;m into krautrock, post-punk, jazz-rock, and
+            really everything else. I&apos;ve always gravitated toward
+            percussion when I listen, so I&apos;ve been learning the drums as
+            well. Same goes for coffee: I like anaerobic and natural processed
+            beans that make you rethink coffee entirely.
+          </p>
 
           <p className="mt-4">
-            I&apos;m especially excited about how these fields can intersect
-            with machine learning to enhance the human experience, and am
-            always open to speaking with others who share similar interests
-            or are working on related projects. Feel free to reach out!
+            If any of this interests you as well, or overlaps with what
+            you&apos;re working on, I&apos;d love to chat. You can{' '}
+            <a
+              href="https://calendly.com/samer-aslan/30min"
+              target="_blank"
+              rel="noreferrer"
+              className="text-moss hover:text-moss-deep transition-colors"
+            >
+              grab a time here
+            </a>{' '}
+            or just{' '}
+            <a
+              href="mailto:samer.aslan@gmail.com"
+              className="text-moss hover:text-moss-deep transition-colors"
+            >
+              email me
+            </a>
+            .
           </p>
         </div>
 

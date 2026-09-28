@@ -29,4 +29,5 @@ export const FILMS: ArtItem[] = [
 export const BOOKS: ArtItem[] = [
   { title: 'The Master and Margarita', secondary: 'Mikhail Bulgakov', year: 1967, image: '/images/art/books/master-and-margarita.jpg' },
   { title: 'The Stranger',             secondary: 'Albert Camus',     year: 1942, image: '/images/art/books/the-stranger.jpg' },
+  { title: 'Kafka on the Shore',       secondary: 'Haruki Murakami',  year: 2002, image: '/images/art/books/kafka-on-the-shore.jpg' },
 ];

@@ -159,7 +159,7 @@ export default async function OpengraphImage() {
               lineHeight: 1.4,
             }}
           >
-            Machine learning engineer currently working at the intersection of AI and law.
+            Hey, I'm Samer. I build AI for lawyers at Bloomberg and do research in neuroscience and AI.
           </div>
           <div
             style={{
@@ -169,7 +169,7 @@ export default async function OpengraphImage() {
               display: 'flex',
             }}
           >
-            an evolving map of what I listen to
+            a music map of my album listening
           </div>
         </div>
       </div>

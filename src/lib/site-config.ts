@@ -4,7 +4,7 @@ export const siteConfig = {
   name: 'samer aslan',
   meta: {
     title: 'samer aslan',
-    description: 'personal site of samer aslan — engineer, researcher, listener.',
+    description: 'samer aslan\'s personal website: ml work, research, a music map, and more',
   },
   nav: [
     { label: 'about',    href: '/about' },
@@ -19,7 +19,7 @@ export const siteConfig = {
     { label: 'linkedin', href: 'https://www.linkedin.com/in/sameraslan/' },
   ] as NavItem[],
   facts: {
-    now: 'AI and law, Bloomberg LP',
+    now: 'ML at Bloomberg Law',
     before: 'Johns Hopkins, CLSP and Dynamic Perception Lab',
     where: 'Brooklyn, New York',
   },
