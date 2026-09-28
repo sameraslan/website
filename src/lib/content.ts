@@ -9,6 +9,7 @@ export interface Entry {
   year?: number;
   role?: string;
   affiliation?: string;
+  venue?: string;
   stack?: string[];
   links?: { github?: string; paper?: string; demo?: string; site?: string };
   heroImage?: string;
@@ -66,6 +67,7 @@ export async function loadEntry(folder: string, slug: string): Promise<Entry> {
     year: typeof data.year === 'number' ? data.year : undefined,
     role: data.role ? String(data.role) : undefined,
     affiliation: data.affiliation ? String(data.affiliation) : undefined,
+    venue: data.venue ? String(data.venue) : undefined,
     stack: Array.isArray(data.stack) ? data.stack.map(String) : undefined,
     links: data.links && typeof data.links === 'object' ? data.links : undefined,
     heroImage: data.heroImage ? String(data.heroImage) : undefined,

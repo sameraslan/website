@@ -8,6 +8,7 @@ function metaForKind(entry: Entry, kind: Kind) {
   if (entry.year) parts.push(String(entry.year));
   if (kind === 'project' && entry.role) parts.push(entry.role.toLowerCase());
   if (kind === 'research' && entry.affiliation) parts.push(entry.affiliation.toLowerCase());
+  if (kind === 'research' && entry.venue) parts.push(entry.venue.toLowerCase());
   if (entry.stack && entry.stack.length) parts.push(entry.stack.join(' · ').toLowerCase());
   return parts.join(' · ');
 }

@@ -8,6 +8,7 @@ function metaFields(entry: Entry, kind: Kind): Array<[string, string]> {
   if (entry.year) out.push(['year', String(entry.year)]);
   if (kind === 'project' && entry.role) out.push(['role', entry.role.toLowerCase()]);
   if (kind === 'research' && entry.affiliation) out.push(['lab', entry.affiliation.toLowerCase()]);
+  if (kind === 'research' && entry.venue) out.push(['venue', entry.venue.toLowerCase()]);
   if (entry.stack && entry.stack.length) out.push(['stack', entry.stack.join(' · ').toLowerCase()]);
   return out;
 }
