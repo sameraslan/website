@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Scene } from "./canvas/Scene";
 import { startPrefetch } from "./data/loader";
 import { LoadingState } from "./overlays/LoadingState";
+import { MapInfo } from "./overlays/MapInfo";
 import { MobileFallback } from "./overlays/MobileFallback";
 import { MobileSheet } from "./overlays/MobileSheet";
 import { SearchOverlay } from "./overlays/SearchOverlay";
@@ -175,7 +176,8 @@ export function MusicMap() {
       {/* Bottom-right control row: always visible, not hover-revealed. On
           touch it sits above the MobileSheet (bottom: 76px vs. the sheet's
           12px + ~54px tall) so the two never overlap, and search is omitted
-          entirely (spec 4.7: "search is omitted on mobile"). */}
+          entirely (spec 4.7: "search is omitted on mobile"). The info button
+          sits last so its popover can right-align with the row's edge. */}
       <div
         style={{
           position: "absolute",
@@ -188,6 +190,7 @@ export function MusicMap() {
       >
         <Slider />
         {!isTouch && <SearchOverlay />}
+        <MapInfo />
       </div>
       {/* Skip-link target, last in the map's DOM so the next Tab after
           following the link lands on whatever comes after the map (the

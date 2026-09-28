@@ -8,10 +8,8 @@ import { AboutHeader } from './AboutHeader';
 // change, the bio text itself changed and that is a content decision, not a
 // layout one.
 const FIRST_PARAGRAPH =
-  "I'm passionate about using knowledge about the human brain to " +
-  'build models that blend machine learning with engineering to develop ' +
-  'innovative solutions that create meaningful and positive experiences ' +
-  'for people. These days, I work at the intersection of AI and law.';
+  "Hey, I'm Samer. I'm a machine learning engineer at Bloomberg and the " +
+  "technical lead on BLaw AI, Bloomberg Law's AI agent.";
 
 describe('AboutHeader', () => {
   it('keeps the bio text exactly as approved', () => {
