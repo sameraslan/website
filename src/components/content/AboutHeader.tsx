@@ -59,7 +59,23 @@ export function AboutHeader() {
 
           <p className="mt-4">
             If any of this interests you as well, or overlaps with what
-            you&apos;re working on, I&apos;d love to chat.
+            you&apos;re working on, I&apos;d love to chat. You can{' '}
+            <a
+              href="https://calendly.com/samer-aslan/30min"
+              target="_blank"
+              rel="noreferrer"
+              className="text-moss hover:text-moss-deep transition-colors"
+            >
+              grab a time here
+            </a>{' '}
+            or just{' '}
+            <a
+              href="mailto:samer.aslan@gmail.com"
+              className="text-moss hover:text-moss-deep transition-colors"
+            >
+              email me
+            </a>
+            .
           </p>
         </div>
 

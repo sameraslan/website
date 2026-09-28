@@ -20,7 +20,7 @@ describe('AboutHeader', () => {
   it('links to email, github, and linkedin using siteConfig.external', () => {
     render(<AboutHeader />);
 
-    const email = screen.getByRole('link', { name: /email/i });
+    const email = screen.getByRole('link', { name: 'email →' });
     const github = screen.getByRole('link', { name: /github/i });
     const linkedin = screen.getByRole('link', { name: /linkedin/i });
 
