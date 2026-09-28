@@ -15,5 +15,5 @@ export const MAP_INFO_TITLE = "about this map";
 export const MAP_INFO_PARAGRAPHS: readonly string[] = [
   "Each dot is an album I’ve rated. Albums close together sound alike.",
   "The slider changes what “alike” means. Toward audio, albums are placed by sound features like energy, danceability, and valence. Toward mood, they’re placed by how listeners describe them on RateYourMusic, with words like warm and ethereal.",
-  "Colors mark broad groups of albums, found from sound and descriptions together. Each album keeps its color as the slider moves.",
+  "Colors mark broad groups of albums, found from sound and descriptions together.",
 ];
