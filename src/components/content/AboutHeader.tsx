@@ -25,15 +25,22 @@ export function AboutHeader() {
           <p className="mt-4 m-0">
             I&apos;m mostly interested in where neuroscience and AI overlap,
             especially how ideas from the brain can make AI systems more
-            robust. In law, I pair LLMs with deterministic, logic-based
-            methods to reduce hallucinations and make their reasoning more
-            consistent.
+            robust. In law, I{' '}
+            <a
+              href="https://arxiv.org/abs/2605.16052"
+              target="_blank"
+              rel="noreferrer"
+              className="text-moss hover:text-moss-deep transition-colors"
+            >
+              pair LLMs with deterministic, logic-based methods
+            </a>{' '}
+            to reduce hallucinations and make their reasoning more consistent.
           </p>
 
           <p className="mt-4 m-0">
             I&apos;m also a visiting researcher at the Visual Inference Lab at
             Columbia, where I work on{' '}
-            <Link href="/projects/unimap" className="text-moss hover:text-moss-deep transition-colors">
+            <Link href="/research/unimap" className="text-moss hover:text-moss-deep transition-colors">
               UniMap
             </Link>
             , a new, more intuitive way to visualize complex high-dimensional

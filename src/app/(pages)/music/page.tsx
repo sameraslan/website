@@ -21,10 +21,10 @@ export default function MusicPage() {
             How was this built?
           </h2>
           <p className="font-serif text-[0.97rem] leading-[1.6] text-ink">
-            I&apos;m constantly on the hunt for new mind-blowing albums, but I couldn&apos;t find a recommender where I give it an album I like and get back the <em>k</em> most similar albums. The song and artist recommenders I found all seemed to use user co-occurrence (how often two songs are played by the same person). That felt like cheating, since it builds similarity out of listeners&apos; habits instead of the music itself.
+            I&apos;m constantly on the hunt for new mind-blowing albums, but I couldn&apos;t find a recommender where I give it an album I like and get back the <em className="pr-[0.15em]">k</em> most similar albums. The song and artist recommenders I found all seemed to use user co-occurrence (how often two songs are played by the same person). That felt like cheating, since it builds similarity out of listeners&apos; habits instead of the music itself.
           </p>
           <p className="mt-3 font-serif text-[0.97rem] leading-[1.6] text-ink">
-            So in my junior year of college I built recmyrecord, an album recommender that works from the music. Each album is a vector of <em>n</em> features: audio features like valence, danceability, and energy, plus music descriptors from rateyourmusic.com (RYM), weighted by how often users apply them. The albums come from RYM&apos;s top 5,000, and RYM is also where I track my listening and find new music (almost too often!).
+            So in my junior year of college I built recmyrecord, an album recommender that works from the music. Each album is a vector of <em className="pr-[0.15em]">n</em> features: audio features like valence, danceability, and energy, plus music descriptors from rateyourmusic.com (RYM), weighted by how often users apply them. The albums come from RYM&apos;s top 5,000, and RYM is also where I track my listening and find new music (almost too often!).
           </p>
           <p className="mt-3 font-serif text-[0.97rem] leading-[1.6] text-ink">
             This map shows the albums from that set I&apos;ve rated. It uses t-SNE, a dimensionality reduction algorithm, to place albums with similar vectors close together in 2D and push dissimilar ones farther apart.
