@@ -10,7 +10,7 @@ describe("HeroCaption", () => {
 
     const heading = screen.getByRole("heading", { level: 1 });
     expect(heading.textContent).toBe(
-      "Hey, I'm Samer. I build AI for lawyers at Bloomberg and do research in neuroscience and AI."
+      "Hey, I'm Samer. I build AI for lawyers at Bloomberg and do NeuroAI research."
     );
     expect(heading.className).toContain("font-display");
 

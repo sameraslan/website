@@ -159,7 +159,7 @@ export default async function OpengraphImage() {
               lineHeight: 1.4,
             }}
           >
-            Hey, I'm Samer. I build AI for lawyers at Bloomberg and do research in neuroscience and AI.
+            Hey, I'm Samer. I build AI for lawyers at Bloomberg and do NeuroAI research.
           </div>
           <div
             style={{
