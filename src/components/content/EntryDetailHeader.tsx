@@ -80,7 +80,7 @@ export function EntryDetailHeader({
             rel="noreferrer"
             className="text-moss hover:text-moss-deep normal-case tracking-[0.12em]"
           >
-            live ↗
+            try it ↗
           </a>
         )}
         {links.demo && (
