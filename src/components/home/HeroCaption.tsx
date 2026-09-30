@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { NARROW_MEDIA_QUERY } from "@/components/music-map/state/breakpoints";
 
 /**
@@ -42,12 +43,15 @@ export function HeroCaption() {
         Hey, I&apos;m Samer. I build AI for lawyers at Bloomberg and do research in neuroscience and AI.
       </h1>
       <p className="font-serif text-[15.5px] leading-[1.5] text-ink">
-        Enjoy playing around with this music map of my album listening.
-      </p>
-      <p className="font-mono text-tiny uppercase text-ink-muted">
-        <span className="sm:hidden">tap a point · pinch to zoom</span>
-        <span className="hidden sm:block">hover to read · click for neighbours</span>
-        <span className="hidden sm:block">scroll to zoom · drag to pan</span>
+        Enjoy playing around with this map of my album listening, and feel free to look around my{" "}
+        <Link href="/projects" className="text-moss border-b border-moss hover:text-moss-deep hover:border-moss-deep transition-colors">
+          projects
+        </Link>{" "}
+        and{" "}
+        <Link href="/research" className="text-moss border-b border-moss hover:text-moss-deep hover:border-moss-deep transition-colors">
+          research
+        </Link>{" "}
+        too.
       </p>
     </div>
   );

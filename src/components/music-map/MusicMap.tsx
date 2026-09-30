@@ -190,7 +190,7 @@ export function MusicMap() {
       >
         <Slider />
         {!isTouch && <SearchOverlay />}
-        <MapInfo />
+        <MapInfo touch={isTouch} />
       </div>
       {/* Skip-link target, last in the map's DOM so the next Tab after
           following the link lands on whatever comes after the map (the
