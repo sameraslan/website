@@ -54,9 +54,9 @@ export function MobileSheet() {
               href={meta.spotifyUrl}
               target="_blank"
               rel="noreferrer"
-              className="font-mono text-tiny uppercase text-ink-muted"
+              className="font-mono text-tiny uppercase text-moss hover:text-moss-deep"
             >
-              open in spotify →
+              open in spotify ↗
             </a>
           )}
         </>
