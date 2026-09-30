@@ -24,8 +24,8 @@ export function AboutHeader() {
 
           <p className="mt-4 m-0">
             I&apos;m mostly interested in where neuroscience and AI overlap,
-            especially how ideas from the brain can make AI systems more
-            robust. In law, I{' '}
+            from brain-computer interfaces to using ideas from the brain to
+            make AI systems more robust. In law, I{' '}
             <a
               href="https://arxiv.org/abs/2605.16052"
               target="_blank"
