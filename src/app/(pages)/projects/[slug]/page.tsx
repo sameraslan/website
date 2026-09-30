@@ -3,6 +3,7 @@ import { MDXRemote } from 'next-mdx-remote/rsc';
 import { loadEntries, loadEntry } from '@/lib/content';
 import { EntryDetailHeader } from '@/components/content/EntryDetailHeader';
 import { RelatedAside } from '@/components/content/RelatedAside';
+import { mdxComponents } from '@/components/content/mdxComponents';
 
 export async function generateStaticParams() {
   const entries = await loadEntries('projects');
@@ -39,7 +40,7 @@ export default async function ProjectDetail({
 
       <div className="grid gap-10 mt-7 md:grid-cols-[1fr_260px]">
         <div className="prose-mdx max-w-[60ch]">
-          <MDXRemote source={entry.body} />
+          <MDXRemote source={entry.body} components={mdxComponents} />
         </div>
         <RelatedAside items={related} />
       </div>

@@ -1,13 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import {
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
-import { MAP_INFO_PARAGRAPHS, MAP_INFO_TITLE } from "./mapInfoCopy";
+import { MAP_INFO_CONTROLS, MAP_INFO_PARAGRAPHS, MAP_INFO_TITLE } from "./mapInfoCopy";
 
 const PANEL_WIDTH = 300;
 const GAP = 8;
 const EDGE = 16;
+// Grace period for moving the mouse from the button onto the panel.
+const HOVER_CLOSE_MS = 150;
 
 type Placement = { left: number; top: number; maxHeight: number };
 
@@ -23,9 +33,16 @@ type Placement = { left: number; top: number; maxHeight: number };
  * mounts while open, so a closed control never sits over the canvas. Escape
  * (handled before the map's own Escape-releases-focus listener) and a
  * pointer press outside the button and panel both close it.
+ *
+ * With a mouse, hovering the button opens it too, and leaving the button and
+ * panel closes it again. A click pins it open until the next click, Escape,
+ * or outside press. The footer lists the map's controls for the device.
  */
-export function MapInfo() {
+export function MapInfo({ touch = false }: { touch?: boolean }) {
   const [open, setOpen] = useState(false);
+  // True while open only because of hover (not pinned by a click).
+  const hoverOpen = useRef(false);
+  const hoverCloseTimer = useRef<number | undefined>(undefined);
   const [placement, setPlacement] = useState<Placement | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -65,9 +82,45 @@ export function MapInfo() {
   }, []);
 
   const close = useCallback(() => {
+    window.clearTimeout(hoverCloseTimer.current);
+    hoverOpen.current = false;
     setOpen(false);
     setPlacement(null);
   }, []);
+
+  const onHoverEnter = useCallback(
+    (e: ReactPointerEvent) => {
+      if (e.pointerType !== "mouse") return;
+      window.clearTimeout(hoverCloseTimer.current);
+      if (!open) {
+        hoverOpen.current = true;
+        setOpen(true);
+      }
+    },
+    [open],
+  );
+
+  const onHoverLeave = useCallback(
+    (e: ReactPointerEvent) => {
+      if (e.pointerType !== "mouse" || !hoverOpen.current) return;
+      window.clearTimeout(hoverCloseTimer.current);
+      hoverCloseTimer.current = window.setTimeout(close, HOVER_CLOSE_MS);
+    },
+    [close],
+  );
+
+  const onClick = useCallback(() => {
+    if (open && hoverOpen.current) {
+      // Hover opened it; the click pins it rather than closing it.
+      window.clearTimeout(hoverCloseTimer.current);
+      hoverOpen.current = false;
+      return;
+    }
+    if (open) close();
+    else setOpen(true);
+  }, [open, close]);
+
+  useEffect(() => () => window.clearTimeout(hoverCloseTimer.current), []);
 
   useLayoutEffect(() => {
     if (open) place();
@@ -106,7 +159,9 @@ export function MapInfo() {
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => (open ? close() : setOpen(true))}
+        onClick={onClick}
+        onPointerEnter={onHoverEnter}
+        onPointerLeave={onHoverLeave}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         aria-label="About this map"
@@ -147,6 +202,8 @@ export function MapInfo() {
             id={panelId}
             role="region"
             aria-label={MAP_INFO_TITLE}
+            onPointerEnter={onHoverEnter}
+            onPointerLeave={onHoverLeave}
             style={{
               position: "fixed",
               left: placement?.left ?? 0,
@@ -192,6 +249,25 @@ export function MapInfo() {
                 {p}
               </p>
             ))}
+            <p
+              style={{
+                margin: "4px 0 0",
+                paddingTop: 8,
+                borderTop: "1px solid var(--color-rule)",
+                fontFamily: "var(--font-mono, ui-monospace, Menlo, monospace)",
+                fontSize: "var(--text-tiny)",
+                letterSpacing: "var(--text-tiny--letter-spacing)",
+                textTransform: "uppercase",
+                color: "var(--color-ink-muted)",
+                lineHeight: 1.6,
+              }}
+            >
+              {(touch ? MAP_INFO_CONTROLS.touch : MAP_INFO_CONTROLS.pointer).map((line) => (
+                <span key={line} style={{ display: "block" }}>
+                  {line}
+                </span>
+              ))}
+            </p>
           </div>,
           document.body,
         )}

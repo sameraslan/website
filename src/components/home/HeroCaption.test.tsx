@@ -5,7 +5,7 @@ import { render, screen } from "@testing-library/react";
 import { HeroCaption } from "./HeroCaption";
 
 describe("HeroCaption", () => {
-  it("renders the exact headline, body, and hint copy", () => {
+  it("renders the exact headline and body copy, linking to projects and research", () => {
     render(<HeroCaption />);
 
     const heading = screen.getByRole("heading", { level: 1 });
@@ -14,13 +14,15 @@ describe("HeroCaption", () => {
     );
     expect(heading.className).toContain("font-display");
 
-    expect(
-      screen.getByText("Enjoy playing around with this music map of my album listening.")
-    ).toBeTruthy();
+    const body = heading.nextElementSibling!;
+    expect(body.textContent).toBe(
+      "Enjoy playing around with this map of my album listening, and feel free to look around my projects and research too."
+    );
+    expect(screen.getByRole("link", { name: "projects" }).getAttribute("href")).toBe("/projects");
+    expect(screen.getByRole("link", { name: "research" }).getAttribute("href")).toBe("/research");
 
-    expect(screen.getByText("hover to read · click for neighbours")).toBeTruthy();
-    expect(screen.getByText("scroll to zoom · drag to pan")).toBeTruthy();
-
-    expect(screen.getByText("tap a point · pinch to zoom")).toBeTruthy();
+    // Map controls moved into the map's info popover.
+    expect(screen.queryByText("hover to read · click for neighbours")).toBeNull();
+    expect(screen.queryByText("tap a point · pinch to zoom")).toBeNull();
   });
 });

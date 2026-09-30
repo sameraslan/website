@@ -17,3 +17,9 @@ export const MAP_INFO_PARAGRAPHS: readonly string[] = [
   "The slider changes what “alike” means. Toward audio, albums are placed by sound features like energy, danceability, and valence. Toward mood, they’re placed by how listeners describe them on RateYourMusic, with words like warm and ethereal.",
   "Colors mark broad groups of albums, found from sound and descriptors together.",
 ];
+
+/** How to drive the map, shown as a footer in the popover. */
+export const MAP_INFO_CONTROLS = {
+  pointer: ["hover to read · click for neighbours", "scroll to zoom · drag to pan"],
+  touch: ["tap a point · pinch to zoom"],
+} as const;

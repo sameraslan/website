@@ -23,7 +23,7 @@ export function CrossLinkCard({
         {label}
       </p>
       <p className="font-display italic text-[1.55rem] mt-1 text-ink">
-        {title} →
+        {title} {external ? '↗' : '→'}
       </p>
       <p className="font-serif text-[0.88rem] text-ink-muted mt-1.5 leading-snug">
         {description}
