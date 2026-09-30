@@ -90,7 +90,7 @@ export function AboutHeader() {
                 rel={external ? 'noreferrer' : undefined}
                 className="text-moss hover:text-moss-deep transition-colors"
               >
-                {item.label} →
+                {item.label} {external ? '↗' : '→'}
               </a>
             );
           })}

@@ -1,4 +1,9 @@
 <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
   <rect width="32" height="32" fill="#faf6ec" />
-  <circle cx="16" cy="16" r="10" fill="#5a7041" />
+  <!-- Same three dots as the header mark (SiteHeader), scaled to fill the tile. -->
+  <g transform="translate(1.15 2.55) scale(1.4)">
+    <circle cx="6" cy="11" r="5" fill="#b6532a" />
+    <circle cx="15" cy="6" r="4" fill="#b8852e" />
+    <circle cx="17" cy="14" r="3.2" fill="#5a7041" />
+  </g>
 </svg>
