@@ -43,7 +43,7 @@ export function HeroCaption() {
         Hey, I&apos;m Samer. I build AI for lawyers at Bloomberg and do NeuroAI research.
       </h1>
       <p className="font-serif text-[15.5px] leading-[1.5] text-ink">
-        Enjoy playing around with this map of my album listening, and feel free to look around my{" "}
+        Enjoy playing around with this map of my album listening, and feel free to peruse my{" "}
         <Link href="/projects" className="text-moss border-b border-moss hover:text-moss-deep hover:border-moss-deep transition-colors">
           projects
         </Link>{" "}

@@ -16,7 +16,7 @@ describe("HeroCaption", () => {
 
     const body = heading.nextElementSibling!;
     expect(body.textContent).toBe(
-      "Enjoy playing around with this map of my album listening, and feel free to look around my projects and research too."
+      "Enjoy playing around with this map of my album listening, and feel free to peruse my projects and research too."
     );
     expect(screen.getByRole("link", { name: "projects" }).getAttribute("href")).toBe("/projects");
     expect(screen.getByRole("link", { name: "research" }).getAttribute("href")).toBe("/research");
