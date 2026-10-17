@@ -29,19 +29,19 @@ Interpretability research tries to explain what a neural network computes from i
 
 ## How Unimap can help interpretability
 
-Two properties carry over to activations. The first is exact area, which shows how much of something there is: a region can stand for the number of prompts in a category or for the number of those prompts the model refused, and these areas add up across categories. A scatter has no such option, since each dot is one prompt.
+Two properties carry over to activations. The first is exact area, which shows how much of something there is: a region can stand for the number of prompts in a category or for the number of those prompts the model refused, and these areas add up across categories.
 
-The second is that neighbors come from feature vectors. In this note, each category's feature vector is the mean of its prompts' activations at layer 21, so two categories that share a border are categories with similar layer-21 activations. Color can then carry a third quantity, here each category's mean projection on the refusal direction.
+The second is that neighbors come from feature vectors. In this note, each category's feature vector is the mean of its prompts' activations at layer 21, so two categories that share a border are categories with similar layer-21 activations. Color can then carry a third quantity, here each category's harm signal, its mean projection on the refusal direction.
 
 ## What we did
 
 The model is [Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct). For every prompt, we recorded the residual-stream activation at the last prompt token.
 
-The refusal direction follows Arditi et al.: it is the difference between the mean last-token activations of harmful and harmless training prompts, taken from the splits released with that paper ([refusal_direction](https://github.com/andyrdt/refusal_direction)). The layer was chosen among the middle layers, from 40 to 80% of the model's depth, as the one where the direction best separates held-out prompts, which is layer 21 of 28. Prompts that appear in the training or validation splits were removed from the dataset below, so every projection shown here is on held-out prompts.
+The refusal direction follows Arditi et al.: it is the difference between the mean last-token activations of harmful and harmless training prompts, taken from the splits released with that paper ([refusal_direction](https://github.com/andyrdt/refusal_direction)). The layer was chosen among the middle layers, from 40 to 80% of the model's depth, as the one where the direction best separates held-out prompts, which is layer 21 of 28. Prompts that appear in the training or validation splits were removed from the dataset below, so every value shown here is on held-out prompts.
 
-Each prompt's activation is projected onto the direction and rescaled so that 0 is a typical harmless prompt (the median Alpaca prompt) and 1 is a typical harmful one, one harmful-minus-harmless gap further along. On this scale the projection separates harmful from harmless prompts with an AUROC of 0.991.
+The harm signal of a prompt is its activation's projection on the direction, given in percent: 0% is the median harmless (Alpaca) prompt and 100% is one harmful-minus-harmless gap further along. It is a position on that axis, not a probability. The harm signal separates harmful from harmless prompts with an AUROC of 0.991.
 
-Each prompt was also run through the unmodified model, and the first 32 tokens of its greedy reply were labeled as a refusal or an answer by rules that look for an explicit decline, such as a reply opening with "I'm sorry, but". A reply that argues against the premise of a request without declining counts as an answer. In a check of 69 replies read one by one, the labels agreed with the reading in 68 cases.
+Each prompt was also run through the unmodified model, and the first 32 tokens of its greedy reply were labeled as a refusal or an answer by rules that look for an explicit decline, such as a reply opening with "I'm sorry, but". A reply that argues against the premise of a request without declining counts as an answer. An independent check of 69 replies by a separate language-model reviewer, a Claude agent, agreed with the labels in 68.
 
 ## The dataset
 
@@ -57,36 +57,36 @@ HarmBench and StrongREJECT categories were mapped onto JailbreakBench's names. A
 
 ## What the figures show
 
-{/* TODO(figure-1): replace the placeholder with the final image, e.g. <Figure number="1" src="/images/notes/unimap-refusal-fig1.png" alt="..."> */}
-<Figure number="1" placeholder="Five scatters (PCA, t-SNE, UMAP, MDS, Isomap) next to a Unimap of the 44 categories, colored by prompt set">
+<Figure number="1" src="/images/notes/unimap-refusal-lf3858-1.png" alt="Top: five scatter plots (PCA, t-SNE, UMAP, MDS, Isomap) of 1,581 prompts, dots colored by prompt set, each labeled with its size error, hidden-dot share and split count. Bottom left: a Unimap with one labeled region per category, harmless tasks in blue at the top, harmful requests in dark gray at the bottom, benign look-alikes in teal and unsafe look-alikes in orange, and a square showing the area of 20 prompts. Bottom right: mean category size error, 37 to 54% for the scatters and 0.4% for Unimap.">
 
-**Figure 1. The same 1,581 prompts as point clouds and as a Unimap.** The five scatters show last-token activations at layer 21 laid out by PCA, t-SNE, UMAP, MDS and Isomap, with one dot per prompt colored by prompt set. The map has one region per category, with area equal to its number of prompts and color showing its prompt set.
+**Figure 1. Five standard scatters and one Unimap of the same 1,581 prompts.** The top row lays out the layer-21 activations by PCA, t-SNE, UMAP, MDS and Isomap, with one dot per prompt colored by prompt set. Below, the Unimap gives each of the 44 categories one region in the same colors, with area equal to its number of prompts. The gray square is the area of 20 prompts.
 
-In the scatters, the eye judges a category's size from the area its dots cover, and on the map from its region's area. The map's areas are exact by construction, so the comparison is about what a reader can read off each view.
+Above each scatter, "size ±" is the mean gap between a category's share of the plotted area and its share of prompts, "hidden" is the share of dots drawn under others, and "split" counts categories that break into separate islands.
 
-All five scatters show the known result that harmful and harmless prompts separate. Their plotted areas are off from each category's share of prompts by 37 to 54% on average, 1 to 42% of the dots are hidden under others, and 5 to 13 categories break into separate islands. On the map, each category is one region within 0.4% of its share.
+All five scatters separate harmful from harmless prompts, but their size errors run from 37 to 54%. On the map, no category is more than 0.4% off its size, no dot is hidden and no category is split. The prompt sets also stay together, with harmless tasks at the top and harmful requests at the bottom.
 
-XSTest's benign look-alikes border harmless categories about six times as much as harmful ones, although they were written to resemble unsafe prompts.
+XSTest's benign look-alikes surround the harmless block: 9 of the 10 benign categories border a harmless task. None of their 8 unsafe twins does, and 7 of the 8 border a harmful category.
 
 </Figure>
 
-{/* TODO(figure-2): replace the placeholder with the final image and fill in panel a below. */}
-<Figure number="2" placeholder="The final three-map figure plus a panel of refusal-direction signal against refusal rate">
+<Figure number="2" src="/images/notes/unimap-refusal-lf3858-2.webp" alt="Panel a: the five scatters of Figure 1. Panels b, c and d: one Unimap layout shown three times, colored by prompt set, by harm signal in purple with each region labeled by its signal in percent, and filled with red up to each category's share of refused prompts. Three regions are outlined in yellow. Panel e: share refused against harm signal, one dot per category, with a logistic curve that passes 50% at a signal of 70% and shaded bands below 45%, from 45 to 95%, and above 95%.">
 
-**Figure 2. The refusal direction and the model's refusals on one Unimap layout.** **a**, [PLACEHOLDER: describe the third map once the figure is final.] **b**, The prompt map with each region colored by its category's mean projection on the refusal direction, light near a typical harmless prompt and dark near a typical harmful one. Labels give the share of the category's prompts that the model refused. **c**, The same layout with each region filled with red from the bottom up to its share of refused prompts. **d**, Mean projection against refusal rate, one dot per category.
+**Figure 2. A harm signal inside the model and what the model refuses, on one Unimap layout.** **a**, The scatters of Figure 1. **b**, The prompt-set map of Figure 1, with notes on its borders. **c**, The same map colored by each category's harm signal, with the signal printed in each region. **d**, The same map with each region filled with red from its bottom up to the share of its prompts the model refused, which is printed as the label. **e**, One dot per category, placed by harm signal and share refused, with dot area showing its number of prompts. The curve is a logistic fit over all 1,581 prompts and reads as the chance that a single prompt is refused at a given signal.
 
-In **c**, red area is refused prompts, so it adds up across regions: 40% of the map is red, the 629 refused prompts out of 1,581. Almost all of it sits in the harmful benchmarks (473 of 611 refused) and in XSTest's unsafe contrasts (149 of 200). The benign look-alikes (5 of 250) and the Alpaca prompts (2 of 520) stay gray.
+The harm signal is a position on an axis, not a probability: 0% is the median harmless prompt, 100% is one harmful-minus-harmless gap further, and categories span −4% to 105%. Maps b, c and d share one layout, so a region can be followed across all three. Yellow outlines mark the three categories whose refused share is at least 20 points off the curve in e.
 
-In **d**, projection and refusal rate rank the categories in nearly the same order (Spearman 0.89). Categories at or below 0.45 are refused at most 12% of the time, and categories at or above 0.95 at least 82% of the time. Between them, five categories from 0.64 to 0.80 are refused 20 to 72% of the time.
+Red covers 40% of map d, the 629 of 1,581 prompts that were refused: 473 harmful requests, 149 unsafe look-alikes and 7 from the rest. In e, the harm signal ranks the categories by refusal rate with a Spearman correlation of 0.89 (Pearson 0.96), and half of prompts are refused at a signal of 70%. The relation is a threshold. Below a signal of 45%, 6 of 804 prompts were refused; from 45 to 95%, 175 of 321; above 95%, 448 of 456.
 
-Two of those five are XSTest unsafe contrasts that the model mostly answers: Discrimination (projection 0.66, 20% refused) and Historical events (0.80, 48% refused). In these replies the model often argues against the premise without declining.
+The three outlined categories are XSTest unsafe contrasts in the middle band. Questions about the privacy of private people have a signal of 64% and were refused 72% of the time, more than the curve predicts. Historical events (80%) and Discrimination (66%) were refused 48% and 20% of the time, less than predicted, and in both the model often argues against the premise without declining. Map b also shows Copyrighted text, a harmful HarmBench set, sharing 62% of its border with harmless tasks; 4% of its prompts were refused.
 
 </Figure>
 
 ## Conclusions
 
-The result agrees with Arditi et al. At layer 21 of Qwen2.5-7B-Instruct, one direction separates harmful from harmless prompts, with an AUROC of 0.991 on held-out prompts, and a category's position along it tracks how often the model refuses.
+The result agrees with Arditi et al. At layer 21 of Qwen2.5-7B-Instruct, one direction separates harmful from harmless prompts, with an AUROC of 0.991 on held-out prompts, and the harm signal along it tracks how often the model refuses each category (Spearman 0.89).
 
-What Unimap adds is a more intuitive view of the same activations. Category sizes on the map are exact. Refusals become area that adds up: the 629 refused prompts fill 40% of the map. With the signal panel, the map also shows where the direction and the behavior agree (Spearman 0.89 across categories), the step between low and high refusal, and the middle band of five categories where the two come apart.
+What Unimap adds is a more intuitive view of the same activations. Category sizes on the map are exact, so refusals become area that adds up: the 629 refused prompts fill 40% of the map. With the harm signal and the refusals drawn on one layout, the relation reads as a threshold, with half of prompts refused at a signal of 70%. The three categories that sit off the curve, privacy of private people, historical events and discrimination, can be found on the map directly.
 
-The limits are plain. This is one model and one layer. Category sizes are benchmark sizes, so the refusal fill is the more meaningful weighting. The direction was built from prompts that partly come from the same benchmarks, and paraphrases may remain after exact overlaps were removed. A refusal is an explicit decline within a 32-token reply, so argued pushback counts as an answer. Finally, Qwen2.5-7B-Instruct refused only 2% of the benign look-alikes, and which of them border a harmful region changes with the map's random seed, so these data say little about over-refusal.
+Two findings come from the layout itself. Nine of the 10 benign look-alike categories border a harmless task, while none of their unsafe twins does. Copyrighted text, a harmful benchmark set, sits mostly among harmless tasks and is refused 4% of the time.
+
+The limits are plain. This is one model and one layer. Category sizes are benchmark sizes, so the refusal fill is the more meaningful weighting. The direction was built from prompts that partly come from the same benchmarks, and paraphrases may remain after exact overlaps were removed. A refusal is an explicit decline within a 32-token reply, so argued pushback counts as an answer. The border counts come from one map layout, and which look-alikes touch a harmful region changes between random seeds. Finally, Qwen2.5-7B-Instruct refused only 2% of the benign look-alikes, so these data say little about over-refusal.
