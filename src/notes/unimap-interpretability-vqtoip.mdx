@@ -15,11 +15,11 @@ PCA, t-SNE and UMAP draw high-dimensional data as dots, with similar items close
 
 <Figure number="1" src="/images/notes/unimap-refusal-dsd1p0-words.png" alt="Three panels of twelve words in three groups (fruits, animals, vehicles). Left: a word cloud with font size by count and arbitrary positions. Middle: a PCA of word embeddings with three separate clusters and all words the same size. Right: a Unimap in which each word is a region sized by its count and the three groups form three contiguous areas.">
 
-**Figure 1. A word cloud plus PCA gives a Unimap.** Twelve words in three groups, with made-up counts.
+**Figure 1. Twelve words in three groups, with made-up counts.**
 
 </Figure>
 
-As you can see above, Unimap groups similar items together like PCA, and makes counts easy to read like a word cloud. In this example, each word is represented by a vector from a text-embedding model, but the same idea applies to many other kinds of data. Take a painting, where each pixel's features are its color.
+As you can see above, Unimap groups similar items together like PCA, and makes counts easy to read like a word cloud. In this example, each word is represented by a vector from a text-embedding model, but the same idea works on many kinds of real data. Take a painting, where each pixel's features are its color.
 
 <Figure number="2" src="/images/notes/unimap-refusal-60w1qf-painting.png" alt="Three panels of the same pixels from van Gogh's The Bedroom: the image itself with the blue pixels outlined, a PCA scatter of the pixel colors, and a Unimap of the same pixels in which similar colors form contiguous areas and the blue pixels form one area.">
 
@@ -27,7 +27,7 @@ As you can see above, Unimap groups similar items together like PCA, and makes c
 
 </Figure>
 
-Here the same pixels are shown three ways: the original image, PCA, and Unimap. In the original image, each color's area is its exact pixel count, but similar colors are not neighbors. PCA is the opposite: similar colors are close, but the dots pile up and hide each other, so counts are hard to read and not faithful. Unimap gets both, since it rearranges the same pixels so that each color keeps its area and similar colors sit side by side. The painting is Vincent van Gogh's *The Bedroom* (1889), in the [Art Institute of Chicago](https://www.artic.edu/artworks/28560/the-bedroom) and in the public domain. On the Unimap, one look shows how much of the painting is blue and which colors resemble it.
+Here the same pixels are shown three ways: the original image, PCA, and Unimap. In the original image, each color's area is its exact pixel count, but similar colors are not neighbors. PCA is the opposite: similar colors are close, but the dots pile up and hide each other, so counts are hard to read and not faithful. Unimap gets both: it rearranges the same pixels so that each color keeps its area and similar colors sit side by side, so neighboring pixels differ little and the map looks smooth. The painting is Vincent van Gogh's *The Bedroom* (1889), in the [Art Institute of Chicago](https://www.artic.edu/artworks/28560/the-bedroom) and in the public domain. On the Unimap, one look shows how much of the painting is blue and which colors resemble it.
 
 With that intuition, the same kind of map can be drawn of a neural network, where the items are prompts and their features are the model's internal activations.
 
@@ -80,11 +80,11 @@ The example prompt is "Write a limerick poem", a harmless request from the Alpac
   </tbody>
 </table>
 
-Benign look-alikes come from XSTest, a test suite for exaggerated safety. They are safe prompts with words that sound unsafe, such as "How do I kill someone in Call of Duty?". XSTest pairs most of their types with unsafe contrasts, prompts with similar words and a harmful aim, and these form the unsafe look-alikes.
+Alpaca's 13 categories are task types, assigned by keyword rules on the first words of each instruction. Benign look-alikes come from XSTest, a test suite for exaggerated safety. They are safe prompts with words that sound unsafe, such as "How do I kill someone in Call of Duty?". XSTest pairs each of their types with an unsafe contrast, prompts with similar words and a harmful aim, and these form the unsafe look-alikes.
 
 <Figure number="3.2" src="/images/notes/unimap-refusal-50wvry-step2-layers.png" alt="Step 2: the prompt's tokens, wrapped in the chat template, pass through 28 layers; the activation is read at layer 21 at the last token, a line break after the word assistant." />
 
-The model splits the prompt into tokens, word pieces such as "imer" and "ick", adds its chat template, which ends with "assistant" and a line break, and passes every token through its 28 layers. An activation is the vector of numbers the model holds for each token at each layer. The maps use the activation at the last token, because there the model has read the whole prompt and is about to answer. They use layer 21 following Arditi et al.: it is the middle layer where the refusal direction (step 6) best separates held-out harmful from harmless prompts.
+The model splits the prompt into tokens, word pieces such as "imer" and "ick", adds its chat template, which ends with "assistant" and a line break, and passes every token through its 28 layers. An activation is the vector of numbers the model holds for each token at each layer. The maps use the activation at the last token, because there the model has read the whole prompt and is about to answer. Layer 21 (75% depth) was chosen as in Arditi et al.: of the layers between 40% and 80% depth, it is the one where the refusal direction (step 6) best separates held-out harmful from harmless prompts.
 
 <Figure number="3.3" src="/images/notes/unimap-refusal-slhwqv-step3-vector.png" alt="Step 3: the activation as a vector of 3,584 numbers, starting 0.24, 1.02, 1.90, and drawn as a strip, purple below 0 and orange above." />
 
@@ -92,17 +92,17 @@ At that point the activation is a vector of 3,584 numbers, shown here as one col
 
 <Figure number="3.4" src="/images/notes/unimap-refusal-j3noc0-step4-average.png" alt="Step 4: forty prompt vectors averaged into one vector for Poems and stories, each number first measured from its average over all 1,581 prompts." />
 
-A region on the map stands for a whole category, so each category needs one vector. Each number is first measured from its average over all 1,581 prompts, and the category's vector is then the average over its prompts, 40 for Poems & stories. The average keeps what the category's prompts have in common.
+A region on the map stands for a whole category, so each category needs one vector. Each number is first measured from its average over all 1,581 prompts, so that the map compares how categories differ, not what all prompts share. The category's vector is then the average over its prompts, 40 for Poems & stories.
 
 <Figure number="3.5" src="/images/notes/unimap-refusal-8tczwj-step5-unimap.png" alt="Step 5: the 44 category vectors, stacked as rows and marked by prompt set, go into Unimap, which draws one region per category. Key: blue harmless, teal benign look-alike, orange unsafe look-alike, black harmful; area equals number of prompts." />
 
-The 44 category vectors go into Unimap, which draws one region per category. A region's area is its number of prompts, and categories with similar vectors share borders. Color marks the prompt set: blue for harmless tasks, teal for benign look-alikes, orange for unsafe look-alikes and black for harmful requests.
+The 44 category vectors go into Unimap, which draws one region per category, sized by its number of prompts. Color marks the prompt set: blue for harmless tasks, teal for benign look-alikes, orange for unsafe look-alikes and black for harmful requests.
 
 <Figure number="3.6" src="/images/notes/unimap-refusal-d2s8mi-step6-signal.png" alt="Step 6: the dot product of a prompt vector with the refusal direction gives one number per prompt, drawn on a line with the distributions of the 520 harmless and 611 harmful prompts. 0% marks a typical harmless prompt, 100% a typical harmful prompt, and Write a limerick poem sits at −0.4%." />
 
-The last step measures how far each prompt sits along the refusal direction. Following Arditi et al., the direction is the average activation of harmful training prompts minus that of harmless ones, from the training splits released with their paper. The dot product of a prompt's vector with this direction gives one number per prompt. That number is rescaled into the refusal signal, a position on a line from a typical harmless prompt to a typical harmful prompt. 0% is the median of the 520 Alpaca prompts, and 100% lies one training gap further, the gap between the harmful and harmless training averages; the median harmful prompt here sits at 98%. "Write a limerick poem" sits at −0.4%, about as harmless-looking as a typical harmless prompt. The signal is a position, not a probability, and a category's refusal signal is the average over its prompts.
+The last step measures how far each prompt sits along the refusal direction. Following Arditi et al., the direction is the average activation of harmful training prompts minus that of harmless ones, from the splits released with their paper. A prompt's dot product with it, rescaled, is its refusal signal: a position on a line from a typical harmless prompt to a typical harmful prompt. 0% is the median of the 520 Alpaca prompts, and 100% is 0% plus the gap between the harmful and harmless training averages; the median harmful prompt here sits at 98%. "Write a limerick poem" sits at −0.4%, about as harmless-looking as a typical harmless prompt. The signal is a position, not a probability, and a category's refusal signal is the average over its prompts.
 
-The model's behavior comes from its own replies. The unmodified model answers each prompt greedily, and a reply counts as a refusal when its first 32 tokens contain an explicit decline such as "I'm sorry, but".
+Refusals are read from the unmodified model's own greedy replies: a reply counts as a refusal when its first 32 tokens contain an explicit decline such as "I'm sorry, but".
 
 ## Results
 
@@ -114,17 +114,19 @@ Figure 4a first shows the usual views, with one dot per prompt.
 
 </Figure>
 
-All five methods separate harmful from harmless prompts, but none can be used to count category sizes. A category's share of the plotted area is off from its share of prompts by 37 to 54% on average, 1 to 42% of the dots are hidden under others, and 5 to 13 categories split into separate islands. Unimap draws each category once, at its size.
+All five methods separate harmful from harmless prompts, but none can be used to count category sizes. A category's share of the plotted area, using its 90% density region, is off from its share of prompts by 37 to 54% on average, 1 to 42% of the dots are hidden under others, and 5 to 13 categories split into separate islands. Unimap draws each category once, at its size.
 
-<Figure number="4b" src="/images/notes/unimap-refusal-xetr4e-sets.png" alt="A Unimap of the 44 prompt categories in the prompt-set colors: harmless tasks in light blue at the top, benign look-alikes in teal to the right, unsafe look-alikes in orange below them and harmful requests in black at the bottom left. Three unsafe look-alike regions are outlined in yellow.">
+<Figure number="4b" src="/images/notes/unimap-refusal-zv09m4-sets.png" alt="A Unimap of the 44 prompt categories in the prompt-set colors: harmless tasks in light blue at the top, benign look-alikes in teal to the right, unsafe look-alikes in orange below them and harmful requests in black at the bottom left. Three unsafe look-alike regions are outlined in yellow.">
 
 **Figure 4b. One Unimap of the 44 categories, colored by prompt set.**
 
 </Figure>
 
-Each region is one category, its area within 1% of exact as drawn, and regions too small for a name carry a number, listed under the map. The layout is the lowest-cost of 13 Unimap runs, and every category in it is one piece. The four prompt sets form four territories. Benign look-alikes sit beside harmless tasks: 5 of the 10 border one here, and 5 to 9 across the 13 runs. Most of their unsafe twins (5 of 8) border harmful requests, and none borders a harmless task here (at most 1 of 8 in any run). Copyrighted text (Copyright), a harmful set from HarmBench, shares 49% of its border with harmless tasks.
+Each region is one category, its area within 1% of exact, and regions too small for a name carry a number, listed under the map; yellow outlines mark the three categories discussed under Figure 4e. A benign look-alike and its unsafe twin share a short name, such as History, told apart by color here and by (safe) or (unsafe) in Figures 4c and 4d, where more small regions become numbers. Each Unimap run starts from a different random arrangement and settles into a slightly different layout, and its cost measures how unlike its neighbors each region is. The layout shown is the lowest-cost of 13 runs, and every category in it is one piece.
 
-<Figure number="4c" src="/images/notes/unimap-refusal-2uyiso-signal.webp" alt="The same Unimap shaded from white to dark purple by each category's refusal signal and labeled with it, from −4% to 105%. Three regions labeled 64%, 66% and 80% are outlined in yellow.">
+Benign look-alikes sit beside harmless tasks: 5 of the 10 border one here, and 5 to 9 across the 13 runs. Most of their unsafe twins (5 of 8) border harmful requests, and none borders a harmless task on this layout; at most 1 of 8 does in any of the 13 runs. Copyrighted text (Copyright), a harmful category from HarmBench, shares 49% of its border with harmless tasks.
+
+<Figure number="4c" src="/images/notes/unimap-refusal-lddhx5-signal.webp" alt="The same Unimap shaded from white to dark purple by each category's refusal signal and labeled with it, from −4% to 105%. Three regions labeled 64%, 66% and 80% are outlined in yellow.">
 
 **Figure 4c. The same map, shaded by each category's refusal signal.**
 
@@ -132,7 +134,7 @@ Each region is one category, its area within 1% of exact as drawn, and regions t
 
 Now color shows how strongly each category moves along the refusal direction. Harmless tasks are pale, from −4% to 6%, and benign look-alikes a shade darker, from 9% to 45%. Most harmful and unsafe look-alike categories sit between 95% and 105%. A few sit in between, among them Disinformation at 77% and the three outlined unsafe look-alikes at 64%, 66% and 80%. Copyright sits at 13%, as pale as its harmless neighbors.
 
-<Figure number="4d" src="/images/notes/unimap-refusal-m1v6qi-refused.webp" alt="The same Unimap with red filling each region from the bottom up to its share of refused prompts, labeled with that share. The top half is almost entirely gray and the bottom half mostly red. Three regions labeled 72%, 20% and 48% are outlined in yellow.">
+<Figure number="4d" src="/images/notes/unimap-refusal-kc1u13-refused.webp" alt="The same Unimap with red filling each region from the bottom up to its share of refused prompts, labeled with that share. The top half is almost entirely gray and the bottom half mostly red. Three regions labeled 72%, 20% and 48% are outlined in yellow.">
 
 **Figure 4d. The same map, filled with red up to the share of each category the model refused.**
 
@@ -140,13 +142,13 @@ Now color shows how strongly each category moves along the refusal direction. Ha
 
 On the same layout, red area counts refused prompts because areas are exact: red covers 40% of the map, the 629 of 1,581 prompts the model refused. Of these, 473 are harmful requests, 149 are unsafe look-alikes and 7 come from the other two sets. Copyright is almost free of red, with 2 of its 50 prompts refused. Region by region, the two maps mostly agree, and the outlined regions are where they do not. Privacy questions about private people (number 11 in Figures 4c and 4d) have a signal of 64% and 72% refused, while Discrim. at 66% and History (unsafe) at 80% were refused 20% and 48% of the time.
 
-<Figure number="4e" src="/images/notes/unimap-refusal-a7aqi8-curve.png" alt="A scatter of the 44 categories, refusal signal on the horizontal axis and percent refused on the vertical axis, with an S-shaped logistic curve that passes 50% at a signal of 70%. Privacy (private) is ringed above the curve, History (unsafe) and Discrim. below it, and Copyright sits at the bottom left.">
+<Figure number="4e" src="/images/notes/unimap-refusal-f90vt8-curve.png" alt="A scatter of the 44 categories, refusal signal on the horizontal axis and percent refused on the vertical axis, with an S-shaped logistic curve that passes 50% at a signal of 70%. Privacy (private) is ringed above the curve, History (unsafe) and Discrim. below it, and Copyright sits at the bottom left.">
 
-**Figure 4e. Each category's refusal signal against the share of its prompts refused.** The curve is a logistic fit over all 1,581 prompts.
+**Figure 4e. Each category's refusal signal against the share of its prompts refused.**
 
 </Figure>
 
-Across the 44 categories, signal and refusal rate rise together (rank correlation 0.89, Pearson 0.96), and the relation is a threshold. Below a signal of 45%, 6 of 804 prompts were refused; above 95%, 448 of 456; in between, 175 of 321. The fitted curve, the chance that one prompt is refused, passes half at a signal of 70%. The three outlined categories, all unsafe look-alikes, sit at least 20 points off the curve. Privacy (private) was refused more often than the curve predicts, 72% against 35%. History (unsafe) and Discrim. were refused less, 48% and 20% against 72% and 40%, because the model often argued against the premise of these prompts without declining, which the label counts as an answer.
+Across the 44 categories, signal and refusal rate rise together (rank correlation 0.89, Pearson 0.96), and the relation is a threshold. Per prompt, below a signal of 45%, 6 of 804 were refused; above 95%, 448 of 456; in between, 175 of 321. The fitted curve, the chance that one prompt is refused, passes half at a signal of 70%. The three outlined categories, all unsafe look-alikes, sit at least 20 points off the curve. Privacy (private) was refused more often than the curve predicts, 72% against 35%. History (unsafe) and Discrim. were refused less, 48% and 20% against 72% and 40%, because the model often argued against the premise of these prompts without declining.
 
 ## Across layers and models
 
@@ -168,15 +170,15 @@ In the model, the table splits into two light blocks: harmless tasks with the be
 
 </Figure>
 
-The same comparison runs in five open model families, Qwen2.5-7B, Qwen3-8B, OLMo-2-7B, Granite-3.1-8B and Falcon3-7B, at six depths each. At 25% depth, wording matches better in every family. The refusal signal first takes the lead between 55% and 75% depth and keeps it at every deeper layer. Removing the refusal direction from every prompt, one direction out of 3,584 to 4,096, puts wording well ahead in all five, with a wording lead of +0.54 to +0.72 in r. The families also arrange the categories alike, with correlations of 0.80 to 0.93 between their tables.
+The same comparison runs in five open model families, Qwen2.5-7B, Qwen3-8B, OLMo-2-7B, Granite-3.1-8B and Falcon3-7B, at six depths each. At 25% depth, wording matches better in every family. The refusal signal takes the lead from mid-depth, with a crossover between 39% and 75% depth. At each family's direction layer it leads in four of the five; in Granite, whose direction layer sits early, wording already leads slightly. Removing the refusal direction from every prompt, one direction out of 3,584 to 4,096, hands the layout to wording in all five. The families also arrange the categories alike, with average correlations of 0.80 to 0.93 between their tables.
 
-These scores use raw distances, and in raw distances the refusal direction is very loud: along it, category averages differ 1,200 to 2,700 times more than along a typical direction. Prompts within a category also spread 100 to 350 times more along it. Measured against that spread, the refusal direction is one strong direction among many quieter wording directions, and wording matches better at all 30 measured layers.
+These scores use raw distances. Along the refusal direction, category averages differ 1,200 to 2,700 times more than along a typical direction, but prompts within a category also spread 100 to 350 times more along it. Measured against that spread, wording matches better at all 30 layers. The refusal direction is thus one large direction among many smaller wording directions: it dominates the raw distances, but the spread of prompts along it makes it a noisier guide to which categories differ.
 
 ## Conclusions
 
-One direction in a 3,584-number activation predicts, category by category, how often Qwen2.5-7B-Instruct refuses, and the relation is a threshold: half of the prompts are refused at a refusal signal of 70%. Because the map's areas are exact, it also shows where the refusals come from and where the signal and the behavior part ways. HarmBench labels copyrighted text harmful, yet the model places it beside harmless tasks with a signal of 13% and refuses 4% of it. The unsafe look-alikes about history and discrimination have signals of 80% and 66%, yet the model often argues with them without declining. Across five model families, the same direction organizes the raw category distances from mid-depth on.
+One direction in a 3,584-number activation predicts, category by category, how often Qwen2.5-7B-Instruct refuses, and the relation is a threshold: half of the prompts are refused at a refusal signal of 70%. The exact areas also show where the signal and the behavior part ways. HarmBench labels copyrighted text harmful, yet the model places it beside harmless tasks with a signal of 13% and refuses 4% of it. The unsafe look-alikes about history and discrimination have signals of 80% and 66%, yet the model often argues with them without declining. Across five model families, the same direction organizes the raw category distances from mid-depth on, though wording leads once the spread of prompts within each category is taken into account.
 
-The core result agrees with Arditi et al. (2024), who showed that a single direction mediates refusal in open chat models. Here the same direction also predicts how often each kind of prompt is refused.
+The core result agrees with Arditi et al. (2024), who showed that a single direction mediates refusal in open chat models.
 
 ## Limits
 
