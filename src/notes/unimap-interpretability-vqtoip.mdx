@@ -132,7 +132,7 @@ Benign look-alikes sit beside harmless tasks: 5 of the 10 border one here, and 5
 
 </Figure>
 
-Now color shows how strongly each category moves along the refusal direction. Harmless tasks are pale, from −4% to 6%, and benign look-alikes a shade darker, from 9% to 45%. Most harmful and unsafe look-alike categories sit between 95% and 105%. A few sit in between, among them Disinformation at 77% and the three outlined unsafe look-alikes at 64%, 66% and 80%. Copyright sits at 13%, as pale as its harmless neighbors.
+Now color shows how strongly each category moves along the refusal direction. Harmless tasks are pale, from −4% to 6%, and benign look-alikes a shade darker, from 9% to 45%. Most harmful and unsafe look-alike categories sit between 95% and 105%. A few sit in between, among them Disinformation at 77% and the three outlined unsafe look-alikes at 64%, 66% and 80%. Copyright sits at 13%, nearly as pale as its harmless neighbors.
 
 <Figure number="4d" src="/images/notes/unimap-refusal-kc1u13-refused.webp" alt="The same Unimap with red filling each region from the bottom up to its share of refused prompts, labeled with that share. The top half is almost entirely gray and the bottom half mostly red. Three regions labeled 72%, 20% and 48% are outlined in yellow.">
 
@@ -140,7 +140,7 @@ Now color shows how strongly each category moves along the refusal direction. Ha
 
 </Figure>
 
-On the same layout, red area counts refused prompts because areas are exact: red covers 40% of the map, the 629 of 1,581 prompts the model refused. Of these, 473 are harmful requests, 149 are unsafe look-alikes and 7 come from the other two sets. Copyright is almost free of red, with 2 of its 50 prompts refused. Region by region, the two maps mostly agree, and the outlined regions are where they do not. Privacy questions about private people (number 11 in Figures 4c and 4d) have a signal of 64% and 72% refused, while Discrim. at 66% and History (unsafe) at 80% were refused 20% and 48% of the time.
+On the same layout, red area counts refused prompts because areas are exact: red covers 40% of the map, the 629 of 1,581 prompts the model refused. Of these, 473 are harmful requests, 149 are unsafe look-alikes and 7 come from the other two sets. Copyright is almost free of red, with 2 of its 50 prompts refused. Region by region, the two maps mostly agree, and the outlined regions are where they do not. Privacy questions about private people (number 11 in Figures 4c and 4d) have a signal of 64% and 72% refused, while Discrimination (unsafe, Discrim. on the map) at 66% and History (unsafe) at 80% were refused 20% and 48% of the time.
 
 <Figure number="4e" src="/images/notes/unimap-refusal-f90vt8-curve.png" alt="A scatter of the 44 categories, refusal signal on the horizontal axis and percent refused on the vertical axis, with an S-shaped logistic curve that passes 50% at a signal of 70%. Privacy (private) is ringed above the curve, History (unsafe) and Discrim. below it, and Copyright sits at the bottom left.">
 
@@ -148,7 +148,7 @@ On the same layout, red area counts refused prompts because areas are exact: red
 
 </Figure>
 
-Across the 44 categories, signal and refusal rate rise together (rank correlation 0.89, Pearson 0.96), and the relation is a threshold. Per prompt, below a signal of 45%, 6 of 804 were refused; above 95%, 448 of 456; in between, 175 of 321. The fitted curve, the chance that one prompt is refused, passes half at a signal of 70%. The three outlined categories, all unsafe look-alikes, sit at least 20 points off the curve. Privacy (private) was refused more often than the curve predicts, 72% against 35%. History (unsafe) and Discrim. were refused less, 48% and 20% against 72% and 40%, because the model often argued against the premise of these prompts without declining.
+Across the 44 categories, signal and refusal rate rise together (rank correlation 0.89, Pearson 0.96), and the relation is a threshold. Per prompt, below a signal of 45%, 6 of 804 were refused; above 95%, 448 of 456; in between, 175 of 321. The fitted curve gives the chance that a prompt is refused; it crosses 50% at a signal of 70%. The three outlined categories, all unsafe look-alikes, sit at least 20 points off the curve. Privacy (private) was refused more often than the curve predicts, 72% against 35%. History (unsafe) and Discrim. were refused less, 48% and 20% against 72% and 40%, because the model often argued against the premise of these prompts without declining.
 
 ## Across layers and models
 
@@ -162,7 +162,7 @@ RSA compares representational dissimilarity matrices (RDMs), tables of how diffe
 
 </Figure>
 
-In the model, the table splits into two light blocks: harmless tasks with the benign look-alikes, and unsafe look-alikes with harmful requests. In the wording table, the benign look-alikes sit with the unsafe look-alikes, whose words they share. The model's table matches the refusal signal (r = 0.81) better than the wording (r = 0.41), against 0.93, the best score that sampling noise allows.
+In the model, the table splits into two light blocks: harmless tasks with the benign look-alikes, and unsafe look-alikes with harmful requests. In the wording table, the benign look-alikes sit with the unsafe look-alikes, whose words they share. The model's table matches the refusal signal (r = 0.81) better than the wording (r = 0.41); sampling noise caps the score at about 0.93.
 
 <Figure number="6" src="/images/notes/unimap-refusal-zoisv5-depth.png" alt="Left: a line chart of how well wording and the refusal signal match the category distances in five model families, from 25% to 100% depth. Wording leads early and the refusal signal from mid-depth, with a shaded crossover zone and a gray band for the best score possible given noise. Right: for each family, wording fit minus refusal-signal fit moves from the refusal side to the wording side after the refusal direction is removed.">
 
@@ -172,7 +172,7 @@ In the model, the table splits into two light blocks: harmless tasks with the be
 
 The same comparison runs in five open model families, Qwen2.5-7B, Qwen3-8B, OLMo-2-7B, Granite-3.1-8B and Falcon3-7B, at six depths each. At 25% depth, wording matches better in every family. The refusal signal takes the lead from mid-depth, with a crossover between 39% and 75% depth. At each family's direction layer it leads in four of the five; in Granite, whose direction layer sits early, wording already leads slightly. Removing the refusal direction from every prompt, one direction out of 3,584 to 4,096, hands the layout to wording in all five. The families also arrange the categories alike, with average correlations of 0.80 to 0.93 between their tables.
 
-These scores use raw distances. Along the refusal direction, category averages differ 1,200 to 2,700 times more than along a typical direction, but prompts within a category also spread 100 to 350 times more along it. Measured against that spread, wording matches better at all 30 layers. The refusal direction is thus one large direction among many smaller wording directions: it dominates the raw distances, but the spread of prompts along it makes it a noisier guide to which categories differ.
+These scores use raw distances. Along the refusal direction, category averages differ 1,200 to 2,700 times more than along a typical direction, but prompts within a category also spread 100 to 350 times more along it. Measured against that spread, wording matches better at all 30 depths tested, six in each family. The refusal direction is thus one large direction among many smaller wording directions: it dominates the raw distances, but the spread of prompts along it makes it a noisier guide to which categories differ.
 
 ## Conclusions
 
