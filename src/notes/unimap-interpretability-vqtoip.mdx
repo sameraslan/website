@@ -31,7 +31,7 @@ A rough way to think about Unimap is a word cloud plus PCA or t-SNE. In a word c
 
 The painting shows the same idea with exact numbers. Blue is 18.7% of the picture's pixels, scattered in 29 pieces. A PCA of the pixel colors gathers the blue into one cloud, but 44.5% of the dots are covered by others and blue fills only 13.4% of the drawn area. The Unimap rearranges the same pixels so that blue is one piece covering 18.7% again.
 
-The price is precision about neighbors: in the paper's comparisons, t-SNE and UMAP preserve each point's nearest neighbors better than a map does, while a Unimap shows which groups sit next to which.
+The price is precision about neighbors: in comparisons for the Unimap paper (in preparation), t-SNE and UMAP preserve each point's nearest neighbors better than a map does, while a Unimap shows which groups sit next to which.
 
 In the maps below, one region is one prompt category, not one prompt. A region's area is the number of prompts in its category, and its place on the map comes from the category's mean activation, so regions that share a border are categories the model represents in a similar way.
 
@@ -92,7 +92,7 @@ The 1,581 prompts come from five standard benchmarks and fall into four prompt s
   </tbody>
 </table>
 
-Harm categories follow JailbreakBench's names, and the harmless categories are 13 Alpaca task types. Duplicates and the prompts used to build the direction were removed. Category sizes are set by the benchmarks, so region sizes describe the benchmark mix.
+Harm categories follow JailbreakBench's names (the figures abbreviate JailbreakBench as JBB), and the harmless categories are 13 Alpaca task types. Duplicates and the prompts used to build the direction were removed. Category sizes are set by the benchmarks, so region sizes describe the benchmark mix.
 
 ## Reading the figure, one panel at a time
 
@@ -160,7 +160,7 @@ Copyrighted text sits at 13%, as pale as the look-alikes around it. At layer 21,
 
 **What it shows.** Red covers 40% of the map, the 629 of 1,581 prompts that were refused: 473 harmful requests, 149 unsafe look-alikes and 7 from the rest. The red sits almost entirely in the dark regions of panel c. The harmless block is gray apart from Advice and Explain, with 1 of 40 prompts refused in each, the benign look-alikes stay at 12% or below, and Copyrighted text is at 4%.
 
-The two maps disagree in a few middle regions. Privacy questions about private people (number 11 on the maps, Privacy (private) in panel e) have a signal of 64%, yet 72% of them were refused. Discrimination has a signal of 66% and was refused 20% of the time, and Historical events has 80% and was refused 48% of the time.
+The two maps disagree in a few middle regions. Privacy questions about private people (Privacy (private) in panels b and e, number 11 on maps c and d) have a signal of 64%, yet 72% of them were refused. Discrimination (unsafe), labeled Discrim., has a signal of 66% and was refused 20% of the time, and Historical events (unsafe), labeled History (unsafe), has 80% and was refused 48% of the time.
 
 ### e. Signal against refusal
 
