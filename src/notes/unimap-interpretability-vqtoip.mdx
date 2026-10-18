@@ -23,7 +23,7 @@ A rough way to think about Unimap is a word cloud plus PCA or t-SNE, and the two
 
 <Figure number="2" src="/images/notes/unimap-refusal-rdc51j-painting.png" alt="Three panels of the same pixels from van Gogh's The Bedroom: the image itself, a PCA scatter of the pixel colors, and a Unimap of the same pixels with similar colors gathered into contiguous areas. Under each panel, two rows mark whether counts are easy to read and whether similar items are neighbors.">
 
-**Figure 2. The same pixels shown three ways.** The PCA's dots pile up and hide each other, so its counts are hard to read. The Unimap keeps every pixel of the painting with its area and looks smooth because similar colors sit side by side; its two light patches stay apart because pale yellow-green and near-white gray are different colors. The painting is Vincent van Gogh's *The Bedroom* (1889), [Art Institute of Chicago](https://www.artic.edu/artworks/28560/the-bedroom), public domain.
+**Figure 2. The same pixels shown three ways.** The black outline marks the blue pixels in each panel. The PCA's dots pile up and hide each other, so its counts are hard to read. The Unimap keeps every pixel of the painting with its area and looks smooth because similar colors sit side by side; its two light patches stay apart because pale yellow-green and near-white gray are different colors. The painting is Vincent van Gogh's *The Bedroom* (1889), [Art Institute of Chicago](https://www.artic.edu/artworks/28560/the-bedroom), public domain.
 
 </Figure>
 
@@ -114,7 +114,7 @@ The 1,581 prompts in 44 categories come from five standard benchmarks. Benign lo
 
 </Figure>
 
-**How to read it.** Each region is one category, with area equal to its number of prompts (under 1% off as drawn). A benign look-alike and its unsafe twin share a short name, such as Figurative or History, told apart by color or by the suffix in the key. Small regions carry a number, the same in every panel. Yellow outlines mark the three categories whose refusal rate is furthest from what their harm signal predicts (panel e).
+**How to read it.** Each region is one category, with area equal to its number of prompts (under 1% off as drawn). A benign look-alike and its unsafe twin share a short name, such as Figurative or History, told apart by color or by the suffix in the key. Small regions carry a number, listed under each panel; a number means the same category in every panel. Yellow outlines mark the three categories whose refusal rate is furthest from what their harm signal predicts (panel e).
 
 **What it shows.** The four prompt sets form four territories, and the map shows what sits next to what, which panel e cannot. Over the 13 layouts, 5 to 9 of the 10 benign look-alikes border a harmless task, while their unsafe twins sit with the harmful requests and, in every layout that keeps each category in one piece, none borders a harmless task. Copyrighted text (Copyright), a harmful HarmBench set, shares 49 to 62% of its border with harmless tasks, and 4% of its prompts were refused.
 
@@ -136,7 +136,7 @@ The 1,581 prompts in 44 categories come from five standard benchmarks. Benign lo
 
 </Figure>
 
-**What it shows.** Red covers 40% of the map, the 629 of 1,581 refused prompts: 473 harmful requests, 149 unsafe look-alikes and 7 from the rest, among them 1 of 40 prompts each in Advice and Explain. Compared region by region with panel c, the maps disagree in the outlined regions: privacy questions about private people (number 11) have a signal of 64% and 72% refused, while Discrim. at 66% and History (unsafe) at 80% were refused 20% and 48% of the time.
+**What it shows.** Red covers 40% of the map, the 629 of 1,581 refused prompts: 473 harmful requests, 149 unsafe look-alikes and 7 from the rest, among them 1 of 40 prompts each in Advice and Explain. Compared region by region with panel c, the maps disagree in the outlined regions: privacy questions about private people (Privacy (private) in panel b, number 11 in panels c and d) have a signal of 64% and 72% refused, while Discrim. at 66% and History (unsafe) at 80% were refused 20% and 48% of the time.
 
 ### e. Signal against refusal
 
@@ -160,21 +160,21 @@ Representational similarity analysis (RSA) checks how general the maps' layout i
 
 </Figure>
 
-The five families are Qwen2.5-7B, Qwen3-8B, OLMo-2-7B, Granite-3.1-8B and Falcon3-7B. At 25% depth wording matches better in every family; the refusal direction takes the lead between 55 and 75% depth and keeps it. Removing that single direction, one of 3,584 to 4,096, hands the layout back to wording in all five. The families also arrange the categories alike, with correlations of 0.80 to 0.93 between their distance tables.
+The five families are Qwen2.5-7B, Qwen3-8B, OLMo-2-7B, Granite-3.1-8B and Falcon3-7B. At 25% depth wording matches better in every family; the refusal direction takes the lead between 39 and 75% depth, depending on the family, and keeps it. Removing that single direction, one of 3,584 to 4,096, hands the layout back to wording in all five. The families also arrange the categories alike, with correlations of 0.80 to 0.93 between their distance tables.
 
 The refusal direction is one very loud direction, so it dominates the raw distances the map draws. Measured against how much prompts vary within a category, it is one direction among many wording directions, and wording leads at every layer.
 
 ## Conclusions
 
-One direction in a 3,584-number activation predicts, category by category, how often Qwen2.5-7B-Instruct refuses, and the relation is a threshold: half of prompts are refused at a harm signal of 70% (Spearman 0.89 across 44 categories). This agrees with Arditi et al.
+One direction in a 3,584-number activation predicts, category by category, how often Qwen2.5-7B-Instruct refuses, and the relation is a threshold: half of prompts are refused at a harm signal of 70% (Spearman 0.89 across 44 categories).
 
-The map adds three things. It counts where the refusals come from: 629 refused prompts fill 40% of it, 473 of them harmful requests and 149 unsafe look-alikes. It shows where a benchmark and the model disagree: HarmBench labels copyrighted text harmful, but the model gives it a harm signal of 13%, refuses 4% of it and places it beside harmless tasks. And it shows where signal and behavior part ways: the model mostly argues with the unsafe Historical events and Discrimination prompts instead of refusing them.
+The map adds three things. It counts where the refusals come from: 629 refused prompts fill 40% of it, 473 of them harmful requests and 149 unsafe look-alikes. It shows where a benchmark and the model disagree: HarmBench labels copyrighted text harmful, but the model gives it a harm signal of 13%, refuses 4% of it and places it beside harmless tasks. And it shows where signal and behavior part ways: the model mostly argues with the History (unsafe) and Discrim. prompts instead of refusing them.
 
 Across five model families, the layout follows wording early and the refusal direction from mid-depth, though wording leads at every layer when measured against the spread within each category.
 
-## Limits
+The core result agrees with Arditi et al., who showed that a single direction mediates refusal in open chat models.
 
-This analysis has limits.
+## Limits
 
 - The maps and refusal labels cover one model at one layer; the five-family comparison covers only the layout.
 - Category sizes come from the benchmarks, so region sizes describe the benchmark mix, not real-world traffic.
