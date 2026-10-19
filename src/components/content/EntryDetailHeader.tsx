@@ -5,6 +5,7 @@ type Kind = 'project' | 'research';
 
 function metaFields(entry: Entry, kind: Kind): Array<[string, string]> {
   const out: Array<[string, string]> = [];
+  if (entry.author) out.push(['author', entry.author.toLowerCase()]);
   if (entry.year) out.push(['year', String(entry.year)]);
   if (kind === 'project' && entry.role) out.push(['role', entry.role.toLowerCase()]);
   if (kind === 'research' && entry.affiliation) out.push(['lab', entry.affiliation.toLowerCase()]);
