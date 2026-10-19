@@ -11,7 +11,7 @@ Unimap is a visualization algorithm for high-dimensional data, from brain record
 
 ## Unimap: a brief intro to the algorithm
 
-PCA, t-SNE and UMAP draw high-dimensional data as dots, with similar items close together, but the area a group covers says little about how many items it holds. Unimap draws the data as a map instead: each item gets a region whose area equals its count, and similar items share a border, as countries do on a political map. A rough way to think about it is a word cloud plus PCA.
+PCA, t-SNE and UMAP draw high-dimensional data as dots, with similar items close together, but the area a group covers says little about how many items it holds. Unimap draws the data as a map: each item gets a region whose area equals its count, and similar items share a border, as countries do on a political map. A rough way to think about it is a word cloud plus PCA.
 
 <Figure number="1" src="/images/notes/unimap-refusal-dsd1p0-words.png" alt="Three panels of twelve words in three groups (fruits, animals, vehicles). Left: a word cloud with font size by count and arbitrary positions. Middle: a PCA of word embeddings with three separate clusters and all words the same size. Right: a Unimap in which each word is a region sized by its count and the three groups form three contiguous areas.">
 
@@ -35,7 +35,7 @@ With that intuition, the same kind of map can be drawn of a neural network, wher
 
 Interpretability research explains what a neural network computes from these internal activations. [Arditi et al. (2024)](https://arxiv.org/abs/2406.11717) found that refusal, the model declining a request ("I'm sorry, but I can't help with that"), is mediated by a single direction in the activations of open chat models, the refusal direction. Removing this direction stops the model from refusing harmful requests. Adding the direction to the model's activations while it reads a harmless prompt pushes the activations further along it, and the model then refuses.
 
-Results like this are usually shown as a PCA scatter with one dot per prompt, which leaves two questions open: how many prompts of each kind there are, and how far each kind sits along the refusal direction. This post answers both with a Unimap of Qwen2.5-7B-Instruct's activations, one region per prompt category, and compares it with what the model refuses. The next section builds that map step by step.
+Results like this are usually shown as a PCA scatter with one dot per prompt, which leaves two questions open: how much of the data each kind of prompt makes up, and how far each kind sits along the refusal direction. This post answers both with a Unimap of Qwen2.5-7B-Instruct's activations, one region per prompt category, and compares it with what the model refuses. The next section builds that map step by step.
 
 ## Making the interpretability maps
 
@@ -178,7 +178,7 @@ These scores use raw distances. Along the refusal direction, category averages d
 
 ## Conclusions
 
-Unimap makes the structure inside a model readable at a glance: how many prompts of each kind there are, which kinds the model treats alike, where its refusals come from, and where its internal signal and its behavior part ways. In Qwen2.5-7B-Instruct, one direction in the activations predicts how often each kind of prompt is refused, and the relation is a threshold. Benign look-alikes sit with harmless prompts inside the model even though their wording sounds harmful, and copyrighted text, which HarmBench labels harmful, is treated like a harmless task.
+Unimap makes the structure inside a model readable at a glance, with each kind of prompt drawn at its exact share of the data: which kinds the model treats alike, where its refusals come from, and where its internal signal and its behavior part ways. In Qwen2.5-7B-Instruct, one direction in the activations predicts how often each kind of prompt is refused, and the relation is a threshold. Benign look-alikes sit with harmless prompts inside the model even though their wording sounds harmful, and copyrighted text, which HarmBench labels harmful, is treated like a harmless task. For safety work, this kind of map shows at once which requests a model treats as harmful, and where its view and a benchmark's labels disagree.
 
 The core result agrees with Arditi et al. (2024), who showed that a single direction mediates refusal in open chat models.
 
