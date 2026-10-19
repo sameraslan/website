@@ -38,6 +38,7 @@ export function noteMetadata(entry?: Entry): Metadata {
   return {
     title: entry ? `${entry.title} · samer aslan` : 'samer aslan',
     description: entry?.subtitle,
+    authors: entry?.author ? [{ name: entry.author }] : undefined,
     robots: NOTE_ROBOTS,
   };
 }

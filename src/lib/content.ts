@@ -6,6 +6,7 @@ export interface Entry {
   slug: string;
   title: string;
   subtitle?: string;
+  author?: string;
   year?: number;
   role?: string;
   affiliation?: string;
@@ -69,6 +70,7 @@ export function parseEntry(raw: string, slug: string, label: string): Entry {
     slug,
     title: String(data.title),
     subtitle: data.subtitle ? String(data.subtitle) : undefined,
+    author: data.author ? String(data.author) : undefined,
     year: typeof data.year === 'number' ? data.year : undefined,
     role: data.role ? String(data.role) : undefined,
     affiliation: data.affiliation ? String(data.affiliation) : undefined,
