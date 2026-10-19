@@ -25,9 +25,10 @@ export default async function NoteDetail({ params }: { params: Promise<{ slug: s
   if (!entry) notFound();
 
   return (
-    <article>
+    // One centered reading column (about 60ch of body text) for header and body.
+    <article className="mx-auto max-w-[35rem]">
       <EntryDetailHeader entry={entry} kind="research" backHref="/research" backLabel="research" />
-      <div className="prose-mdx max-w-[60ch] mt-7">
+      <div className="prose-mdx mt-7">
         <MDXRemote source={entry.body} components={{ ...mdxComponents, Figure }} />
       </div>
     </article>
