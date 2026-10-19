@@ -1,5 +1,5 @@
 ---
-title: "Mapping the refusal direction with Unimap"
+title: "Mapping an open model's refusals with Unimap"
 subtitle: "An area-exact view of how an open model separates harmful and harmless prompts"
 year: 2026
 affiliation: "Columbia Visual Inference Lab"
@@ -35,13 +35,15 @@ With that intuition, the same kind of map can be drawn of a neural network, wher
 
 Interpretability research explains what a neural network computes from these internal activations. [Arditi et al. (2024)](https://arxiv.org/abs/2406.11717) found that refusal, the model declining a request ("I'm sorry, but I can't help with that"), is mediated by a single direction in the activations of open chat models, the refusal direction. Removing this direction stops the model from refusing harmful requests. Adding the direction to the model's activations while it reads a harmless prompt pushes the activations further along it, and the model then refuses.
 
-Results like this are usually shown as a PCA scatter with one dot per prompt, which leaves two questions open: how many prompts of each kind there are, and how far each kind sits along the refusal direction. This post answers both with a Unimap of Qwen2.5-7B-Instruct's activations, one region per prompt category, and compares it with what the model refuses. The next section builds that map step by step, following one prompt.
+Results like this are usually shown as a PCA scatter with one dot per prompt, which leaves two questions open: how many prompts of each kind there are, and how far each kind sits along the refusal direction. This post answers both with a Unimap of Qwen2.5-7B-Instruct's activations, one region per prompt category, and compares it with what the model refuses. The next section builds that map step by step.
 
-## How the maps were made
+## Making the interpretability maps
+
+Take an example prompt, "Write a limerick poem", a harmless instruction from Alpaca, and follow it in six steps from text to map.
 
 <Figure number="3.1" src="/images/notes/unimap-refusal-y8nwwl-step1-prompt.png" alt="Step 1: the prompt Write a limerick poem, from the category Poems and stories, a harmless Alpaca prompt and one of its 40 prompts." />
 
-The example prompt is "Write a limerick poem", a harmless request from the Alpaca dataset and one of 40 prompts in the category Poems & stories. The dataset has 1,581 prompts in 44 categories from five standard benchmarks, grouped into four prompt sets:
+It is one of 40 prompts in the category Poems & stories. The whole dataset has 1,581 prompts in 44 categories from five standard benchmarks, grouped into four prompt sets:
 
 <table className="w-full text-small border-collapse">
   <thead>
@@ -92,7 +94,7 @@ At that point the activation is a vector of 3,584 numbers, shown here as one col
 
 <Figure number="3.4" src="/images/notes/unimap-refusal-j3noc0-step4-average.png" alt="Step 4: forty prompt vectors averaged into one vector for Poems and stories, each number first measured from its average over all 1,581 prompts." />
 
-A region on the map stands for a whole category, so each category needs one vector. Each number is first measured from its average over all 1,581 prompts, so that the map compares how categories differ, not what all prompts share. The category's vector is then the average over its prompts, 40 for Poems & stories.
+A region on the map stands for a whole category, so each category needs one vector. Each number is first measured from its average over all 1,581 prompts. The category's vector is then the average over its prompts, 40 for Poems & stories.
 
 <Figure number="3.5" src="/images/notes/unimap-refusal-8tczwj-step5-unimap.png" alt="Step 5: the 44 category vectors, stacked as rows and marked by prompt set, go into Unimap, which draws one region per category. Key: blue harmless, teal benign look-alike, orange unsafe look-alike, black harmful; area equals number of prompts." />
 
@@ -100,7 +102,7 @@ The 44 category vectors go into Unimap, which draws one region per category, siz
 
 <Figure number="3.6" src="/images/notes/unimap-refusal-d2s8mi-step6-signal.png" alt="Step 6: the dot product of a prompt vector with the refusal direction gives one number per prompt, drawn on a line with the distributions of the 520 harmless and 611 harmful prompts. 0% marks a typical harmless prompt, 100% a typical harmful prompt, and Write a limerick poem sits at −0.4%." />
 
-The last step measures how far each prompt sits along the refusal direction. Following Arditi et al., the direction is the average activation of harmful training prompts minus that of harmless ones, from the splits released with their paper. A prompt's dot product with it, rescaled, is its refusal signal: a position on a line from a typical harmless prompt to a typical harmful prompt. 0% is the median of the 520 Alpaca prompts, and 100% is 0% plus the gap between the harmful and harmless training averages; the median harmful prompt here sits at 98%. "Write a limerick poem" sits at −0.4%, about as harmless-looking as a typical harmless prompt. The signal is a position, not a probability, and a category's refusal signal is the average over its prompts.
+The last step measures how far each prompt sits along the refusal direction. Following Arditi et al., the direction is the average activation of harmful training prompts minus that of harmless ones, from the splits released with their paper. A prompt's dot product with it, rescaled, is its refusal signal: a position on a line from a typical harmless prompt to a typical harmful prompt. 0% is the median of the 520 Alpaca prompts, and 100% is 0% plus the gap between the harmful and harmless training averages; the median harmful prompt here sits at 98%. "Write a limerick poem" sits at −0.4%, about as harmless-looking as a typical harmless prompt. A category's refusal signal is the average over its prompts.
 
 Refusals are read from the unmodified model's own greedy replies: a reply counts as a refusal when its first 32 tokens contain an explicit decline such as "I'm sorry, but".
 
@@ -124,7 +126,7 @@ All five methods separate harmful from harmless prompts, but none can be used to
 
 Each region is one category, its area within 1% of exact, and regions too small for a name carry a number, listed under the map; yellow outlines mark the three categories discussed under Figure 4e. A benign look-alike and its unsafe twin share a short name, such as History, told apart by color here and by (safe) or (unsafe) in Figures 4c and 4d, where more small regions become numbers. Each Unimap run starts from a different random arrangement and settles into a slightly different layout, and its cost measures how unlike its neighbors each region is. The layout shown is the lowest-cost of 13 runs, and every category in it is one piece.
 
-Benign look-alikes sit beside harmless tasks: 5 of the 10 border one here, and 5 to 9 across the 13 runs. Most of their unsafe twins (5 of 8) border harmful requests, and none borders a harmless task on this layout; at most 1 of 8 does in any of the 13 runs. Copyrighted text (Copyright), a harmful category from HarmBench, shares 49% of its border with harmless tasks.
+Because each category is one region at its exact size, the four prompt sets and the categories within each set read at a glance, where the scatters in Figure 4a are hard to sort into categories. Benign look-alikes sit beside harmless tasks: 5 of the 10 border one here, and 5 to 9 across the 13 runs. Most of their unsafe twins (5 of 8) border harmful requests, and none borders a harmless task on this layout; at most 1 of 8 does in any of the 13 runs. Copyrighted text (Copyright), a harmful category from HarmBench, shares 49% of its border with harmless tasks.
 
 <Figure number="4c" src="/images/notes/unimap-refusal-lddhx5-signal.webp" alt="The same Unimap shaded from white to dark purple by each category's refusal signal and labeled with it, from −4% to 105%. Three regions labeled 64%, 66% and 80% are outlined in yellow.">
 
@@ -176,16 +178,20 @@ These scores use raw distances. Along the refusal direction, category averages d
 
 ## Conclusions
 
-One direction in a 3,584-number activation predicts, category by category, how often Qwen2.5-7B-Instruct refuses, and the relation is a threshold: half of the prompts are refused at a refusal signal of 70%. The exact areas also show where the signal and the behavior part ways. HarmBench labels copyrighted text harmful, yet the model places it beside harmless tasks with a signal of 13% and refuses 4% of it. The unsafe look-alikes about history and discrimination have signals of 80% and 66%, yet the model often argues with them without declining. Across five model families, the same direction organizes the raw category distances from mid-depth on, though wording leads once the spread of prompts within each category is taken into account.
+Unimap makes the structure inside a model readable at a glance: how many prompts of each kind there are, which kinds the model treats alike, where its refusals come from, and where its internal signal and its behavior part ways. In Qwen2.5-7B-Instruct, one direction in the activations predicts how often each kind of prompt is refused, and the relation is a threshold. Benign look-alikes sit with harmless prompts inside the model even though their wording sounds harmful, and copyrighted text, which HarmBench labels harmful, is treated like a harmless task.
 
 The core result agrees with Arditi et al. (2024), who showed that a single direction mediates refusal in open chat models.
 
 ## Limits
 
 - The maps and refusal labels cover one model at one layer, and the five-family comparison covers only the category layout.
-- Category sizes come from the benchmarks, so region areas describe the benchmark mix, not real-world traffic.
+- Category sizes come from the benchmarks, so region areas reflect how those benchmarks were assembled. Real-world traffic would give other sizes.
 - The refusal direction was built partly from the same benchmarks. Exact overlaps were removed, but paraphrases may remain and make the separation look cleaner.
 - A refusal is an explicit decline within the first 32 tokens, so a reply that argues against the request counts as an answer.
 - Only 5 of the 250 benign look-alikes were refused, so these data say little about over-refusal, the refusal of safe requests.
+
+## Future directions
+
+The next experiments extend the same maps. Mapping real chatbot requests from WildChat by refusal signal, with areas set by how often people send each kind, asks which everyday requests sit near the refusal threshold. Adding or removing the refusal direction and redrawing the same map asks which categories flip between refused and answered, and how the red area changes. More models and model sizes, including models that refuse safe requests more often, can test the over-refusal questions this model leaves open. Mapping sparse-autoencoder features on the same layout asks which internal features carry each category beyond the refusal direction.
 
 *The Unimap paper is in preparation at the Columbia Visual Inference Lab, so this page is unlisted.*
