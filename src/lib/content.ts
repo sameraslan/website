@@ -56,9 +56,14 @@ export async function loadEntry(folder: string, slug: string): Promise<Entry> {
   } catch {
     throw new Error(`no content at ${folder}/${slug}.mdx`);
   }
+  return parseEntry(raw, slug, `${folder}/${slug}.mdx`);
+}
+
+// Shared by loadEntry and the unlisted-notes loader (src/lib/notes.ts).
+export function parseEntry(raw: string, slug: string, label: string): Entry {
   const { data, content } = matter(raw);
   if (!data || !data.title) {
-    throw new Error(`${folder}/${slug}.mdx is missing frontmatter`);
+    throw new Error(`${label} is missing frontmatter`);
   }
   return {
     slug,
