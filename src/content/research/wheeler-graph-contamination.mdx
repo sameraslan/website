@@ -1,0 +1,28 @@
+---
+title: "Contamination Detection"
+subtitle: "Identifying contaminant organisms in sequencing reads with Wheeler graphs"
+year: 2023
+role: "Researcher"
+affiliation: "Johns Hopkins"
+stack: ["Python", "Genomics", "Graph algorithms"]
+links:
+  paper: "/papers/wheeler-graph-contamination.pdf"
+  github: "https://github.com/sameraslan/Wheeler-Graph-Contamination"
+order: 7
+---
+
+This study detects contamination in sequencing reads by aligning each read to one Wheeler graph built from the host genome and every suspected contaminant genome, rather than searching a separate reference structure for each organism. Contamination of this kind is common in public data: at least 7% of the samples in the 1000 Genomes Project were found to contain Mycoplasma DNA.
+
+## How it works
+
+The graph is a DeBruijn graph, one kind of Wheeler graph, in which each node is a (k−1)-mer and each edge joins two (k−1)-mers that overlap in all but one base. All genomes go into the same graph, and each node keeps the set of organisms whose sequence contains it, so a stretch shared by several genomes is stored once.
+
+Reads are aligned the way an FM index aligns a pattern, extending the match one character at a time from the end of the read, except that a partial match can branch into several paths through the graph. The organism sets along each path are intersected, so a read that matches in full returns the organisms it could have come from. A read that cannot be matched likely comes from an organism outside the graph.
+
+## Results
+
+On 1,500 synthetic reads, 500 each from one host and two contaminant sequences, precision was 0.97 for the host and 1.00 for both contaminants, and recall was 1.00, 1.00 and 0.92; 535 reads were classified as ambiguous. On real sequences, with a kangaroo gene as the host and two Mycoplasma species as contaminants, most reads were ambiguous, which leaves telling closely related species apart as the main open problem.
+
+## Status
+
+The paper was written at Johns Hopkins in December 2023 with Owen Bianchi, Anirudh Kashyap and Senapati Diwangkara. The [PDF](/papers/wheeler-graph-contamination.pdf) is available on this site, and the code is on [GitHub](https://github.com/sameraslan/Wheeler-Graph-Contamination).

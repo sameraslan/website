@@ -1,0 +1,27 @@
+---
+title: "Feather Classification"
+subtitle: "Self-attention and bilinear pooling for fine-grained classification"
+year: 2022
+role: "Researcher"
+affiliation: "Johns Hopkins"
+stack: ["PyTorch", "Computer vision", "Fine-grained classification"]
+links:
+  paper: "/papers/feather-classification.pdf"
+order: 6
+---
+
+This study compares two ways of adding second-order feature interactions to a convolutional network for fine-grained image classification, the task of telling apart classes that differ only in subtle details. Here the task is to name a bird's species from an image of one of its feathers, which helps identify birds prone to collisions with aircraft.
+
+## How it works
+
+The data is the Feathers dataset: 9,562 training, 2,391 validation and 2,988 test images covering 100 species from 16 orders, resized to 64x64 pixels. Training classes range from 43 to 383 images, so the loss is a class-weighted cross-entropy that penalizes errors on rare species more heavily. Augmentation is limited to flips and small color jitters, since larger changes can alter the cues that separate one species from another.
+
+A VGG-16 network is the baseline. Two variants add self-attention modules, adapted from self-attention GANs, at the 4th, 6th and 8th convolutional layers, either replacing those layers or alongside them, so that each position in a feature map can draw on every other position. A bilinear CNN instead runs two VGG-16 streams cut at the 7th convolutional layer and combines their feature maps with an outer product, which gives a channel-by-channel covariance matrix that keeps no information about where a feature occurs. A fifth model extends the bilinear CNN to the dataset's two label levels: one stream also predicts the order, the other the species, and the average of the three losses trains the network.
+
+## Why it's interesting
+
+Both kinds of second-order interaction improve on the baseline's 86.1% top-1 accuracy. Self-attention reaches 87.6%, and the bilinear CNN reaches 91.3% even though its features discard spatial position, which suggests that for feathers, which patterns are present matters more than where they sit. The bilinear CNN needs considerably more parameters to get there. The hierarchical variant scores 87.6%, below the plain bilinear CNN, possibly because a feather's order adds little beyond its appearance and three losses make the model harder to train.
+
+## Status
+
+The paper was written at Johns Hopkins in May 2022 with Hashem AlSabi, Logan Donaldson and Ryunosuke Saito, and the [PDF](/papers/feather-classification.pdf) is available on this site.
