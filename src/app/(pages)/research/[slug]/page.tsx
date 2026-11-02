@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import { loadEntries, loadEntry } from '@/lib/content';
+import { citationMeta } from '@/lib/citation';
 import { EntryDetailHeader } from '@/components/content/EntryDetailHeader';
 import { RelatedAside } from '@/components/content/RelatedAside';
 import { mdxComponents } from '@/components/content/mdxComponents';
@@ -14,7 +15,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   try {
     const entry = await loadEntry('research', slug);
-    return { title: `${entry.title} · samer aslan`, description: entry.subtitle };
+    const other = citationMeta(entry);
+    return { title: `${entry.title} · samer aslan`, description: entry.subtitle, ...(other ? { other } : {}) };
   } catch {
     return { title: 'research · samer aslan' };
   }

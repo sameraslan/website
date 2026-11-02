@@ -15,7 +15,29 @@ export interface Entry {
   links?: { github?: string; paper?: string; demo?: string; site?: string };
   heroImage?: string;
   order?: number;
+  citation?: Citation;
   body: string;
+}
+
+// Bibliographic details for a paper hosted on the site, emitted as Google Scholar
+// citation meta tags on the entry's page.
+export interface Citation {
+  title: string;
+  authors: string[];
+  date: string;
+  institution?: string;
+}
+
+function parseCitation(raw: unknown): Citation | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const c = raw as Record<string, unknown>;
+  if (!c.title || !Array.isArray(c.authors) || !c.date) return undefined;
+  return {
+    title: String(c.title),
+    authors: c.authors.map(String),
+    date: String(c.date),
+    institution: c.institution ? String(c.institution) : undefined,
+  };
 }
 
 const CONTENT_ROOT = path.join(process.cwd(), 'src', 'content');
@@ -79,6 +101,7 @@ export function parseEntry(raw: string, slug: string, label: string): Entry {
     links: data.links && typeof data.links === 'object' ? data.links : undefined,
     heroImage: data.heroImage ? String(data.heroImage) : undefined,
     order: typeof data.order === 'number' ? data.order : undefined,
+    citation: parseCitation(data.citation),
     body: content,
   };
 }
