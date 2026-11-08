@@ -13,6 +13,16 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Unlisted CV: shared by direct link only. Not linked from any page or
+        // the sitemap, and kept out of search results.
+        source: '/cv.pdf',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+          { key: 'Content-Disposition', value: 'inline; filename="Samer_Aslan_CV.pdf"' },
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+        ],
+      },
+      {
         source: '/data/:path*',
         headers: [
           {
