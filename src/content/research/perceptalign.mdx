@@ -1,35 +1,26 @@
 ---
 title: "PerceptAlign"
-subtitle: "Real-time temporal alignment for audio generation from silent video"
-year: 2023
+subtitle: "A synchronization critic for video-to-audio timing"
+year: 2026
 role: "Researcher"
 affiliation: "Johns Hopkins"
 stack: ["PyTorch", "Transformers", "Spectrograms"]
 links:
+  paper: "https://github.com/sameraslan/PerceptAlign/blob/main/paper/main.pdf"
   github: "https://github.com/sameraslan/PerceptAlign"
 order: 5
 ---
 
-PerceptAlign generates a soundtrack for a silent video and aligns each sound to the moment its on-screen event happens. Prior video-to-audio models, including SpecVQGAN, usually produce semantically relevant audio but misalign its timing: a video of a hammer is paired with the right sound, but the impact does not coincide with the onset of that sound. PerceptAlign adds a timing signal to the generation process itself rather than aligning audio to video after the fact.
+PerceptAlign is a framework for measuring and improving audio-visual sync in video-to-audio generation. Models like SpecVQGAN usually choose the right sound for a video but place it at the wrong moment: a video of a hammer gets a hammer sound, but the impact is heard before or after the hammer lands.
 
 ## How it works
 
-The model builds on SpecVQGAN's codebook and transformer design. A VQGAN encodes and reconstructs mel spectrograms into a discrete codebook, and a transformer autoregressively samples codebook entries conditioned on visual features. Those features are optical flow frames from denseflow and RGB features from a BN-Inception network.
-
-The timing signal comes from a Perceptual Alignment Loss (PAL). It extends the temporal binding window, the range of audio-visual asynchrony within which the human brain still perceives sound and image as one event.
-
-PAL first upsamples the visual features by linear interpolation to match the spectrogram's length: 212 video frames against 848 audio frames. Both streams then pass through a local feature extractor of two Conv1D-BN-GELU blocks with L2 normalization.
-
-The spectrogram is split into S segments. Within each segment, PAL computes the cross-correlation between the audio and visual embeddings over a window of time offsets and softmax-normalizes it with temperature τ. The normalized values are then summed under a Gaussian-weighted binding window, which tolerates slight misalignment while rewarding a zero offset. The loss is the negative log of the mean weighted sum across segments.
-
-The total objective is a weighted sum of codebook cross-entropy and PAL, LTL = α·LCE + β·LPAL, so fidelity and timing are scored as separate terms. Generation runs in real time, carried over from SpecVQGAN's codebook sampling. Timing is evaluated with Dynamic Time Warping under a Euclidean distance, alongside KL divergence, Pearson correlation, and mean squared error.
+A small sync model is trained on real videos to tell how far a soundtrack is shifted from its video, then frozen. Its score is called the Perceptual Alignment Loss (PAL). For each new video, SpecVQGAN generates several soundtracks, and PAL keeps the one the sync model judges best aligned. Timing is tested on FlashDot, a synthetic dataset built for this project, and on VAS, a dataset of real-world videos.
 
 ## Why it's interesting
 
-PAL improves every reported metric over the SpecVQGAN baseline on two datasets: FlashDot, a synthetic dataset that pairs a flashing red dot with a 1kHz sine wave to isolate the timing task, and the open-domain VAS dataset.
-
-A cross-correlation window of K = 10 works best on both, even though larger expected offsets seemed to call for a wider window. Segmentation helps up to 32 segments for the 848-frame spectrograms and gives no further gain beyond that.
+The project adds three pieces for working on audio-visual sync. FlashDot pairs a flashing dot with a beep, so the correct timing of every sound is known exactly. Timing metrics are tested against known delays before they are used: envelope lag, the shift that best lines up the loudness of the generated and real audio, recovers a known delay exactly, while DTW distance, a common choice, tolerates time shifts by design. Using PAL to pick among samples at generation time then improves timing on an existing generator: the best of eight raises the share of FlashDot clips timed to within one video frame from 20% to 42%, and the best of four cuts the average timing error on VAS by 46 ms.
 
 ## Status
 
-Code is at [github.com/sameraslan/PerceptAlign](https://github.com/sameraslan/PerceptAlign), and the repository includes the training, evaluation, and inference pipeline along with the FlashDot dataset generator for fine-tuning on other datasets.
+The paper, [A Synchronization Critic Improves Video-to-Audio Timing at Sampling Time](https://github.com/sameraslan/PerceptAlign/blob/main/paper/main.pdf), and the code, including the FlashDot generator, are at [github.com/sameraslan/PerceptAlign](https://github.com/sameraslan/PerceptAlign).
