@@ -56,6 +56,19 @@ function subscribeFlat(onChange: () => void) {
 const isFlat = () => matches(FLAT_MEDIA);
 const serverFlat = () => false;
 
+// Whether the browser registered the @property rules in room.css (a registered
+// property computes to its initial value). Then the camera animates those
+// numbers on the main thread (.rs-pa), which keeps Chrome's tile memory in
+// budget; elsewhere it keeps the plain transform transition and animation.
+function hasRegisteredProps() {
+  try {
+    return getComputedStyle(document.documentElement).getPropertyValue('--rs-tr').trim() !== '';
+  } catch {
+    return false;
+  }
+}
+const serverRegisteredProps = () => false;
+
 // While a dialog is open on the flat page, the page behind must not scroll.
 // The body is pinned in place and the scroll position put back on close.
 function useScrollLock(locked: boolean) {
@@ -118,6 +131,7 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
     setOverBoard(false);
   }
   const dailyAlbums = useSyncExternalStore(noSubscribe, getDailyAlbums, serverAlbums);
+  const propAnim = useSyncExternalStore(noSubscribe, hasRegisteredProps, serverRegisteredProps);
   // No covers in the (hidden) room on the flat page, so phones never fetch them.
   const albums = flat ? null : dailyAlbums;
 
@@ -255,7 +269,7 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   return (
     <div
       ref={rootRef}
-      className={`rs-root gn-${mode} gp-f-${focused ? 'on' : 'off'}${crateOpen ? ' gp-c-on' : ''}${overBoard ? ' gp-hold' : ''} ${jost.variable}`}
+      className={`rs-root gn-${mode} gp-f-${focused ? 'on' : 'off'}${crateOpen ? ' gp-c-on' : ''}${overBoard ? ' gp-hold' : ''}${propAnim ? ' rs-pa' : ''} ${jost.variable}`}
       onPointerMove={flat ? undefined : onPointerMove}
       onPointerLeave={flat ? undefined : onPointerLeave}
       // The inline script sets --rs-scale on this element before hydration.

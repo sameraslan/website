@@ -81,6 +81,44 @@
 .rs-root.gp-f-on .rs-sway,
 .rs-root.gp-c-on .rs-sway { animation-play-state: paused; }
 
+/* GPU tile memory. A transform transition or animation on the camera runs on
+   Chrome's compositor, which then rasterizes every plane of the room at the
+   animation's maximum scale (the stage scale) instead of its ideal scale: over
+   twice the tile memory. Past the GPU budget Chrome leaves walls unrasterized
+   (blank or black) while the camera moves. So where the browser registers these
+   properties (RoomPage then adds .rs-pa), the parallax and the tour animate the
+   numbers below on the main thread instead, and the transforms only follow them.
+   Not inherited, so a pointer move restyles the rig and not the whole room (a
+   restyle repaints every plane whose background mixes a gradient and an image). */
+@property --mx { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --my { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --amp { syntax: '<number>'; inherits: false; initial-value: 1; }
+@property --rs-tr { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --rs-tx { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --rs-ty { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --rs-tz { syntax: '<number>'; inherits: false; initial-value: 0; }
+.rs-root .rs-stage,
+.rs-root .rs-dolly,
+.rs-root .rs-sway,
+.rs-root .rs-cam { --mx: inherit; --my: inherit; --amp: inherit; }
+/* The same tour as gn-tour, as numbers: rotateY in deg, translate3d in px. */
+@keyframes gn-tour-p {
+  0%, 100% { --rs-tr: 0; --rs-tx: 0; --rs-ty: 0; --rs-tz: 0; }
+  25% { --rs-tr: 3; --rs-tx: -24; --rs-ty: 0; --rs-tz: 50; }
+  50% { --rs-tr: 0; --rs-tx: 0; --rs-ty: -8; --rs-tz: 90; }
+  75% { --rs-tr: -3; --rs-tx: 24; --rs-ty: 0; --rs-tz: 50; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rs-root.rs-pa .rs-cam {
+    transition: --mx 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), --my 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), --amp 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .rs-root.rs-pa.gn-explore .rs-sway {
+    transform: translateZ(900px) rotateY(calc(var(--rs-tr) * 1deg)) translateZ(-900px)
+      translate3d(calc(var(--rs-tx) * 1px), calc(var(--rs-ty) * 1px), calc(var(--rs-tz) * 1px));
+    animation-name: gn-tour-p;
+  }
+}
+
 /* Surfaces */
 .rs-root .rs-plane { position: absolute; transform-style: preserve-3d; }
 .rs-root .rc-stone {
