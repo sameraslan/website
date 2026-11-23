@@ -1,0 +1,299 @@
+[
+  {
+    "id": "matisse-dance",
+    "artist": "Henri Matisse",
+    "title": "Dance",
+    "year": "1910",
+    "width": 1100,
+    "height": 757,
+    "role": "wall"
+  },
+  {
+    "id": "matisse-harmony-in-red",
+    "artist": "Henri Matisse",
+    "title": "Harmony in Red",
+    "year": "1908",
+    "width": 1100,
+    "height": 907,
+    "role": "wall"
+  },
+  {
+    "id": "matisse-bonheur-de-vivre",
+    "artist": "Henri Matisse",
+    "title": "Le bonheur de vivre",
+    "year": "1906",
+    "width": 1100,
+    "height": 789,
+    "role": "wall"
+  },
+  {
+    "id": "picasso-demoiselles",
+    "artist": "Pablo Picasso",
+    "title": "Les Demoiselles d'Avignon",
+    "year": "1907",
+    "width": 1062,
+    "height": 1100,
+    "role": "wall"
+  },
+  {
+    "id": "picasso-three-musicians-moma",
+    "artist": "Pablo Picasso",
+    "title": "Three Musicians (New York version)",
+    "year": "1921",
+    "width": 1100,
+    "height": 990,
+    "role": "wall"
+  },
+  {
+    "id": "picasso-three-musicians-philadelphia",
+    "artist": "Pablo Picasso",
+    "title": "Three Musicians (Philadelphia version)",
+    "year": "1921",
+    "width": 1016,
+    "height": 1100,
+    "role": "wall"
+  },
+  {
+    "id": "gauguin-mahana-no-atua",
+    "artist": "Paul Gauguin",
+    "title": "Mahana no atua (Day of the God)",
+    "year": "1894",
+    "width": 1000,
+    "height": 746,
+    "role": "wall"
+  },
+  {
+    "id": "gauguin-tahitian-landscape",
+    "artist": "Paul Gauguin",
+    "title": "Tahitian Landscape",
+    "year": "1891",
+    "width": 1000,
+    "height": 731,
+    "role": "wall"
+  },
+  {
+    "id": "rousseau-dream",
+    "artist": "Henri Rousseau",
+    "title": "The Dream",
+    "year": "1910",
+    "width": 1000,
+    "height": 677,
+    "role": "wall"
+  },
+  {
+    "id": "rousseau-surprised",
+    "artist": "Henri Rousseau",
+    "title": "Surprised! (Tiger in a Tropical Storm)",
+    "year": "1891",
+    "width": 1000,
+    "height": 799,
+    "role": "wall"
+  },
+  {
+    "id": "vangogh-irises",
+    "artist": "Vincent van Gogh",
+    "title": "Irises",
+    "year": "1889",
+    "width": 1000,
+    "height": 764,
+    "role": "wall"
+  },
+  {
+    "id": "vangogh-wheat-field-cypresses",
+    "artist": "Vincent van Gogh",
+    "title": "Wheat Field with Cypresses",
+    "year": "1889",
+    "width": 1000,
+    "height": 783,
+    "role": "window-view"
+  },
+  {
+    "id": "monet-water-lilies",
+    "artist": "Claude Monet",
+    "title": "Water Lilies",
+    "year": "1906",
+    "width": 1000,
+    "height": 962,
+    "role": "wall"
+  },
+  {
+    "id": "rousseau-equatorial-jungle",
+    "artist": "Henri Rousseau",
+    "title": "The Equatorial Jungle",
+    "year": "1909",
+    "width": 919,
+    "height": 1000,
+    "role": "wall"
+  },
+  {
+    "id": "matisse-music",
+    "artist": "Henri Matisse",
+    "title": "Music",
+    "year": "1910",
+    "width": 1000,
+    "height": 668,
+    "role": "wall"
+  },
+  {
+    "id": "matisse-luxe-calme-volupte",
+    "artist": "Henri Matisse",
+    "title": "Luxe, Calme et Volupté",
+    "year": "1904",
+    "width": 1000,
+    "height": 824,
+    "role": "wall"
+  },
+  {
+    "id": "klee-fugue-in-red",
+    "artist": "Paul Klee",
+    "title": "Fugue in Red",
+    "year": "1921",
+    "width": 397,
+    "height": 261,
+    "role": "wall"
+  },
+  {
+    "id": "russolo-music",
+    "artist": "Luigi Russolo",
+    "title": "Music",
+    "year": "1911",
+    "width": 634,
+    "height": 1000,
+    "role": "wall"
+  },
+  {
+    "id": "rousseau-sleeping-gypsy",
+    "artist": "Henri Rousseau",
+    "title": "The Sleeping Gypsy",
+    "year": "1897",
+    "width": 1000,
+    "height": 639,
+    "role": "wall"
+  },
+  {
+    "id": "lautrec-divan-japonais",
+    "artist": "Henri de Toulouse-Lautrec",
+    "title": "Divan Japonais",
+    "year": "1893",
+    "width": 766,
+    "height": 1000,
+    "role": "wall"
+  },
+  {
+    "id": "mucha-arts-music",
+    "artist": "Alphonse Mucha",
+    "title": "The Arts: Music",
+    "year": "1898",
+    "width": 611,
+    "height": 1000,
+    "role": "wall"
+  },
+  {
+    "id": "klimt-kiss",
+    "artist": "Gustav Klimt",
+    "title": "The Kiss",
+    "year": "1908",
+    "width": 996,
+    "height": 1000,
+    "role": "wall"
+  },
+  {
+    "id": "seurat-chahut",
+    "artist": "Georges Seurat",
+    "title": "Le Chahut",
+    "year": "1890",
+    "width": 823,
+    "height": 1000,
+    "role": "wall"
+  },
+  {
+    "id": "signac-opus-217",
+    "artist": "Paul Signac",
+    "title": "Opus 217 (Portrait of Félix Fénéon)",
+    "year": "1890",
+    "width": 1000,
+    "height": 798,
+    "role": "wall"
+  },
+  {
+    "id": "marc-yellow-cow",
+    "artist": "Franz Marc",
+    "title": "The Yellow Cow",
+    "year": "1911",
+    "width": 1000,
+    "height": 731,
+    "role": "wall"
+  },
+  {
+    "id": "macke-lady-green-jacket",
+    "artist": "August Macke",
+    "title": "Lady in a Green Jacket",
+    "year": "1913",
+    "width": 976,
+    "height": 1000,
+    "role": "wall"
+  },
+  {
+    "id": "gauguin-arearea",
+    "artist": "Paul Gauguin",
+    "title": "Arearea",
+    "year": "1892",
+    "width": 1000,
+    "height": 787,
+    "role": "wall"
+  },
+  {
+    "id": "redon-cyclops",
+    "artist": "Odilon Redon",
+    "title": "The Cyclops",
+    "year": "about 1914",
+    "width": 795,
+    "height": 1000,
+    "role": "wall"
+  },
+  {
+    "id": "munch-sun",
+    "artist": "Edvard Munch",
+    "title": "The Sun",
+    "year": "1911",
+    "width": 1000,
+    "height": 579,
+    "role": "wall"
+  },
+  {
+    "id": "hokusai-kajikazawa",
+    "artist": "Katsushika Hokusai",
+    "title": "Kajikazawa in Kai Province",
+    "year": "about 1831",
+    "width": 1000,
+    "height": 657,
+    "role": "wall"
+  },
+  {
+    "id": "boccioni-city-rises",
+    "artist": "Umberto Boccioni",
+    "title": "The City Rises",
+    "year": "1910",
+    "width": 1000,
+    "height": 664,
+    "role": "wall"
+  },
+  {
+    "id": "picasso-femme-nue",
+    "artist": "Pablo Picasso",
+    "title": "Femme nue",
+    "year": "1907",
+    "width": 464,
+    "height": 1000,
+    "role": "wall"
+  },
+  {
+    "id": "picasso-three-dancers",
+    "artist": "Pablo Picasso",
+    "title": "The Three Dancers",
+    "year": "1925",
+    "width": 666,
+    "height": 1000,
+    "role": "wall"
+  }
+]

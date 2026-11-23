@@ -8,6 +8,7 @@ export interface Entry {
   subtitle?: string;
   author?: string;
   year?: number;
+  date?: string; // ISO yyyy-mm-dd
   role?: string;
   affiliation?: string;
   venue?: string;
@@ -38,6 +39,25 @@ function parseCitation(raw: unknown): Citation | undefined {
     date: String(c.date),
     institution: c.institution ? String(c.institution) : undefined,
   };
+}
+
+// gray-matter hands back a JS Date for an unquoted YAML date and a string for a
+// quoted one. Both become yyyy-mm-dd; anything that is not a real date is dropped.
+function parseDate(raw: unknown): string | undefined {
+  let iso: string | undefined;
+  if (raw instanceof Date) {
+    if (Number.isNaN(raw.getTime())) return undefined;
+    iso = raw.toISOString().slice(0, 10);
+  } else if (typeof raw === 'string') {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
+    if (!m) return undefined;
+    iso = m[0];
+  } else {
+    return undefined;
+  }
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== iso) return undefined;
+  return iso;
 }
 
 const CONTENT_ROOT = path.join(process.cwd(), 'src', 'content');
@@ -94,6 +114,7 @@ export function parseEntry(raw: string, slug: string, label: string): Entry {
     subtitle: data.subtitle ? String(data.subtitle) : undefined,
     author: data.author ? String(data.author) : undefined,
     year: typeof data.year === 'number' ? data.year : undefined,
+    date: parseDate(data.date),
     role: data.role ? String(data.role) : undefined,
     affiliation: data.affiliation ? String(data.affiliation) : undefined,
     venue: data.venue ? String(data.venue) : undefined,

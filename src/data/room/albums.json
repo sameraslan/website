@@ -1,0 +1,902 @@
+[
+  {
+    "id": "alb-alice-coltrane-journey-in-satchidananda-1971",
+    "artist": "Alice Coltrane featuring Pharoah Sanders",
+    "title": "Journey in Satchidananda",
+    "year": "1971",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-angelo-badalamenti-twin-peaks-1990",
+    "artist": "Angelo Badalamenti",
+    "title": "Twin Peaks",
+    "year": "1990",
+    "type": "Album",
+    "width": 500,
+    "height": 495,
+    "hasCover": true
+  },
+  {
+    "id": "alb-aphex-twin-selected-ambient-works-85-92-1992",
+    "artist": "Aphex Twin",
+    "title": "Selected Ambient Works 85-92",
+    "year": "1992",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-a-tribe-called-quest-midnight-marauders-1993",
+    "artist": "A Tribe Called Quest",
+    "title": "Midnight Marauders",
+    "year": "1993",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-bonobos-live-at-ya-on-live-at-hibiya-yaon-2006-video",
+    "artist": "Bonobos",
+    "title": "Ya, On (Live at Hibiya Yaon)",
+    "year": "2006",
+    "type": "Video",
+    "width": 0,
+    "height": 0,
+    "hasCover": false
+  },
+  {
+    "id": "alb-brian-eno-apollo-atmospheres-soundtracks-1983",
+    "artist": "Brian Eno with Daniel Lanois & Roger Eno",
+    "title": "Apollo: Atmospheres & Soundtracks",
+    "year": "1983",
+    "type": "Album",
+    "width": 500,
+    "height": 495,
+    "hasCover": true
+  },
+  {
+    "id": "alb-built-to-spill-perfect-from-now-on-1997",
+    "artist": "Built to Spill",
+    "title": "Perfect From Now On",
+    "year": "1997",
+    "type": "Album",
+    "width": 600,
+    "height": 587,
+    "hasCover": true
+  },
+  {
+    "id": "alb-can-tago-mago-1971",
+    "artist": "Can",
+    "title": "Tago Mago",
+    "year": "1971",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-can-future-days-1973",
+    "artist": "Can",
+    "title": "Future Days",
+    "year": "1973",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-cocteau-twins-heaven-or-las-vegas-1990",
+    "artist": "Cocteau Twins",
+    "title": "Heaven or Las Vegas",
+    "year": "1990",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-danny-brown-xxx-2011-mixtape",
+    "artist": "Danny Brown",
+    "title": "XXX",
+    "year": "2011",
+    "type": "Mixtape",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-daughters-you-won-t-get-what-you-want-2018",
+    "artist": "Daughters",
+    "title": "You Won't Get What You Want",
+    "year": "2018",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-david-bowie-low-1977",
+    "artist": "David Bowie",
+    "title": "Low",
+    "year": "1977",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-david-bowie-blackstar-2016",
+    "artist": "David Bowie",
+    "title": "Blackstar",
+    "year": "2016",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-death-grips-the-money-store-2012",
+    "artist": "Death Grips",
+    "title": "The Money Store",
+    "year": "2012",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-dj-shadow-endtroducing-1996",
+    "artist": "DJ Shadow",
+    "title": "Endtroducing.....",
+    "year": "1996",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-fela-anikulapo-kuti-and-afrika-70-zombie-1977",
+    "artist": "Fela Anikulapo Kuti and Afrika 70",
+    "title": "Zombie",
+    "year": "1977",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-fishmans-long-season-1996",
+    "artist": "Fishmans",
+    "title": "Long Season",
+    "year": "1996",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-fishmans-98-12-28-otokotachi-no-wakare-1999",
+    "artist": "Fishmans",
+    "title": "98.12.28 Otokotachi no wakare",
+    "year": "1999",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-floating-points-pharoah-sanders-the-london-symphony-orchestr",
+    "artist": "Floating Points, Pharoah Sanders & The London Symphony Orchestra",
+    "title": "Promises",
+    "year": "2021",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-flying-lotus-cosmogramma-2010",
+    "artist": "Flying Lotus",
+    "title": "Cosmogramma",
+    "year": "2010",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-freddie-gibbs-madlib-pinata-2014",
+    "artist": "Freddie Gibbs & Madlib",
+    "title": "Piñata",
+    "year": "2014",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-gal-costa-gal-costa-1969",
+    "artist": "Gal Costa",
+    "title": "Gal Costa",
+    "year": "1969",
+    "type": "Album",
+    "width": 500,
+    "height": 496,
+    "hasCover": true
+  },
+  {
+    "id": "alb-j-dilla-donuts-2006",
+    "artist": "J Dilla",
+    "title": "Donuts",
+    "year": "2006",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-jeff-buckley-grace-1994",
+    "artist": "Jeff Buckley",
+    "title": "Grace",
+    "year": "1994",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-john-coltrane-a-love-supreme-1965",
+    "artist": "John Coltrane",
+    "title": "A Love Supreme",
+    "year": "1965",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-jorge-ben-forca-bruta-1970",
+    "artist": "Jorge Ben",
+    "title": "Fôrça bruta",
+    "year": "1970",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-joy-division-closer-1980",
+    "artist": "Joy Division",
+    "title": "Closer",
+    "year": "1980",
+    "type": "Album",
+    "width": 400,
+    "height": 400,
+    "hasCover": true
+  },
+  {
+    "id": "alb-kendrick-lamar-good-kid-m-a-a-d-city-2012",
+    "artist": "Kendrick Lamar",
+    "title": "Good Kid, M.A.A.D City",
+    "year": "2012",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-kendrick-lamar-to-pimp-a-butterfly-2015",
+    "artist": "Kendrick Lamar",
+    "title": "To Pimp a Butterfly",
+    "year": "2015",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-king-crimson-red-1974",
+    "artist": "King Crimson",
+    "title": "Red",
+    "year": "1974",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-king-crimson-discipline-1981",
+    "artist": "King Crimson",
+    "title": "Discipline",
+    "year": "1981",
+    "type": "Album",
+    "width": 500,
+    "height": 496,
+    "hasCover": true
+  },
+  {
+    "id": "alb-leonard-cohen-songs-of-leonard-cohen-1967",
+    "artist": "Leonard Cohen",
+    "title": "Songs of Leonard Cohen",
+    "year": "1967",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-little-simz-grey-area-2019",
+    "artist": "Little Simz",
+    "title": "Grey Area",
+    "year": "2019",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-madvillain-madvillainy-2004",
+    "artist": "Madvillain",
+    "title": "Madvillainy",
+    "year": "2004",
+    "type": "Album",
+    "width": 300,
+    "height": 300,
+    "hasCover": true
+  },
+  {
+    "id": "alb-magdalena-bay-imaginal-disk-2024",
+    "artist": "Magdalena Bay",
+    "title": "Imaginal Disk",
+    "year": "2024",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-marvin-gaye-what-s-going-on-1971",
+    "artist": "Marvin Gaye",
+    "title": "What's Going On",
+    "year": "1971",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-massive-attack-mezzanine-1998",
+    "artist": "Massive Attack",
+    "title": "Mezzanine",
+    "year": "1998",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-mastodon-crack-the-skye-2009",
+    "artist": "Mastodon",
+    "title": "Crack the Skye",
+    "year": "2009",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-mf-doom-mm-food-2004",
+    "artist": "MF DOOM",
+    "title": "Mm..Food",
+    "year": "2004",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-miles-davis-in-a-silent-way-1969",
+    "artist": "Miles Davis",
+    "title": "In a Silent Way",
+    "year": "1969",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-miles-davis-bitches-brew-1970",
+    "artist": "Miles Davis",
+    "title": "Bitches Brew",
+    "year": "1970",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-miles-davis-live-evil-1971",
+    "artist": "Miles Davis",
+    "title": "Live-Evil",
+    "year": "1971",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-miles-davis-on-the-corner-1972",
+    "artist": "Miles Davis",
+    "title": "On the Corner",
+    "year": "1972",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-mingus-the-black-saint-and-the-sinner-lady-1963",
+    "artist": "Mingus",
+    "title": "The Black Saint and the Sinner Lady",
+    "year": "1963",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-my-bloody-valentine-loveless-1991",
+    "artist": "My Bloody Valentine",
+    "title": "Loveless",
+    "year": "1991",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-nala-sinephro-endlessness-2024",
+    "artist": "Nala Sinephro",
+    "title": "Endlessness",
+    "year": "2024",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-nujabes-modal-soul-2005",
+    "artist": "Nujabes",
+    "title": "Modal Soul",
+    "year": "2005",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-opeth-blackwater-park-2001",
+    "artist": "Opeth",
+    "title": "Blackwater Park",
+    "year": "2001",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-outkast-aquemini-1998",
+    "artist": "Outkast",
+    "title": "Aquemini",
+    "year": "1998",
+    "type": "Album",
+    "width": 498,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-pescado-rabioso-artaud-1973",
+    "artist": "Pescado Rabioso",
+    "title": "Artaud",
+    "year": "1973",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-pink-floyd-the-dark-side-of-the-moon-1973",
+    "artist": "Pink Floyd",
+    "title": "The Dark Side of the Moon",
+    "year": "1973",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-pink-floyd-wish-you-were-here-1975",
+    "artist": "Pink Floyd",
+    "title": "Wish You Were Here",
+    "year": "1975",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-pink-floyd-animals-1977",
+    "artist": "Pink Floyd",
+    "title": "Animals",
+    "year": "1977",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-playboi-carti-whole-lotta-red-2020",
+    "artist": "Playboi Carti",
+    "title": "Whole Lotta Red",
+    "year": "2020",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-portishead-dummy-1994",
+    "artist": "Portishead",
+    "title": "Dummy",
+    "year": "1994",
+    "type": "Album",
+    "width": 592,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-radiohead-ok-computer-1997",
+    "artist": "Radiohead",
+    "title": "OK Computer",
+    "year": "1997",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-radiohead-kid-a-2000",
+    "artist": "Radiohead",
+    "title": "Kid A",
+    "year": "2000",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-robert-hood-minimal-nation-1994",
+    "artist": "Robert Hood",
+    "title": "Minimal Nation",
+    "year": "1994",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-sigur-ros-agtis-byrjun-1999",
+    "artist": "Sigur Rós",
+    "title": "Ágætis byrjun",
+    "year": "1999",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-silver-apples-silver-apples-1968",
+    "artist": "Silver Apples",
+    "title": "Silver Apples",
+    "year": "1968",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-slint-spiderland-1991",
+    "artist": "Slint",
+    "title": "Spiderland",
+    "year": "1991",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-soda-stereo-dynamo-1992",
+    "artist": "Soda Stereo",
+    "title": "Dynamo",
+    "year": "1992",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-sonic-youth-daydream-nation-1988",
+    "artist": "Sonic Youth",
+    "title": "Daydream Nation",
+    "year": "1988",
+    "type": "Album",
+    "width": 300,
+    "height": 295,
+    "hasCover": true
+  },
+  {
+    "id": "alb-stereolab-dots-and-loops-1997",
+    "artist": "Stereolab",
+    "title": "Dots and Loops",
+    "year": "1997",
+    "type": "Album",
+    "width": 452,
+    "height": 452,
+    "hasCover": true
+  },
+  {
+    "id": "alb-steve-reich-and-musicians-music-for-18-musicians-1978",
+    "artist": "Steve Reich and Musicians",
+    "title": "Music for 18 Musicians",
+    "year": "1978",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-sun-ra-lanquidity-1978",
+    "artist": "Sun Ra",
+    "title": "Lanquidity",
+    "year": "1978",
+    "type": "Album",
+    "width": 300,
+    "height": 300,
+    "hasCover": true
+  },
+  {
+    "id": "alb-swans-to-be-kind-2014",
+    "artist": "Swans",
+    "title": "To Be Kind",
+    "year": "2014",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-sweet-trip-velocity-design-comfort-2003",
+    "artist": "Sweet Trip",
+    "title": "Velocity : Design : Comfort",
+    "year": "2003",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-tame-impala-lonerism-2012",
+    "artist": "Tame Impala",
+    "title": "Lonerism",
+    "year": "2012",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-the-avalanches-since-i-left-you-2000",
+    "artist": "The Avalanches",
+    "title": "Since I Left You",
+    "year": "2000",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-the-beach-boys-pet-sounds-1966",
+    "artist": "The Beach Boys",
+    "title": "Pet Sounds",
+    "year": "1966",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-the-beatles-sgt-peppers-lonely-hearts-club-band-1967",
+    "artist": "The Beatles",
+    "title": "Sgt. Pepper's Lonely Hearts Club Band",
+    "year": "1967",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-the-beatles-abbey-road-1969",
+    "artist": "The Beatles",
+    "title": "Abbey Road",
+    "year": "1969",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-the-cure-disintegration-1989",
+    "artist": "The Cure",
+    "title": "Disintegration",
+    "year": "1989",
+    "type": "Album",
+    "width": 600,
+    "height": 594,
+    "hasCover": true
+  },
+  {
+    "id": "alb-the-dismemberment-plan-emergency-i-1999",
+    "artist": "The Dismemberment Plan",
+    "title": "Emergency & I",
+    "year": "1999",
+    "type": "Album",
+    "width": 590,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-the-klf-chill-out-1990",
+    "artist": "The KLF",
+    "title": "Chill Out",
+    "year": "1990",
+    "type": "Album",
+    "width": 500,
+    "height": 498,
+    "hasCover": true
+  },
+  {
+    "id": "alb-the-the-soul-mining-1983",
+    "artist": "The The",
+    "title": "Soul Mining",
+    "year": "1983",
+    "type": "Album",
+    "width": 600,
+    "height": 600,
+    "hasCover": true
+  },
+  {
+    "id": "alb-the-velvet-underground-white-light-white-heat-1968",
+    "artist": "The Velvet Underground",
+    "title": "White Light / White Heat",
+    "year": "1968",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-the-velvet-underground-nico-the-velvet-underground-nico-1967",
+    "artist": "The Velvet Underground & Nico",
+    "title": "The Velvet Underground & Nico",
+    "year": "1967",
+    "type": "Album",
+    "width": 600,
+    "height": 595,
+    "hasCover": true
+  },
+  {
+    "id": "alb-tool-nima-1996",
+    "artist": "Tool",
+    "title": "Ænima",
+    "year": "1996",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-tool-lateralus-2001",
+    "artist": "Tool",
+    "title": "Lateralus",
+    "year": "2001",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-unwound-leaves-turn-inside-you-2001",
+    "artist": "Unwound",
+    "title": "Leaves Turn Inside You",
+    "year": "2001",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-voivod-the-outer-limits-1993",
+    "artist": "Voivod",
+    "title": "The Outer Limits",
+    "year": "1993",
+    "type": "Album",
+    "width": 355,
+    "height": 344,
+    "hasCover": true
+  },
+  {
+    "id": "alb-wire-pink-flag-1977",
+    "artist": "Wire",
+    "title": "Pink Flag",
+    "year": "1977",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-wu-tang-clan-enter-the-wu-tang-36-chambers-1993",
+    "artist": "Wu-Tang Clan",
+    "title": "Enter the Wu-Tang (36 Chambers)",
+    "year": "1993",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-yes-close-to-the-edge-1972",
+    "artist": "Yes",
+    "title": "Close to the Edge",
+    "year": "1972",
+    "type": "Album",
+    "width": 500,
+    "height": 500,
+    "hasCover": true
+  },
+  {
+    "id": "alb-yoko-ono-plastic-ono-band-yoko-ono-plastic-ono-band-1970",
+    "artist": "Yoko Ono / Plastic Ono Band",
+    "title": "Yoko Ono / Plastic Ono Band",
+    "year": "1970",
+    "type": "Album",
+    "width": 1000,
+    "height": 1000,
+    "hasCover": true
+  },
+  {
+    "id": "alb-nang-nang-le-ywei-sin-tei-mya-1978-compilation",
+    "artist": "Nang Nang",
+    "title": "Le' ywei sin tei mya",
+    "year": "1978",
+    "type": "Compilation",
+    "width": 0,
+    "height": 0,
+    "hasCover": false
+  },
+  {
+    "id": "alb-boredoms-vision-creation-newsun-1999",
+    "artist": "Boredoms",
+    "title": "Vision Creation Newsun",
+    "year": "1999",
+    "type": "Album",
+    "width": 496,
+    "height": 500,
+    "hasCover": true
+  }
+]
