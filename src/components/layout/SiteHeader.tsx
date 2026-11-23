@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import { siteConfig } from '@/lib/site-config';
 import { NOT_NARROW_MEDIA_QUERY } from '@/components/music-map/state/breakpoints';
+import { isChromeless } from '@/components/layout/ChromeGate';
 
 function isActiveFor(item: { href: string }, pathname: string) {
   if (item.href === '/') return pathname === '/';
@@ -14,6 +15,7 @@ function isActiveFor(item: { href: string }, pathname: string) {
 export function SiteHeader() {
   const pathname = usePathname();
   const overlay = pathname === '/';
+  if (isChromeless(pathname)) return null;
 
   return (
     <header className={overlay ? 'home-hero-header z-20' : 'border-b border-rule'}>

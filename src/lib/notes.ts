@@ -6,9 +6,15 @@ import { parseEntry, type Entry } from './content';
 // Unlisted notes: pages reachable only by their URL, /notes/<slug>.
 //
 // They live in src/notes/, outside src/content/, so the project and research
-// lists (loadEntries('projects' | 'research')) never see them. Nothing on the
-// site links to /notes, there is no /notes index page, and every note is
-// served with noindex/nofollow. src/lib/notes.test.ts checks all of this.
+// lists (loadEntries('projects' | 'research')) never see them. The blog index
+// at /notes (src/app/notes/page.tsx) lists them, but it is itself served with
+// noindex/nofollow and linked from nowhere on the site, and every note is
+// served with noindex/nofollow too. src/lib/notes.test.ts checks all of this.
+//
+// A note appears on the /notes board once its frontmatter has a `date`
+// (loadRoomPosts in src/lib/room-posts.ts); without one it is only reachable by
+// its URL. Write the date quoted, as "yyyy-mm-dd": an unquoted impossible date
+// such as 2026-02-30 is turned into a real one by the YAML parser before we see it.
 export const NOTES_DIR = path.join(process.cwd(), 'src', 'notes');
 
 export async function listNoteSlugs(): Promise<string[]> {

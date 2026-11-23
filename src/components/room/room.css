@@ -1,0 +1,878 @@
+/* The /notes room, ported from the approved mock (PostBoard). Every rule is
+   scoped under .rs-root so nothing reaches other pages.
+   3D rule: never put overflow, filter, opacity below 1, mix-blend-mode,
+   clip-path or mask on an element that has 3D-positioned children. */
+
+.rs-root {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  overflow: hidden;
+  container-type: size;
+  background: #1c140e;
+  color: #f4ead6;
+  font-family: var(--font-newsreader), Georgia, serif;
+  --gn-ink: #f1e7d3;
+  --gn-mute: #d4c8b2;
+  --gn-accent: #d6a650;
+  --gn-v: 20, 13, 8;
+}
+.rs-root.gn-read { --amp: 0.4; }
+.rs-root.gn-explore { --amp: 1; }
+
+/* Stage: 1280 x 900, cover-scaled with a cap so the whole board stays in view
+   in very wide windows. An inline script sets --rs-scale before first paint and
+   a ResizeObserver keeps it current; with no JS the stage stays at scale 1.
+   No overflow clip here: when the cap applies, the room draws past the 1280px
+   box to fill the width, and the root clips. */
+.rs-root .rs-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1280px;
+  height: 900px;
+  margin: -450px 0 0 -640px;
+  perspective: 900px;
+  perspective-origin: 640px 500px;
+  transform: scale(var(--rs-scale, 1));
+}
+.rs-root .rs-dolly,
+.rs-root .rs-sway,
+.rs-root .rs-cam,
+.rs-root .rs-room {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+.rs-root .rs-dolly { left: 640px; top: 500px; }
+.rs-root .rs-cam {
+  transform: translateZ(900px) rotateX(calc(var(--my, 0) * var(--amp, 1) * -2.5deg))
+    rotateY(calc(var(--mx, 0) * var(--amp, 1) * 8deg)) translateZ(-900px)
+    translate3d(calc(var(--mx, 0) * var(--amp, 1) * -60px), calc(var(--my, 0) * var(--amp, 1) * -20px), 0);
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes rs-dolly {
+  from { transform: translateZ(-320px); }
+  to { transform: translateZ(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rs-root .rs-dolly { animation: rs-dolly 2.8s cubic-bezier(0.16, 0.8, 0.24, 1) both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rs-root .rs-cam { transform: none; transition: none; }
+}
+/* The room tour: .rs-sway carries it in explore mode, in both stage layers, so
+   the board and the room move together. Pausing is driven by classes on the
+   root (board hovered, focused view or crate open), so both layers pause and
+   resume in the same style update. */
+@keyframes gn-tour {
+  0%, 100% { transform: translateZ(900px) rotateY(0deg) translateZ(-900px) translate3d(0, 0, 0); }
+  25% { transform: translateZ(900px) rotateY(3deg) translateZ(-900px) translate3d(-24px, 0, 50px); }
+  50% { transform: translateZ(900px) rotateY(0deg) translateZ(-900px) translate3d(0, -8px, 90px); }
+  75% { transform: translateZ(900px) rotateY(-3deg) translateZ(-900px) translate3d(24px, 0, 50px); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rs-root.gn-explore .rs-sway { animation: gn-tour 44s ease-in-out 2; }
+}
+.rs-root.gp-hold .rs-sway,
+.rs-root.gp-f-on .rs-sway,
+.rs-root.gp-c-on .rs-sway { animation-play-state: paused; }
+
+/* Surfaces */
+.rs-root .rs-plane { position: absolute; transform-style: preserve-3d; }
+.rs-root .rc-stone {
+  background-color: #b9ad98;
+  background-image: linear-gradient(#e9dcc6, #e9dcc6), url(/images/room/textures/wall-stone.webp);
+  background-size: auto, 620px 620px;
+  background-blend-mode: multiply, normal;
+}
+.rs-root .rc-reveal {
+  background-color: #8f8371;
+  background-image: linear-gradient(rgba(70, 46, 22, 0.38), rgba(70, 46, 22, 0.38)), linear-gradient(#e9dcc6, #e9dcc6),
+    url(/images/room/textures/wall-stone.webp);
+  background-size: auto, auto, 620px 620px;
+  background-blend-mode: normal, multiply, normal;
+}
+.rs-root .rc-reveal-lit {
+  background-color: #c9b596;
+  background-image: linear-gradient(rgba(255, 196, 120, 0.3), rgba(255, 196, 120, 0.3)), linear-gradient(#e9dcc6, #e9dcc6),
+    url(/images/room/textures/wall-stone.webp);
+  background-size: auto, auto, 620px 620px;
+  background-blend-mode: normal, multiply, normal;
+}
+.rs-root .rc-timber {
+  background-color: #4a3524;
+  background-image: linear-gradient(#c9a57c, #c9a57c), url(/images/room/textures/wall-timber.webp);
+  background-size: auto, 620px 620px;
+  background-blend-mode: multiply, normal;
+}
+.rs-root .rc-ceilwood {
+  background-color: #2b3026;
+  background-image: linear-gradient(#7f8c72, #7f8c72), url(/images/room/textures/wall-timber.webp);
+  background-size: auto, 520px 520px;
+  background-blend-mode: multiply, normal;
+}
+.rs-root .rc-planks {
+  background-color: #6b4a30;
+  background-image: url(/images/room/textures/floor-rustic-planks.webp);
+  background-size: 480px 480px;
+}
+.rs-root .rc-beam {
+  background-color: #3a2a1c;
+  background-image: linear-gradient(#c7a985, #c7a985), url(/images/room/textures/beam-timber.webp);
+  background-size: auto, 512px 512px;
+  background-blend-mode: multiply, normal;
+}
+.rs-root .rc-beam-under {
+  background-color: #22170e;
+  background-image: linear-gradient(#7a6450, #7a6450), url(/images/room/textures/beam-timber.webp);
+  background-size: auto, 512px 512px;
+  background-blend-mode: multiply, normal;
+}
+.rs-root .rc-oak {
+  background-color: #9a7648;
+  background-image: linear-gradient(#c9a274, #c9a274), url(/images/room/textures/wood-oak.webp);
+  background-size: auto, 420px 420px;
+  background-blend-mode: multiply, normal;
+}
+.rs-root .rc-oak-top {
+  background-color: #b08a58;
+  background-image: linear-gradient(#e3c193, #e3c193), url(/images/room/textures/wood-oak.webp);
+  background-size: auto, 420px 420px;
+  background-blend-mode: multiply, normal;
+}
+.rs-root .rc-oak-dark {
+  background-color: #5e4329;
+  background-image: linear-gradient(#8a6844, #8a6844), url(/images/room/textures/wood-oak.webp);
+  background-size: auto, 420px 420px;
+  background-blend-mode: multiply, normal;
+}
+.rs-root .rc-oak-deep {
+  background-color: #3d2a18;
+  background-image: linear-gradient(#5f462c, #5f462c), url(/images/room/textures/wood-oak.webp);
+  background-size: auto, 420px 420px;
+  background-blend-mode: multiply, normal;
+}
+.rs-root .rc-trunk {
+  background-color: #5a2f1c;
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0) 56px, #1c120b 56px 72px, rgba(0, 0, 0, 0) 72px 228px, #1c120b 228px 244px, rgba(0, 0, 0, 0) 244px),
+    url(/images/room/textures/wood-walnut.webp);
+  background-size: auto, 360px 360px;
+}
+.rs-root .rc-trunk-side {
+  background-color: #3a1f12;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(/images/room/textures/wood-walnut.webp);
+  background-size: auto, 360px 360px;
+}
+
+/* Planes (room geometry) */
+.rs-root .rs-back-l { left: -650px; top: -640px; width: 780px; height: 1020px; transform: translateZ(-1000px); }
+.rs-root .rs-back-t { left: 130px; top: -640px; width: 380px; height: 250px; transform: translateZ(-1000px); background-position: 0 0, -780px 0; }
+.rs-root .rs-back-b { left: 130px; top: 50px; width: 380px; height: 330px; transform: translateZ(-1000px); background-position: 0 0, -780px -690px; }
+.rs-root .rs-back-r { left: 510px; top: -640px; width: 140px; height: 1020px; transform: translateZ(-1000px); background-position: 0 0, -1160px 0; }
+.rs-root .rw-la { left: -280px; top: -640px; width: 560px; height: 1020px; transform: translate3d(-650px, 0, 120px) rotateY(90deg); }
+.rs-root .rw-lt { left: -190px; top: -640px; width: 380px; height: 230px; transform: translate3d(-650px, 0, -350px) rotateY(90deg); background-position: 0 0, -560px 0; }
+.rs-root .rw-lb { left: -190px; top: 30px; width: 380px; height: 350px; transform: translate3d(-650px, 0, -350px) rotateY(90deg); background-position: 0 0, -560px -670px; }
+.rs-root .rw-lc { left: -230px; top: -640px; width: 460px; height: 1020px; transform: translate3d(-650px, 0, -770px) rotateY(90deg); background-position: 0 0, -940px 0; }
+.rs-root .rw-reveal {
+  background-color: #3a2a1c;
+  background-image: linear-gradient(rgba(30, 18, 8, 0.4), rgba(30, 18, 8, 0.4)), linear-gradient(#c9a57c, #c9a57c),
+    url(/images/room/textures/wall-timber.webp);
+  background-size: auto, auto, 620px 620px;
+  background-blend-mode: normal, multiply, normal;
+}
+.rs-root .rw-reveal-lit {
+  background-color: #8a6c4c;
+  background-image: linear-gradient(rgba(255, 236, 196, 0.28), rgba(255, 236, 196, 0.28)), linear-gradient(#c9a57c, #c9a57c),
+    url(/images/room/textures/wall-timber.webp);
+  background-size: auto, auto, 620px 620px;
+  background-blend-mode: normal, multiply, normal;
+}
+.rs-root .rw-jamb-n { left: -710px; top: -410px; width: 60px; height: 440px; transform: translateZ(-160px); }
+.rs-root .rw-jamb-f { left: -710px; top: -410px; width: 60px; height: 440px; transform: translateZ(-540px); }
+.rs-root .rw-head { left: -710px; top: -190px; width: 60px; height: 380px; transform: translate3d(0, -410px, -350px) rotateX(-90deg); }
+.rs-root .rw-sill { left: -710px; top: -190px; width: 84px; height: 380px; transform: translate3d(0, 30px, -350px) rotateX(90deg); }
+.rs-root .rw-frame {
+  left: -190px;
+  top: -410px;
+  width: 380px;
+  height: 440px;
+  box-sizing: border-box;
+  border: 18px solid #3b2819;
+  transform: translate3d(-706px, 0, -350px) rotateY(90deg);
+  pointer-events: none;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+.rs-root .rw-view { left: -750px; top: -960px; width: 1500px; height: 1190px; transform: translate3d(-1250px, 0, -1600px) rotateY(90deg); pointer-events: none; }
+.rs-root .rw-view img { display: block; width: 100%; height: auto; filter: brightness(1.1) saturate(1.05); transform: scaleX(-1); }
+.rs-root .rw-glow { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; transform: translateZ(1px); }
+.rs-root .rw-wains {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 320px;
+  pointer-events: none;
+  transform: translateZ(2px);
+  background-color: #55744f;
+  background-image: url(/images/room/textures/wall-timber.webp);
+  background-size: 310px 310px;
+  background-blend-mode: multiply;
+}
+.rs-root .rw-rail {
+  position: absolute;
+  left: 0;
+  bottom: 308px;
+  width: 100%;
+  height: 12px;
+  pointer-events: none;
+  transform: translateZ(3px);
+  background: linear-gradient(180deg, #6f8f66, #3f5a3b);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
+}
+.rs-root .rw-shaft {
+  position: absolute;
+  pointer-events: none;
+  transform-origin: 0 0;
+  filter: blur(14px);
+  background-repeat: no-repeat;
+  background-image: linear-gradient(rgba(255, 240, 205, 0.3), rgba(255, 240, 205, 0.3)), linear-gradient(rgba(255, 240, 205, 0.3), rgba(255, 240, 205, 0.3)),
+    linear-gradient(rgba(255, 240, 205, 0.3), rgba(255, 240, 205, 0.3)), linear-gradient(rgba(255, 240, 205, 0.3), rgba(255, 240, 205, 0.3));
+}
+.rs-root .rw-shaft-b {
+  left: 804px;
+  top: 300px;
+  width: 380px;
+  height: 400px;
+  transform: translateZ(2px) skewX(4.6deg);
+  background-size: 178px 212px, 178px 212px, 178px 164px, 178px 164px;
+  background-position: 0 0, 202px 0, 0 236px, 202px 236px;
+}
+.rs-root .rw-shaft-l {
+  left: 318px;
+  top: 498px;
+  width: 400px;
+  height: 380px;
+  transform: translateZ(2px) skewY(6.8deg);
+  background-size: 212px 178px, 164px 178px, 212px 178px, 164px 178px;
+  background-position: 0 0, 236px 0, 0 202px, 236px 202px;
+}
+.rs-root .rs-right { left: -700px; top: -640px; width: 1400px; height: 1020px; transform: translate3d(650px, 0, -300px) rotateY(-90deg); }
+.rs-root .rs-floor { left: -650px; top: -700px; width: 1300px; height: 1400px; transform: translate3d(0, 380px, -300px) rotateX(90deg); }
+.rs-root .rs-ceil { left: -650px; top: -700px; width: 1300px; height: 1400px; transform: translate3d(0, -640px, -300px) rotateX(-90deg); }
+.rs-root .rc-jamb-l { left: -30px; top: -390px; width: 60px; height: 440px; transform: translate3d(130px, 0, -1030px) rotateY(90deg); }
+.rs-root .rc-jamb-r { left: -30px; top: -390px; width: 60px; height: 440px; transform: translate3d(510px, 0, -1030px) rotateY(-90deg); }
+.rs-root .rc-head { left: 130px; top: -420px; width: 380px; height: 60px; transform: translateZ(-1030px) rotateX(-90deg); }
+.rs-root .rc-sill { left: 130px; top: 20px; width: 380px; height: 60px; transform: translateZ(-1030px) rotateX(90deg); }
+.rs-root .rc-frame {
+  left: 130px;
+  top: -390px;
+  width: 380px;
+  height: 440px;
+  box-sizing: border-box;
+  border: 18px solid #3b2819;
+  transform: translateZ(-1056px);
+  pointer-events: none;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+.rs-root .rc-mullion-v { position: absolute; left: 50%; top: 0; width: 14px; height: 100%; margin-left: -7px; background: #3b2819; }
+.rs-root .rc-mullion-h { position: absolute; left: 0; top: 44%; width: 100%; height: 14px; background: #3b2819; }
+.rs-root .rc-unit { left: -270px; top: -180px; width: 540px; height: 560px; transform: translate3d(-320px, 0, -630px) rotateY(90deg); pointer-events: none; }
+.rs-root .rc-unit figure { pointer-events: auto; }
+.rs-root .rs-shade { position: absolute; inset: 0; pointer-events: none; transform: translateZ(1px); }
+
+/* Pictures */
+.rs-root .rs-pc {
+  position: absolute;
+  margin: 0;
+  box-sizing: border-box;
+  transform: translateZ(4px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.55), 0 20px 34px -8px rgba(0, 0, 0, 0.7);
+  cursor: zoom-in;
+}
+.rs-root .rs-pc img { display: block; width: 100%; height: auto; }
+.rs-root .rs-pc figcaption {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 10px;
+  padding: 7px 12px;
+  white-space: nowrap;
+  font: 500 22px/1.2 var(--font-newsreader), Georgia, serif;
+  color: #f4ead6;
+  background: rgba(28, 20, 14, 0.92);
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+.rs-root .rs-pc:hover { transform: translateZ(54px); }
+.rs-root .rs-pc:hover figcaption { opacity: 1; }
+.rs-root .rs-pc:focus { outline: none; }
+.rs-root .rs-pc:focus-visible { outline: 3px solid var(--gn-accent); outline-offset: 4px; }
+.rs-root .rs-pc:focus-visible figcaption { opacity: 1; }
+/* The narrow strip right of the back window meets the right wall, which would
+   hide a caption running rightwards; these captions run leftwards instead. */
+.rs-root .rs-back-r figcaption { left: auto; right: 0; }
+.rs-root .rw-vg { box-shadow: none; }
+.rs-root .rw-vg img { filter: brightness(1.12) saturate(1.06); }
+.rs-root .rw-vg figcaption { left: 560px; top: 540px; margin-top: 0; font-size: 40px; }
+.rs-root .rs-black { padding: 14px; background: #f3ede0; border: 9px solid #141113; }
+.rs-root .rs-oak { padding: 12px; background: #f3ede0; border: 8px solid #a2764a; }
+.rs-root .rs-gilt { border: 12px solid; border-color: #d2ad5c #94702b #7f5e22 #bd9645; }
+.rs-root .rs-thin { border: 4px solid #efe8d8; }
+.rs-root .rs-sl { border-radius: 2px; outline: 1px solid rgba(255, 255, 255, 0.1); outline-offset: -1px; }
+.rs-root .rs-lean { transform-origin: 50% 100%; transform: translateZ(58px) rotateX(14deg); }
+.rs-root .rs-lean2 { transform-origin: 50% 100%; transform: translateZ(98px) rotateX(13deg); }
+.rs-root .rs-lean3 { transform-origin: 50% 100%; transform: translateZ(138px) rotateX(12deg); }
+.rs-root .rs-lean:hover { transform: translateZ(120px) rotateX(6deg); }
+.rs-root .rs-lean2:hover { transform: translateZ(150px) rotateX(6deg); }
+.rs-root .rs-lean3:hover { transform: translateZ(184px) rotateX(6deg); }
+.rs-root .rc-on { transform-origin: 50% 100%; transform: translateZ(-22px) rotateX(7deg); }
+.rs-root .rc-on:hover { transform: translateZ(28px) rotateX(2deg); }
+.rs-root .rc-rug { position: absolute; display: block; height: auto; transform: translateZ(1px); box-shadow: 0 0 14px rgba(0, 0, 0, 0.45); }
+
+/* Album sleeves: an empty dark square until the daily covers are chosen and loaded. */
+.rs-root .rs-sleeve { display: block; aspect-ratio: 1; background: #17110c; }
+.rs-root .rs-sleeve img { opacity: 0; transition: opacity 0.6s ease; }
+.rs-root .rs-sleeve img.is-loaded { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .rs-root .rs-sleeve img { transition: none; }
+}
+
+/* Boxes (furniture, beams) */
+.rs-root .rs-box { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
+.rs-root .rs-face { position: absolute; left: 0; top: 0; }
+
+/* Focused view */
+.rs-root.gp-f-on .rs-stage { pointer-events: none; }
+.rs-root .gp-fx-sleeve { width: min(560px, calc(100vw - 2 * clamp(16px, 4vw, 64px)), calc(100dvh - 220px)); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 40px 80px -20px rgba(0, 0, 0, 0.9); }
+.rs-root .gp-fx {
+  position: absolute;
+  z-index: 9;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: clamp(20px, 5vh, 56px) clamp(16px, 4vw, 64px);
+  background: rgba(var(--gn-v), 0.9);
+  cursor: zoom-out;
+}
+.rs-root .gp-fx-card { display: flex; flex-direction: column; align-items: center; max-width: 100%; max-height: 100%; }
+@keyframes gp-fx-in {
+  from { opacity: 0; transform: scale(0.94) translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rs-root .gp-fx-card { animation: gp-fx-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+}
+/* Sized from the piece's aspect ratio (--ar) so the wall-to-full swap never jumps. */
+.rs-root .gp-fx-img {
+  display: block;
+  box-sizing: border-box;
+  min-height: 0;
+  width: min(1000px, calc(var(--nw, 800) * 1.25px), calc(100vw - 2 * clamp(16px, 4vw, 64px)), calc((100dvh - 220px) * var(--ar, 1)));
+  height: auto;
+  aspect-ratio: var(--ar, 1);
+  object-fit: contain;
+  background: #f3ebda;
+  border: 10px solid #f3ebda;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 40px 80px -20px rgba(0, 0, 0, 0.9);
+}
+.rs-root .gp-fx-title {
+  margin: 22px 0 0;
+  max-width: 30ch;
+  text-align: center;
+  text-wrap: balance;
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(28px, 3.2vw, 42px);
+  line-height: 1.05;
+  color: var(--gn-ink);
+}
+.rs-root .gp-fx-meta {
+  margin: 10px 0 0;
+  text-align: center;
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gn-accent);
+}
+.rs-root .gp-fx-x { position: absolute; right: clamp(16px, 2.5vw, 36px); top: clamp(16px, 2.5vw, 36px); }
+.rs-root .gp-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(237, 227, 204, 0.22);
+  background: rgba(var(--gn-v), 0.82);
+  margin: 0;
+  padding: 0 16px;
+  min-height: 40px;
+  cursor: pointer;
+  color: var(--gn-ink);
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.rs-root .gp-btn:hover { background: rgba(var(--gn-v), 0.96); }
+.rs-root .gp-btn:focus-visible { outline: 2px solid var(--gn-accent); outline-offset: 4px; }
+
+/* Letter board (second stage layer) */
+.rs-root .gp-stage2 { z-index: 1; pointer-events: none; }
+.rs-root .gp-stage2 .gp-obj { pointer-events: auto; }
+.rs-root .gp-obj {
+  position: absolute;
+  display: block;
+  box-sizing: border-box;
+  margin: 0;
+  text-decoration: none;
+  transform-origin: 50% 100%;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.rs-root .gp-chain { position: absolute; width: 4px; background: repeating-linear-gradient(180deg, #9a8a66 0 5px, #3a3020 5px 8px); }
+.rs-root .gp-board {
+  left: -604px;
+  top: -384px;
+  width: 564px;
+  height: 656px;
+  padding: 15px;
+  transform: translateZ(-196px);
+  background-color: #7a5a36;
+  background-image: linear-gradient(135deg, rgba(255, 230, 190, 0.3), rgba(0, 0, 0, 0.25)), url(/images/room/textures/wood-oak.webp);
+  background-size: auto, 300px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4), 0 22px 34px -12px rgba(0, 0, 0, 0.8);
+}
+.rs-root .gp-board,
+.rs-root .gp-bd-chain { transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.rs-root .gp-bd-chain { transform: translateZ(-196px); }
+.rs-root.gn-explore .gp-board,
+.rs-root.gn-explore .gp-bd-chain { transform: translateZ(-480px); }
+.rs-root .gp-board:hover,
+.rs-root.gp-hold .gp-board,
+.rs-root.gp-hold .gp-bd-chain { transform: translateZ(-166px); }
+@media (prefers-reduced-motion: reduce) {
+  .rs-root .gp-board,
+  .rs-root .gp-bd-chain,
+  .rs-root .gp-obj,
+  .rs-root .rs-pc { transition: none; }
+}
+.rs-root .gp-bd-felt {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 28px 28px 0;
+  background-color: #131211;
+  background-image: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0 1px, rgba(0, 0, 0, 0) 1px 12px, rgba(0, 0, 0, 0.7) 12px 14px);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.7), inset 0 6px 18px rgba(0, 0, 0, 0.6);
+  color: #f5f0e3;
+  font-family: var(--font-jost), system-ui, sans-serif;
+  font-weight: 500;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 2px 3px rgba(0, 0, 0, 0.6);
+}
+.rs-root .gp-bd-title { margin: 0; font-size: 45px; line-height: 56px; font-weight: 500; letter-spacing: 0.16em; color: #f2c864; }
+.rs-root .gp-bd-desc { margin: 0; max-width: 34ch; font-size: 15.5px; line-height: 28px; letter-spacing: 0.09em; color: #e4decf; }
+.rs-root .gp-bd-list { display: block; margin-top: 28px; }
+.rs-root .gp-bd-list ul { margin: 0; padding: 0; list-style: none; }
+.rs-root .gp-bd-post {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+  text-decoration: none;
+  color: #f5f0e3;
+}
+.rs-root .gp-bd-post:focus-visible { outline: 3px solid #c9a24e; outline-offset: 6px; }
+.rs-root .gp-bd-pt { display: block; flex: 1 1 auto; min-width: 0; font-size: 21px; line-height: 28px; letter-spacing: 0.05em; }
+.rs-root .gp-bd-pd { display: block; flex: 0 0 auto; font-size: 14.5px; line-height: 28px; letter-spacing: 0.1em; white-space: nowrap; color: #f2c864; }
+.rs-root .gp-bd-post:hover .gp-bd-pt,
+.rs-root .gp-bd-post:focus-visible .gp-bd-pt {
+  color: #f2c864;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+}
+@keyframes gp-bd-set {
+  from { opacity: 0; transform: translateY(-7px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rs-root .gp-bd-list li { animation: gp-bd-set 0.36s ease-out backwards; }
+  .rs-root .gp-bd-list li:nth-child(2) { animation-delay: 0.05s; }
+  .rs-root .gp-bd-list li:nth-child(3) { animation-delay: 0.1s; }
+  .rs-root .gp-bd-list li:nth-child(4) { animation-delay: 0.15s; }
+  .rs-root .gp-bd-list li:nth-child(5) { animation-delay: 0.2s; }
+  .rs-root .gp-bd-list li:nth-child(6) { animation-delay: 0.25s; }
+}
+.rs-root .gp-bd-foot {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 14.5px;
+  line-height: 28px;
+  letter-spacing: 0.12em;
+}
+.rs-root .gp-bd-by { color: #b9b3a4; }
+.rs-root .gp-bd-pager { display: flex; gap: 22px; }
+.rs-root .gp-bd-pg {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: none;
+  margin: 0;
+  padding: 0 2px;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-shadow: inherit;
+  color: #f2c864;
+}
+.rs-root .gp-bd-pg:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.rs-root .gp-bd-pg:focus-visible { outline: 2px solid #f2c864; outline-offset: 4px; }
+
+/* Record crates in the room: the faces are the control; caption as on pictures. */
+.rs-root .rc-crate-face { cursor: pointer; }
+.rs-root .rc-crate-front:focus { outline: none; }
+.rs-root .rc-crate-front:focus-visible { outline: 3px solid var(--gn-accent); outline-offset: 4px; }
+.rs-root .rc-crate-cap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 7px 12px;
+  white-space: nowrap;
+  font: 500 22px/1.2 var(--font-newsreader), Georgia, serif;
+  color: #f4ead6;
+  background: rgba(28, 20, 14, 0.92);
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+.rs-root .rc-crate.is-hot .rc-crate-cap,
+.rs-root .rc-crate-front:focus-visible ~ .rc-crate-cap { opacity: 1; }
+
+/* Controls over the room: the tour button (bottom right) and the home link. */
+.rs-root .gp-ctl { position: absolute; z-index: 6; right: clamp(16px, 2.5vw, 36px); bottom: clamp(16px, 2.5vw, 36px); }
+.rs-root .gp-home {
+  position: absolute;
+  z-index: 6;
+  left: clamp(16px, 2.5vw, 36px);
+  top: clamp(12px, 2vw, 28px);
+  padding: 6px 0;
+  color: var(--gn-ink);
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  /* A soft dark halo keeps the link legible over bright paintings, with no box. */
+  text-shadow: 0 0 2px rgba(12, 8, 4, 1), 0 1px 3px rgba(12, 8, 4, 0.95), 0 0 9px rgba(12, 8, 4, 0.9), 0 0 18px rgba(12, 8, 4, 0.75),
+    0 0 30px rgba(12, 8, 4, 0.55);
+}
+.rs-root .gp-home:hover { text-decoration: underline; text-underline-offset: 4px; }
+.rs-root .gp-home:focus-visible { outline: 2px solid var(--gn-accent); outline-offset: 4px; }
+
+/* White-label sleeve: an album with no cover, set in type. */
+.rs-root .gp-wl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  aspect-ratio: 1;
+  container-type: inline-size;
+  background: #f1ece1;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  color: #1d1914;
+  font-family: var(--font-jost), system-ui, sans-serif;
+  font-weight: 500;
+  text-transform: uppercase;
+  text-align: center;
+}
+.rs-root .gp-wl-in { display: flex; flex-direction: column; gap: 4cqi; padding: 0 10cqi; }
+.rs-root .gp-wl-artist { font-size: 9cqi; line-height: 1.1; letter-spacing: 0.14em; }
+.rs-root .gp-wl-title { font-size: 6.5cqi; line-height: 1.25; letter-spacing: 0.1em; }
+
+/* The record crate dialog */
+.rs-root.gp-c-on .rs-stage { pointer-events: none; }
+.rs-root .gp-cr {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: clamp(16px, 4vh, 44px) clamp(16px, 4vw, 64px) 0;
+  /* Near opaque and blurred, so nothing behind is readable; a hint of the room's warmth stays. */
+  background: rgba(var(--gn-v), 0.975);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.rs-root .gp-cr-panel { display: flex; flex-direction: column; width: 100%; max-width: 1160px; min-height: 0; max-height: 100%; }
+.rs-root .gp-cr-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 0 18px; }
+.rs-root .gp-cr-title {
+  margin: 0;
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(28px, 3.2vw, 42px);
+  line-height: 1.05;
+  color: var(--gn-ink);
+}
+.rs-root .gp-cr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+  gap: 26px 20px;
+  min-height: 0;
+  margin: 0;
+  padding: 6px 6px clamp(24px, 5vh, 48px);
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(237, 227, 204, 0.3) transparent;
+}
+.rs-root .gp-cr-item {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: var(--gn-ink);
+  cursor: zoom-in;
+}
+.rs-root .gp-cr-cover {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: #17110c;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.5), 0 12px 22px -8px rgba(0, 0, 0, 0.7);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.rs-root .gp-wl.gp-cr-cover { display: flex; background: #f1ece1; }
+.rs-root .gp-cr-item:hover .gp-cr-cover { transform: translateY(-3px); }
+.rs-root .gp-cr-item:focus { outline: none; }
+.rs-root .gp-cr-item:focus-visible .gp-cr-cover { outline: 2px solid var(--gn-accent); outline-offset: 4px; }
+.rs-root .gp-cr-artist {
+  display: block;
+  margin-top: 10px;
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  line-height: 1.35;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gn-accent);
+}
+.rs-root .gp-cr-name { display: block; margin-top: 3px; font-size: 14px; line-height: 1.3; color: var(--gn-mute); }
+@media (prefers-reduced-motion: reduce) {
+  .rs-root .gp-cr-cover { transition: none; }
+  .rs-root .gp-cr-item:hover .gp-cr-cover { transform: none; }
+}
+
+/* Vignette and grain (leaf overlays) */
+.rs-root .rs-vignette {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 80% at 50% 52%, rgba(0, 0, 0, 0) 58%, rgba(12, 7, 3, 0.3) 100%);
+}
+.rs-root .rs-grain { position: absolute; z-index: 2; inset: 0; opacity: 0.14; mix-blend-mode: soft-light; pointer-events: none; }
+
+/* The room's images sit in <picture> (the file loads only where the room is
+   drawn); the wrapper takes no box, so layout is as with a bare <img>. */
+.rs-root picture { display: contents; }
+
+/* The flat page: phones, touch screens and windows 760px wide or less. No 3D,
+   normal document scrolling. Keep the query in step with FLAT_MEDIA in
+   behaviour.ts. Hidden subtrees use display: none, so the hidden board's h1
+   leaves the accessibility tree and the room's textures are not fetched. */
+.rs-root .gp-flat { display: none; }
+@media (max-width: 760px), (pointer: coarse) {
+  body:has(.rs-root) { background: #1c140e; }
+  .rs-root {
+    position: relative;
+    inset: auto;
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
+    container-type: normal;
+    background-color: #1c140e;
+    /* The timber walls' tint and shade. */
+    background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.26), rgba(0, 0, 0, 0.06) 280px, rgba(0, 0, 0, 0.06) calc(100% - 200px), rgba(0, 0, 0, 0.3)),
+      linear-gradient(#c9a57c, #c9a57c), url(/images/room/textures/wall-timber.webp);
+    background-size: auto, auto, 620px 620px;
+    background-blend-mode: normal, multiply, normal;
+  }
+  .rs-root .rs-stage,
+  .rs-root .rs-vignette,
+  .rs-root .rs-grain,
+  .rs-root .gp-ctl { display: none; }
+
+  .rs-root .gp-home {
+    position: relative;
+    left: auto;
+    top: auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin: max(6px, env(safe-area-inset-top)) 0 0 max(16px, env(safe-area-inset-left));
+    padding: 0 4px;
+  }
+
+  .rs-root .gp-flat { display: block; padding: 6px 0 max(44px, env(safe-area-inset-bottom)); }
+  .rs-root .gp-flat .gp-chain { display: none; }
+  /* The board as a flat object. Its oak frame is drawn from the timber texture
+     the page already has, warmed to oak, so phones fetch one texture only. */
+  .rs-root .gp-flat .gp-board {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: calc(100% - 32px);
+    max-width: 560px;
+    height: auto;
+    margin: 0 auto;
+    padding: clamp(10px, 3vw, 15px);
+    transform: none;
+    transition: none;
+    background-color: #7a5a36;
+    background-image: linear-gradient(135deg, rgba(255, 230, 190, 0.3), rgba(0, 0, 0, 0.25)), linear-gradient(#f0c48c, #f0c48c),
+      url(/images/room/textures/wall-timber.webp);
+    background-size: auto, auto, 300px;
+    background-blend-mode: normal, multiply, normal;
+  }
+  .rs-root .gp-flat .gp-bd-felt {
+    height: auto;
+    padding: clamp(18px, 5.5vw, 28px) clamp(16px, 5vw, 28px) 8px;
+    container-type: inline-size;
+  }
+  /* Sized from the name's length (--gp-len): one line when it fits at 24px or
+     more, otherwise two lines, so any name fits at 320px wide. */
+  .rs-root .gp-flat .gp-bd-title {
+    font-size: min(45px, max(calc(112cqi / var(--gp-len, 12)), min(calc(180cqi / var(--gp-len, 12)), 24px)));
+    line-height: 1.25;
+    letter-spacing: 0.14em;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+  .rs-root .gp-flat .gp-bd-desc { max-width: none; margin-top: 6px; font-size: clamp(12.5px, 3.5vw, 15.5px); line-height: 1.7; }
+  .rs-root .gp-flat .gp-bd-list { margin-top: 18px; }
+  .rs-root .gp-flat .gp-bd-post {
+    box-sizing: border-box;
+    min-height: 44px;
+    margin: 0;
+    padding: 8px 0;
+    align-items: baseline;
+  }
+  .rs-root .gp-flat .gp-bd-pt { font-size: clamp(16px, 4.4vw, 20px); line-height: 1.35; }
+  .rs-root .gp-flat .gp-bd-pd { font-size: 13px; line-height: 1.5; }
+  .rs-root .gp-flat .gp-bd-foot {
+    position: static;
+    flex-wrap: wrap;
+    gap: 0 18px;
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  .rs-root .gp-flat .gp-bd-by { padding: 8px 0; }
+  .rs-root .gp-flat .gp-bd-pager { gap: 18px; }
+  .rs-root .gp-flat .gp-bd-pg { min-height: 44px; }
+
+  /* The art, one sideways-scrolling row lined up with the board. */
+  .rs-root .gp-strip {
+    --gp-strip-h: clamp(150px, 42vw, 190px);
+    --gp-edge: max(16px, calc((100% - 560px) / 2));
+    display: flex;
+    gap: 14px;
+    margin: 26px 0 0;
+    padding: 10px var(--gp-edge) 20px;
+    list-style: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--gp-edge);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .rs-root .gp-strip::-webkit-scrollbar { display: none; }
+  .rs-root .gp-strip li { flex: 0 0 auto; scroll-snap-align: start; }
+  .rs-root .gp-strip-item {
+    appearance: none;
+    -webkit-appearance: none;
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 3px solid #efe8d8;
+    background: #2a1f16;
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.55), 0 12px 20px -8px rgba(0, 0, 0, 0.7);
+    cursor: zoom-in;
+  }
+  .rs-root .gp-strip-item img { display: block; width: auto; max-width: none; height: var(--gp-strip-h); }
+  .rs-root .gp-strip-item:focus { outline: none; }
+  .rs-root .gp-strip-item:focus-visible { outline: 3px solid var(--gn-accent); outline-offset: 3px; }
+
+  .rs-root .gp-flat-crate { display: block; min-height: 48px; margin: 10px auto 0; padding: 0 22px; font-size: 12px; }
+
+  /* Dialogs: fixed to the screen (the page scrolls; the body is pinned while one is open). */
+  .rs-root .gp-fx,
+  .rs-root .gp-cr { position: fixed; overscroll-behavior: contain; }
+  /* The board sits right behind on a phone, so the dim is deeper than in the room. */
+  .rs-root .gp-fx {
+    padding: 72px 16px max(20px, env(safe-area-inset-bottom));
+    background: rgba(var(--gn-v), 0.96);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  .rs-root .gp-fx-x { top: max(14px, env(safe-area-inset-top)); right: 14px; min-height: 44px; }
+  .rs-root .gp-fx-img {
+    border-width: 6px;
+    width: min(calc(var(--nw, 800) * 1.25px), calc(100vw - 32px), calc((100dvh - 212px) * var(--ar, 1)));
+  }
+  .rs-root .gp-fx-sleeve { width: min(560px, calc(100vw - 32px), calc(100dvh - 212px)); }
+  .rs-root .gp-fx-title { margin-top: 14px; font-size: clamp(22px, 6.4vw, 30px); }
+  .rs-root .gp-fx-meta { margin-top: 6px; font-size: 11.5px; }
+
+  .rs-root .gp-cr { padding: max(10px, env(safe-area-inset-top)) 16px 0; }
+  .rs-root .gp-cr-head { padding-bottom: 10px; }
+  .rs-root .gp-cr-head .gp-btn { min-height: 44px; }
+  .rs-root .gp-cr-grid {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 20px 14px;
+    padding: 4px 4px max(32px, env(safe-area-inset-bottom));
+  }
+  .rs-root .gp-cr-artist { margin-top: 8px; font-size: 10px; }
+  .rs-root .gp-cr-name { font-size: 13px; }
+}
+/* Narrow phones: each post's date goes beneath its title. */
+@media (max-width: 479px) {
+  .rs-root .gp-flat .gp-bd-post { flex-direction: column; align-items: flex-start; gap: 2px; }
+}
+/* Phones on their side: little height, so the caption and the image share it. */
+@media (max-height: 500px) and (max-width: 1000px) and (pointer: coarse), (max-height: 500px) and (max-width: 760px) {
+  .rs-root .gp-fx { padding: 12px 100px; }
+  .rs-root .gp-fx-img {
+    width: min(calc(var(--nw, 800) * 1.25px), calc(100vw - 200px), calc((100dvh - 100px) * var(--ar, 1)));
+  }
+  .rs-root .gp-fx-sleeve { width: min(560px, calc(100vw - 200px), calc(100dvh - 100px)); }
+  .rs-root .gp-fx-title { margin-top: 8px; font-size: 20px; }
+  .rs-root .gp-fx-meta { margin-top: 4px; }
+}
