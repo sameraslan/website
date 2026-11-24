@@ -90,6 +90,8 @@ in software. Each script's header comment lists every flag.
 node scripts/ui-check/room-gpu-sweep.mjs --port 3611 [--viewports 1440x900] [--dpr 2] \
   [--live] [--hover-board] [--fast] [--tour] [--frames] [--loadin] [--no-static] [--tag name]
 # -> one line per state; failing shots in out/gpu-sweep/<tag>/
+# --loadin also prints ms to data-room="shown" and "ready"; shots before the
+# room is shown (plus its 0.4 s fade) are listed as "not shown yet" and do not count
 
 # Tile memory per layer group from a cc trace
 node scripts/ui-check/room-mem-trace.mjs --port 3611 [--vp 1920x1080] [--budget 4096] [--motion]

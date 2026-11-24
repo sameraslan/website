@@ -2,8 +2,10 @@
 // GPU sweep of the /notes room, to catch parts of the room that the GPU path
 // leaves blank or black, or a board that vanishes, while the camera moves.
 // The room is one WebGL canvas under the DOM letter board; every state waits
-// for .rs-root[data-room="ready"] (the canvas's first complete frame), with a
-// 15 s fallback for builds that do not set it.
+// for .rs-root[data-room="ready"] (a frame drawn with every texture and
+// picture in), with a 15 s fallback for builds that do not set it. The root's
+// data-room is "shown" from the first frame drawn with the walls, floor and wood
+// in (the canvas fades in over 0.4 s then) until it turns "ready".
 //
 // Browsers:
 //   gpu: Playwright's full Chromium in new headless mode (channel 'chromium'),
@@ -51,7 +53,14 @@
 //   reading mode and 10s of the tour (median, p95, max, share over 25 ms).
 //   Headless may not pace frames like a real display; informational only.
 // --loadin: reloads and shoots 0.3, 0.8, 1.5, 2.2, 3.0 and 4.0s after the
-//   navigation commits (--css is injected before first paint here).
+//   navigation commits (--css is injected before first paint here), and
+//   reports the ms from the commit to data-room="shown" and to "ready". Only
+//   shots taken at least 0.4 s (the fade) after "shown" count towards
+//   pass/fail; earlier ones are listed as "not shown yet". If "shown" comes
+//   after the last timed shot, one more shot is taken once the fade is done.
+//   When everything is in by the first drawn frame, the page goes straight to
+//   "ready" (printed as shown "with ready"). On a build that never sets
+//   data-room, every timed shot counts.
 //
 // Usage:
 //   node scripts/ui-check/room-gpu-sweep.mjs (--port <n> | --base <url>) [--viewports 800x600,1440x900,1506x812,1920x1080]
@@ -628,23 +637,63 @@ async function main() {
               if (!add()) document.addEventListener('readystatechange', function f() { if (add()) document.removeEventListener('readystatechange', f); });
             }, o.css);
           }
+          // The wall-clock time each data-room value first appears.
+          await pg.addInitScript(() => {
+            window.__roomMarks = {};
+            new MutationObserver(() => {
+              const v = document.querySelector('.rs-root')?.getAttribute('data-room');
+              if (v && !window.__roomMarks[v]) window.__roomMarks[v] = Date.now();
+            }).observe(document, { attributes: true, subtree: true, attributeFilter: ['data-room'] });
+          });
+          const FADE_MS = 400;
+          const marks = async () => (await pg.evaluate(() => window.__roomMarks).catch(() => null)) || {};
           await pg.mouse.move(w / 2, h - 4);
           await pg.goto(pg.__url, { waitUntil: 'commit' });
           const t0 = Date.now();
           const vals = [];
-          let worst = null, worstV = -1;
+          let worst = null, worstV = -1, judged = 0;
+          const shoot = async () => {
+            const s = await snap(pg);
+            const at = Date.now();
+            const { dark } = await measure(s, o.dpr, null);
+            const m = await marks();
+            // Counted once the room is shown and faded in, or always when the
+            // page never sets data-room (checked after the timed shots).
+            return { at, dark, buf: s.buf, counts: m.shown ? at >= m.shown + FADE_MS : m.ready ? at >= m.ready + FADE_MS : null };
+          };
+          const shots = [];
           for (const at of [300, 800, 1500, 2200, 3000, 4000]) {
             await wait(t0 + at - Date.now());
-            const s = await snap(pg);
-            const { dark } = await measure(s, o.dpr, null);
-            vals.push(`${Date.now() - t0}ms:${dark}`);
-            if (dark > worstV) { worstV = dark; worst = s.buf; }
+            shots.push(await shoot());
           }
+          let m = await marks();
+          if (!m.shown && !m.ready) {
+            await pg.waitForSelector('.rs-root[data-room]', { timeout: 20000 }).catch(() => null);
+            m = await marks();
+            const since = m.shown ?? m.ready;
+            if (since) {
+              await wait(since + FADE_MS + 100 - Date.now());
+              shots.push(await shoot());
+            }
+          }
+          if (m.shown || m.ready) {
+            await pg.waitForSelector('.rs-root[data-room="ready"]', { timeout: 20000 }).catch(() => null);
+            m = await marks();
+          }
+          const attr = !!(m.shown || m.ready);
+          for (const s of shots) {
+            const counts = attr ? s.counts === true : true;
+            vals.push(`${s.at - t0}ms:${s.dark}${counts ? '' : ' (not shown yet)'}`);
+            if (!counts) continue;
+            judged++;
+            if (s.dark > worstV) { worstV = s.dark; worst = s.buf; }
+          }
+          const ms = (v) => (v ? `${v - t0}ms` : 'never');
           const fail = worstV > FLAT_DARK_MAX;
           const name = `loadin ${vps}`;
-          results.push({ name, shots: vals, max: worstV, fail });
-          console.log(`${fail ? 'FAIL' : 'ok  '} ${name.padEnd(34)} flat dark [${vals.join(' ')}]`);
-          await save(name, [['worst', worst]], fail);
+          results.push({ name, shots: vals, shownMs: m.shown ? m.shown - t0 : null, readyMs: m.ready ? m.ready - t0 : null, judged, max: worstV, fail });
+          console.log(`${fail ? 'FAIL' : 'ok  '} ${name.padEnd(34)} shown ${attr ? (m.shown ? ms(m.shown) : 'with ready') : 'no data-room'} ready ${attr ? ms(m.ready) : '-'} | flat dark [${vals.join(' ')}]`);
+          if (worst) await save(name, [['worst', worst]], fail);
         }
         await ps?.context().close();
       } finally {
