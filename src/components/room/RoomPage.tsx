@@ -57,9 +57,10 @@ const isFlat = () => matches(FLAT_MEDIA);
 const serverFlat = () => false;
 
 // Whether the browser registered the @property rules in room.css (a registered
-// property computes to its initial value). Then the camera animates those
-// numbers on the main thread (.rs-pa), which keeps Chrome's tile memory in
-// budget; elsewhere it keeps the plain transform transition and animation.
+// property computes to its initial value). Then the camera (load-in, parallax,
+// tour) animates those numbers on the main thread (.rs-pa); elsewhere it keeps
+// the plain transform transition and animation. The inline scale script adds
+// the same class before first paint.
 function hasRegisteredProps() {
   try {
     return getComputedStyle(document.documentElement).getPropertyValue('--rs-tr').trim() !== '';

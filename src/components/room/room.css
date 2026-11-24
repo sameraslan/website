@@ -100,10 +100,16 @@
 @property --rs-tx { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --rs-ty { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --rs-tz { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --rs-dz { syntax: '<number>'; inherits: false; initial-value: 0; }
 .rs-root .rs-stage,
 .rs-root .rs-dolly,
 .rs-root .rs-sway,
 .rs-root .rs-cam { --mx: inherit; --my: inherit; --amp: inherit; }
+/* The same load-in as rs-dolly, as a number: translateZ in px. */
+@keyframes rs-dolly-p {
+  from { --rs-dz: -320; }
+  to { --rs-dz: 0; }
+}
 /* The same tour as gn-tour, as numbers: rotateY in deg, translate3d in px. */
 @keyframes gn-tour-p {
   0%, 100% { --rs-tr: 0; --rs-tx: 0; --rs-ty: 0; --rs-tz: 0; }
@@ -112,6 +118,10 @@
   75% { --rs-tr: -3; --rs-tx: 24; --rs-ty: 0; --rs-tz: 50; }
 }
 @media (prefers-reduced-motion: no-preference) {
+  .rs-root.rs-pa .rs-dolly {
+    transform: translateZ(calc(var(--rs-dz) * 1px));
+    animation-name: rs-dolly-p;
+  }
   .rs-root.rs-pa .rs-cam {
     transition: --mx 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), --my 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), --amp 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
