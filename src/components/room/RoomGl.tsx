@@ -3,19 +3,20 @@
 // The room as one WebGL canvas (gl/RoomCanvas), inside the room group that
 // covers the .rs-root box, and what makes it interactive: pointer hover
 // (picked in JS against the scene), the DOM captions in their own stage layer,
-// and clicks that open a picture or the crate. The canvas follows the camera
+// clicks that open a picture or the crate, and one visually hidden button per
+// target (ul.rs-proxies) for the keyboard and screen readers. The canvas follows the camera
 // rig of the board stage, so board, captions and room share one camera.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from 'react';
 import type { Album } from '@/lib/room';
 import { ROOM_LABEL } from './copy';
 import type { FocusPiece } from './FocusView';
-import { describeTarget } from './pieces';
+import { describeTarget, targetId } from './pieces';
 import type { Mat4 } from './gl/mat4';
 import { hitTest } from './gl/pick';
 import { RoomCanvas, type RoomCanvasHandle } from './gl/RoomCanvas';
 import { buildScene, type Caption, type Scene, type Target } from './gl/scene';
-import { captionTransform, crateIndex } from './gl/targets';
+import { captionTransform, crateIndex, projectedBox, targetQuads } from './gl/targets';
 
 // One camera rig: dolly > sway > cam > room. Every stage layer uses the same one.
 export function Rig({ children }: { children?: ReactNode }) {
@@ -139,6 +140,20 @@ export function RoomGl({
     onHold.current = onHoldChange;
   }, [onHoldChange]);
 
+  // The proxy with visible keyboard focus: its target shows its caption and
+  // focus ring, and the tour holds while exploring.
+  const [focusHot, setFocusHot] = useState<Hot | null>(null);
+  const focusRef = useRef<Hot | null>(null);
+  // The focused proxy and the quad whose screen box it takes.
+  const focusEl = useRef<{ quad: string; el: HTMLButtonElement } | null>(null);
+  const updateHold = useCallback(() => {
+    const hold = hotRef.current !== null || focusRef.current !== null;
+    if (hold !== holdRef.current) {
+      holdRef.current = hold;
+      onHold.current(hold);
+    }
+  }, []);
+
   const targetAt = useCallback((x: number, y: number): Hot | null => {
     const h = handle.current;
     const cam = h?.camera();
@@ -158,12 +173,8 @@ export function RoomGl({
       const g = groupRef.current;
       if (g) g.style.cursor = !next ? '' : next.target.kind === 'crate' ? 'pointer' : 'zoom-in';
     }
-    const hold = next !== null;
-    if (hold !== holdRef.current) {
-      holdRef.current = hold;
-      onHold.current(hold);
-    }
-  }, [targetAt]);
+    updateHold();
+  }, [targetAt, updateHold]);
 
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== 'mouse') return;
@@ -182,7 +193,7 @@ export function RoomGl({
     () => () => {
       cancelAnimationFrame(pickFrame.current);
     },
-    [],
+    []
   );
   // A dialog opening over the room (inert) ends the hover.
   useEffect(() => {
@@ -193,7 +204,8 @@ export function RoomGl({
 
   // --- Captions: two elements, so the one going out fades while the new one
   // fades in. Each is placed with its quad's current world matrix.
-  const wanted = useMemo(() => (hot ? captionFor(hot, scene, albums) : null), [hot, scene, albums]);
+  const shown = hot ?? focusHot;
+  const wanted = useMemo(() => (shown ? captionFor(shown, scene, albums) : null), [shown, scene, albums]);
   const [caps, setCaps] = useState<CapState>({
     items: [null, null],
     on: null,
@@ -224,10 +236,68 @@ export function RoomGl({
     placeCaptions();
   }, [caps, placeCaptions]);
 
+  // --- Keyboard proxies: one button per target in the tab order (an album
+  // slot without an album has none). A focused proxy takes its target's
+  // screen box, so magnifiers and focus-following tools land on it.
+  const quadOf = useMemo(() => targetQuads(scene), [scene]);
+  const proxies = useMemo(
+    () =>
+      scene.tabOrder.flatMap((t) => {
+        const info = describeTarget(t, albums);
+        const quad = quadOf.get(targetId(t));
+        return info && quad ? [{ id: targetId(t), target: t, label: info.label, quad }] : [];
+      }),
+    [scene, albums, quadOf]
+  );
+  const proxyEls = useRef(new Map<string, HTMLButtonElement>());
+  // Target id focused by a pointer click: that focus shows no ring, also when
+  // a dialog hands focus back to it, until the keyboard moves focus on (Tab).
+  const quiet = useRef<string | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') quiet.current = null;
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, []);
+  const placeProxy = useCallback(() => {
+    const f = focusEl.current;
+    const h = handle.current;
+    const cam = h?.camera();
+    const q = f && h?.scene().quads.find((x) => x.key === f.quad);
+    if (!f || !cam || !q) return;
+    const m = h?.quadMatrix(q.key) ?? q.matrix;
+    const b = projectedBox(cam, m, q.w, q.h);
+    Object.assign(f.el.style, { left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px` });
+  }, []);
+  const onProxyFocus = (el: HTMLButtonElement, target: Target, quad: string) => {
+    const id = targetId(target);
+    let visible = false;
+    try {
+      visible = el.matches(':focus-visible');
+    } catch {
+      visible = false;
+    }
+    focusEl.current = { quad, el };
+    placeProxy();
+    if (quiet.current !== id) quiet.current = null;
+    const next: Hot | null = visible && quiet.current !== id ? { key: target.kind === 'crate' ? `crate:${Math.max(0, crateIndex(quad))}` : quad, target } : null;
+    focusRef.current = next;
+    setFocusHot(next);
+    updateHold();
+  };
+  const onProxyBlur = () => {
+    focusEl.current = null;
+    focusRef.current = null;
+    setFocusHot(null);
+    updateHold();
+  };
+
   const onFrame = useCallback(() => {
     if (pointer.current) repick();
     placeCaptions();
-  }, [repick, placeCaptions]);
+    placeProxy();
+  }, [repick, placeCaptions, placeProxy]);
 
   // --- Opening.
   const activate = (target: Target) => {
@@ -242,9 +312,15 @@ export function RoomGl({
     onPressRoom(e);
   };
   const onClick = (e: MouseEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
+    // A proxy's own click (Enter, Space) opens its target itself.
+    if (e.button !== 0 || (e.target as Element).closest('.rs-proxies')) return;
     const t = targetAt(e.clientX, e.clientY);
-    if (t) activate(t.target);
+    if (!t) return;
+    // Focus its proxy first, without a ring, so a dialog hands focus back to it.
+    const id = targetId(t.target);
+    quiet.current = id;
+    proxyEls.current.get(id)?.focus({ preventScroll: true });
+    activate(t.target);
   };
 
   return (
@@ -267,13 +343,32 @@ export function RoomGl({
             stage={stage}
             scene={scene}
             hoveredKey={hot && hot.target.kind !== 'crate' ? hot.key : null}
-            ringKey={null}
+            ringKey={focusHot ? (quadOf.get(targetId(focusHot.target))?.key ?? null) : null}
             reducedMotion={reducedMotion}
             onReady={onReady}
             onUnavailable={() => setGlUnavailable(true)}
             onFrame={onFrame}
           />
         )}
+        <ul className="rs-proxies">
+          {proxies.map((p) => (
+            <li key={p.id}>
+              <button
+                ref={(el) => {
+                  if (el) proxyEls.current.set(p.id, el);
+                  else proxyEls.current.delete(p.id);
+                }}
+                type="button"
+                className="rs-proxy"
+                aria-label={p.label}
+                aria-haspopup={p.target.kind === 'crate' ? 'dialog' : undefined}
+                onFocus={(e) => onProxyFocus(e.currentTarget, p.target, p.quad.key)}
+                onBlur={onProxyBlur}
+                onClick={() => activate(p.target)}
+              />
+            </li>
+          ))}
+        </ul>
       </div>
       {/* Captions: under the board layer, over the canvas. */}
       <div className="rs-stage gp-stage-cap" aria-hidden="true">
