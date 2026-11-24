@@ -2,16 +2,7 @@
 
 import './room.css';
 import Link from 'next/link';
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type PointerEvent,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from 'react';
 import { jost } from './font';
 import { dailySeed, type Album, type RoomPost } from '@/lib/room';
 import { ArtStrip } from './ArtStrip';
@@ -20,7 +11,7 @@ import { BACK_TO_POSTS, CRATE_TITLE, HOME_LINK, LOOK_AROUND } from './copy';
 import { CrateView } from './CrateView';
 import { FocusView, type FocusPiece } from './FocusView';
 import { LetterBoard } from './LetterBoard';
-import { RoomGl } from './RoomGl';
+import { RoomGl, Rig } from './RoomGl';
 
 export type { RoomMode };
 
@@ -106,19 +97,6 @@ function ScaleScript() {
   return keep ? <script dangerouslySetInnerHTML={{ __html: SCALE_SCRIPT }} /> : null;
 }
 
-// One camera rig: dolly > sway > cam > room. Both stage layers use the same one.
-function Rig({ children }: { children: ReactNode }) {
-  return (
-    <div className="rs-dolly">
-      <div className="rs-sway">
-        <div className="rs-cam">
-          <div className="rs-room">{children}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function RoomPage({ posts }: { posts: RoomPost[] }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
@@ -155,6 +133,8 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   // The canvas has drawn its first complete frame (data-room="ready").
   const [roomReady, setRoomReady] = useState(false);
   const onRoomReady = useCallback(() => setRoomReady(true), []);
+  // A target in the room is hovered or has keyboard focus: the tour holds.
+  const [roomHold, setRoomHold] = useState(false);
 
   // Time of the last pointer move, key press or click, for the idle switch.
   const lastActivity = useRef(0);
@@ -297,7 +277,7 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   return (
     <div
       ref={rootRef}
-      className={`rs-root gn-${mode} gp-f-${focused ? 'on' : 'off'}${crateOpen ? ' gp-c-on' : ''}${overBoard ? ' gp-over' : ''}${propAnim ? ' rs-pa' : ''} ${jost.variable}`}
+      className={`rs-root gn-${mode} gp-f-${focused ? 'on' : 'off'}${crateOpen ? ' gp-c-on' : ''}${overBoard ? ' gp-over' : ''}${roomHold && mode === 'explore' ? ' gp-hold' : ''}${propAnim ? ' rs-pa' : ''} ${jost.variable}`}
       onPointerMove={flat ? undefined : onPointerMove}
       onPointerLeave={flat ? undefined : onPointerLeave}
       // The inline script sets --rs-scale on this element before hydration.
@@ -334,7 +314,19 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
           <LetterBoard posts={posts} onHoverChange={onBoardHover} onFocusIn={onBoardFocus} onFocusOut={onBoardBlur} />
         </Rig>
       </div>
-      {showRoom && <RoomGl stage={boardStageRef} albums={albums} reducedMotion={reducedMotion} inert={covered} onReady={onRoomReady} onPressRoom={onPressRoom} />}
+      {showRoom && (
+        <RoomGl
+          stage={boardStageRef}
+          albums={albums}
+          reducedMotion={reducedMotion}
+          inert={covered}
+          onReady={onRoomReady}
+          onPressRoom={onPressRoom}
+          onOpen={open}
+          onOpenCrate={openCrate}
+          onHoldChange={setRoomHold}
+        />
+      )}
 
       <div className="rs-vignette" aria-hidden="true" />
       <svg className="rs-grain" aria-hidden="true" width="100%" height="100%">

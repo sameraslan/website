@@ -473,6 +473,24 @@
 @media (prefers-reduced-motion: reduce) {
   .rs-root .rs-gl { transition: none; }
 }
+/* Captions of the hovered or focused picture or crate, placed by script in
+   the frame of what they caption. */
+.rs-root .gp-stage-cap { pointer-events: none; }
+.rs-root .gp-cap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  padding: 7px 12px;
+  white-space: nowrap;
+  font: 500 22px/1.2 var(--font-newsreader), Georgia, serif;
+  color: #f4ead6;
+  background: rgba(28, 20, 14, 0.92);
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+.rs-root .gp-cap.is-on { opacity: 1; }
 .rs-root.gp-f-on .rs-stage-room,
 .rs-root.gp-c-on .rs-stage-room { pointer-events: none; }
 .rs-root .gp-stage2 .gp-obj { pointer-events: auto; }

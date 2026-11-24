@@ -10,11 +10,10 @@
 // The canvas must cover the .rs-root box exactly (the camera maps the room
 // onto that box).
 
-import { useEffect, useImperativeHandle, useMemo, useRef, type CSSProperties, type Ref, type RefObject } from 'react';
-import type { Album } from '@/lib/room';
+import { useEffect, useImperativeHandle, useRef, type CSSProperties, type Ref, type RefObject } from 'react';
 import { makeCamera, rigFromCss, type Camera } from './camera';
 import type { Mat4 } from './mat4';
-import { buildScene, type Scene } from './scene';
+import type { Scene } from './scene';
 import type { RoomRenderer } from './renderer';
 
 export type RoomCanvasHandle = {
@@ -33,7 +32,8 @@ export type RoomCanvasUnavailable = 'no-webgl' | 'context-lost';
 export type RoomCanvasProps = {
   // The .rs-stage whose rig (.rs-dolly > .rs-sway > .rs-cam) the canvas follows.
   stage: RefObject<HTMLElement | null>;
-  albums: (Album | null)[] | null;
+  // The scene to draw (buildScene).
+  scene: Scene;
   hoveredKey: string | null;
   ringKey: string | null;
   reducedMotion: boolean;
@@ -53,12 +53,11 @@ export type RoomCanvasProps = {
 const LOST_GRACE_MS = 3000;
 const CANVAS_STYLE: CSSProperties = { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', display: 'block' };
 
-export function RoomCanvas({ stage, albums, hoveredKey, ringKey, reducedMotion, onReady, onUnavailable, onFrame, className, style, ref }: RoomCanvasProps) {
+export function RoomCanvas({ stage, scene, hoveredKey, ringKey, reducedMotion, onReady, onUnavailable, onFrame, className, style, ref }: RoomCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<RoomRenderer | null>(null);
   const cameraRef = useRef<Camera | null>(null);
   const dirty = useRef(true);
-  const scene = useMemo(() => buildScene({ albums }), [albums]);
   const sceneRef = useRef(scene);
   const callbacks = useRef({ onReady, onUnavailable, onFrame });
   useEffect(() => {
