@@ -1,9 +1,9 @@
-// The /notes room as data: one quad per box of the DOM room (RoomScene.tsx and
-// room.css), each with its world matrix in room coordinates (CSS px, y down,
-// the rig's origin at 0), composed exactly as CSS does: the parent chain, the
+// The /notes room as data: one quad per surface, each with its world matrix in
+// room coordinates (CSS px, y down, the rig's origin at 0), written as CSS
+// boxes and composed exactly as CSS composes them: the parent chain, the
 // left/top (or bottom) offset, transform-origin and transform. Pictures come
-// from the hanging plan in layout.ts. Checked against the live DOM room by
-// scene.test.ts (gl/__fixtures__/dom-quads.json).
+// from the hanging plan in layout.ts. scene.test.ts checks the geometry
+// against a fixture dumped from the earlier CSS 3D room (gl/__fixtures__/dom-quads.json).
 // Pure: no DOM, no three.js.
 
 import { ART, albumSrc, artSrc, type Album } from '@/lib/room';
@@ -20,7 +20,6 @@ import {
   type Paint,
   type Shadow,
 } from './paint';
-import IMAGE_SIZES from './image-sizes.json';
 
 export type Target = { kind: 'art'; id: string } | { kind: 'album'; slot: number } | { kind: 'view' } | { kind: 'crate' };
 export type Pick = 'none' | 'solid' | Target;
@@ -141,23 +140,23 @@ const LEAN: Record<Lean, { rest: string; hover: string }> = {
 const PICTURE_SHADOWS = parseShadows('0 2px 3px rgba(0, 0, 0, 0.55), 0 20px 34px -8px rgba(0, 0, 0, 0.7)');
 const SLEEVE = c('#17110c');
 const SLEEVE_LINE = { width: 1, offset: -1, color: c('rgba(255, 255, 255, 0.1)') };
-const CAPTION_GAP = 10; // figcaption margin-top
+const CAPTION_GAP = 10; // space between a picture and its caption
 const CAPTION_SIZE = 22;
 const VIEW_CAPTION = { x: 560, y: 540, size: 40 };
 
-const SIZES = IMAGE_SIZES as unknown as { art: Record<string, [number, number]>; albums: Record<string, [number, number]>; rugs: Record<string, [number, number]> };
-
-// Natural size of an image file (the file the DOM room shows), falling back to
-// the size in the data when the file is not listed.
+// Aspect of a painting: the width and height in the art data (@/lib/room),
+// which the room's image files keep.
 function artSize(id: string): [number, number] {
-  const s = SIZES.art[id];
-  if (s) return s;
   const a = ART.find((x) => x.id === id);
   if (!a) throw new Error(`Unknown art id: ${id}`);
   return [a.width, a.height];
 }
 
-// Index of the first album slot on each plane (as ALBUM_OFFSET in RoomScene.tsx).
+// Pixel size of the two rug image files (public/images/room/rugs), which have
+// no entry in the data files.
+const RUG_SIZES: Record<string, [number, number]> = { 'rug-kilim': [417, 1100], 'rug-persian-red': [762, 1100] };
+
+// Index of the first album slot on each plane.
 export const ALBUM_OFFSET: Record<PlaneId, number> = (() => {
   const out = {} as Record<PlaneId, number>;
   let n = 0;
@@ -209,7 +208,7 @@ function picture(
   } else {
     const slotIndex = (target as { slot: number }).slot;
     const album = albums?.[slotIndex] ?? null;
-    const nat = album ? (SIZES.albums[album.id] ?? [album.width, album.height]) : null;
+    const nat = album ? [album.width, album.height] : null;
     const coverH = nat ? (cw * nat[1]) / nat[0] : cw;
     // The sleeve keeps aspect-ratio 1 but grows to a taller cover.
     contentH = Math.max(cw, coverH);
@@ -442,7 +441,7 @@ export function buildScene(opts: SceneOptions = {}): Scene {
     const H = 1400;
     const m = plane(bd, 'rs-floor', { x: -650, y: -700, w: W, h: H, transform: 'translate3d(0, 380px, -300px) rotateX(90deg)', fill: tiled('rc-planks') });
     const rug = (key: string, file: string, x: number, y: number, w: number, transform: string) => {
-      const [nw, nh] = SIZES.rugs[file];
+      const [nw, nh] = RUG_SIZES[file];
       const h = (w * nh) / nw;
       bd.add({
         key: `rug:${key}`,

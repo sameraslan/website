@@ -1,5 +1,5 @@
-// Draws the room scene (scene.ts) into one WebGL canvas with three.js, so it
-// looks like the DOM room it replaces. Each quad of the scene is one mesh
+// Draws the room scene (scene.ts) into one WebGL canvas with three.js, painting
+// each surface as a browser paints the CSS box it describes. Each quad of the scene is one mesh
 // whose clip matrix (camera.clip * world) is computed here in double precision;
 // three.js only manages the GL state, programs and textures.
 //
@@ -365,7 +365,7 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
       t.flipY = false;
       t.premultiplyAlpha = true;
       // Hard-edged layers (stripes, straps) keep their colours at grazing
-      // angles as the DOM room does: no mipmaps, so they are not averaged away.
+      // angles, as CSS paints them: no mipmaps, so they are not averaged away.
       const hard = isHardEdged(layers);
       t.generateMipmaps = !hard;
       t.minFilter = hard ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;

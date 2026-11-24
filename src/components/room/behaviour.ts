@@ -11,10 +11,6 @@ export type RoomMode = 'read' | 'explore';
 // 3D room. CSS decides it (room.css uses this same query); JS reads it after
 // mount only to keep the tour, idle timer, parallax and stage scale off.
 export const FLAT_MEDIA = '(max-width: 760px), (pointer: coarse)';
-// The complement of FLAT_MEDIA, for <source media> on the room's images, so
-// the flat page never downloads them. Written without level 4 `not` so older
-// Safari parses it; the .01px closes the gap above 760px at fractional widths.
-export const ROOM_MEDIA = '(min-width: 760.01px) and (pointer: fine), (min-width: 760.01px) and (pointer: none)';
 
 export const STAGE_W = 1280;
 export const STAGE_H = 900;

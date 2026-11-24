@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Side-by-side check of the WebGL room against the DOM room.
-// Screenshots the DOM room (production /notes by default, which still serves
-// it) and the canvas room (local /notes by default) in one browser at the same
+// Side-by-side check of the WebGL room against the CSS 3D (DOM) room it
+// replaced. Screenshots the DOM room (--dom-base: production /notes by default,
+// while production still serves it; any build of commit 60e00cc or earlier
+// does) and the canvas room (--gl-base, required) in one browser at the same
 // viewport and camera pose, then reports, outside the
 // letter board, its chains, the ceiling beams and the corner controls (the DOM
 // room draws board and beams in a layer above everything; the canvas
@@ -11,7 +12,7 @@
 // side-by-side crop of the worst region for each run.
 //
 // Usage: node scripts/ui-check/room-gl-compare.mjs [--dom-base https://www.sameraslan.com]
-//   [--gl-base http://localhost:3611] [--gl-path /notes]
+//   --gl-base <url, e.g. http://localhost:<port>> [--gl-path /notes]
 //   [--viewports 1280x900,1440x900] [--dpr 1,2] [--poses A,B,C] [--sw]
 //   [--out scripts/ui-check/out/room-gl-compare] [--json] [--full]
 // --sw: Playwright's default headless shell (SwiftShader WebGL) instead of
@@ -30,7 +31,7 @@ const opt = (name, def) => {
 };
 const o = {
   domBase: opt('dom-base', 'https://www.sameraslan.com'),
-  glBase: opt('gl-base', 'http://localhost:3611'),
+  glBase: opt('gl-base', ''),
   glPath: opt('gl-path', '/notes'),
   viewports: opt('viewports', '1280x900,1440x900').split(',').map((s) => s.split('x').map(Number)),
   dprs: opt('dpr', '1,2').split(',').map(Number),
@@ -41,6 +42,7 @@ const o = {
   // Also write the full DOM shot, canvas shot and their difference (x4).
   full: args.includes('--full'),
 };
+if (!o.glBase) throw new Error('Give --gl-base <url> (the canvas room, e.g. http://localhost:<port>)');
 
 const POSES = {
   A: { mode: 'read', mx: 0, my: 0, t: 0 },

@@ -1,6 +1,9 @@
 #!/usr/bin/env node
-// GPU sweep of the /notes room, to catch planes that Chrome's GPU compositor
-// leaves unrasterized (blank or black patches) or drops.
+// GPU sweep of the /notes room, to catch parts of the room that the GPU path
+// leaves blank or black, or a board that vanishes, while the camera moves.
+// The room is one WebGL canvas under the DOM letter board; every state waits
+// for .rs-root[data-room="ready"] (the canvas's first complete frame), with a
+// 15 s fallback for builds that do not set it.
 //
 // Browsers:
 //   gpu: Playwright's full Chromium in new headless mode (channel 'chromium'),
@@ -51,7 +54,7 @@
 //   navigation commits (--css is injected before first paint here).
 //
 // Usage:
-//   node scripts/ui-check/room-gpu-sweep.mjs [--port 3477] [--viewports 800x600,1440x900,1506x812,1920x1080]
+//   node scripts/ui-check/room-gpu-sweep.mjs (--port <n> | --base <url>) [--viewports 800x600,1440x900,1506x812,1920x1080]
 //     [--dpr 2] [--modes read,explore] [--grid full|corners] [--times 0,11,22,33]
 //     [--css "<css injected in both>"] [--settle 1500] [--live] [--no-static]
 //     [--hover-board] [--fast] [--tour] [--frames] [--loadin] [--seed 7]
@@ -69,7 +72,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
   const o = {
-    port: 3477,
+    port: null,
+    base: null,
     viewports: '800x600,1440x900,1506x812,1920x1080',
     dpr: 2,
     modes: 'read,explore',
@@ -94,6 +98,7 @@ function parseArgs(argv) {
     const a = argv[i];
     const v = () => argv[++i];
     if (a === '--port') o.port = Number(v());
+    else if (a === '--base') o.base = v().replace(/\/+$/, '');
     else if (a === '--viewports') o.viewports = v();
     else if (a === '--dpr') o.dpr = Number(v());
     else if (a === '--modes') o.modes = v();
@@ -115,6 +120,8 @@ function parseArgs(argv) {
     else if (a === '--save') o.save = v();
     else throw new Error(`Unknown flag ${a}`);
   }
+  if (!o.base && !o.port) throw new Error('Give --port <n> (http://localhost:<n>) or --base <url>');
+  o.base ??= `http://localhost:${o.port}`;
   return o;
 }
 
@@ -179,14 +186,9 @@ async function flatDark(buf, ex) {
 async function settlePage(page, css) {
   await page.goto(page.__url, { waitUntil: 'load' });
   if (css) await page.addStyleTag({ content: css });
+  // The canvas's first complete frame (all textures and pictures in), or 15 s.
+  await page.waitForSelector('.rs-root[data-room="ready"]', { timeout: 15000 }).catch(() => null);
   await page.waitForTimeout(3200); // dolly in (2.8s), covers after hydration
-  // Room images only (the flat page's lazy strip images never load while hidden).
-  await page.evaluate(async () => {
-    const imgs = [...document.querySelectorAll('.rs-stage img')];
-    const all = Promise.all(imgs.map((i) => (i.complete ? null : new Promise((r) => { i.addEventListener('load', r); i.addEventListener('error', r); }))))
-      .then(() => Promise.all(imgs.map((i) => i.decode().catch(() => null))));
-    await Promise.race([all, new Promise((r) => setTimeout(r, 15000))]);
-  });
 }
 
 function watch(page, problems, label) {
@@ -203,7 +205,7 @@ async function openGpu(o, w, h, problems) {
     if (o.budget) args.push(`--force-gpu-mem-available-mb=${o.budget}`);
     const browser = await chromium.launch({ channel: 'chromium', args });
     const page = await (await browser.newContext({ viewport: null })).newPage();
-    page.__url = `http://localhost:${o.port}/notes`;
+    page.__url = `${o.base}/notes`;
     await page.goto('about:blank');
     const [iw, ih, dpr] = await page.evaluate(() => [innerWidth, innerHeight, devicePixelRatio]);
     if (iw === w && ih === h && dpr === o.dpr) {
@@ -325,7 +327,7 @@ async function measure(shot, dpr, ref) {
 
 // Puts the page in a mode with a real click on its own button. With restart, a
 // tour that is already running is stopped and started again from its beginning.
-async function useMode(page, mode, restart = false) {
+async function switchMode(page, mode, restart = false) {
   const reading = async () => /look around/i.test(await page.locator('.gp-ctl button').innerText());
   if (restart && mode === 'explore' && !(await reading())) {
     await page.click('.gp-ctl button');
@@ -455,7 +457,7 @@ async function main() {
 
         if (o.hoverBoard) {
           // Reading mode: the real mouse enters and leaves the board 12 times.
-          await useMode(pg, 'read');
+          await switchMode(pg, 'read');
           const { ref, counts } = await boardRef(pg, w, h, o.dpr);
           const sides = ['left', 'top', 'right', 'bottom'];
           const steps = [3, 25, 2, 15, 4, 40, 2, 10, 3, 30, 4, 20];
@@ -514,7 +516,7 @@ async function main() {
 
         if (o.fast) {
           for (const mode of o.modes.split(',')) {
-            await useMode(pg, mode, true);
+            await switchMode(pg, mode, true);
             const { ref } = mode === 'read' ? await boardRef(pg, w, h, o.dpr) : { ref: null };
             const rnd = rng(o.seed + (mode === 'read' ? 0 : 1));
             const pending = [];
@@ -553,7 +555,7 @@ async function main() {
 
         if (o.tour) {
           // The tour from its start, mouse parked on a bare spot, one shot every 2s.
-          const t0 = await useMode(pg, 'explore', true);
+          const t0 = await switchMode(pg, 'explore', true);
           await pg.mouse.move(w / 2, h - 4, { steps: 4 });
           const vals = [];
           let worst = null, worstV = -1;
@@ -587,7 +589,7 @@ async function main() {
             });
           const stop = () => pg.evaluate(() => { window.__ftOn = false; return window.__ft.slice(1); });
           // (a) Reading mode, a smooth 6s mouse loop (two laps of an ellipse).
-          await useMode(pg, 'read');
+          await switchMode(pg, 'read');
           await pg.mouse.move(w / 2 + 0.42 * w, h / 2, { steps: 10 });
           await pg.waitForTimeout(1000);
           await start();
@@ -601,7 +603,7 @@ async function main() {
           }
           const a = frameStats(await stop());
           // (b) 10s of the tour, mouse parked.
-          await useMode(pg, 'explore', true);
+          await switchMode(pg, 'explore', true);
           await pg.mouse.move(w / 2, h - 4, { steps: 4 });
           await start();
           await pg.waitForTimeout(10000);

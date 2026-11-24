@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Tile memory of the /notes room, from a cc trace of the GPU-composited page.
-// Usage: node scripts/ui-check/room-mem-trace.mjs [--port 3477] [--vp 1440x900] [--mode read|explore]
+// Usage: node scripts/ui-check/room-mem-trace.mjs (--port <n> | --base <url>) [--vp 1440x900] [--mode read|explore]
 //   [--budget 4096] [--motion] [--css "..."] [--top 30] [--screen 3456x2234] [--shot file.png]
 // With a lifted budget the sum of gpu_memory_usage over the active tree's layers
 // is what the room needs; --motion sweeps the mouse (tour running in explore)
@@ -9,13 +9,15 @@
 import { chromium } from 'playwright';
 import { readFile, rm } from 'node:fs/promises';
 
-const o = { vp: '1440x900', mode: 'read', budget: 4096, motion: false, css: '', top: 30, screen: '', shot: '', port: 3477, wait: 0 };
+const o = { vp: '1440x900', mode: 'read', budget: 4096, motion: false, css: '', top: 30, screen: '', shot: '', port: 0, base: '', wait: 0 };
 const a = process.argv.slice(2);
 for (let i = 0; i < a.length; i++) {
   const k = a[i].replace(/^--/, '');
   if (k === 'motion') o.motion = true;
   else o[k] = typeof o[k] === 'number' ? Number(a[++i]) : a[++i];
 }
+if (!o.base && !o.port) throw new Error('Give --port <n> (http://localhost:<n>) or --base <url>');
+const base = (o.base || `http://localhost:${o.port}`).replace(/\/+$/, '');
 const [w, h] = o.vp.split('x').map(Number);
 
 let chromeH = 87, browser, page;
@@ -33,7 +35,7 @@ for (let t = 0; t < 2; t++) {
 }
 const errs = [];
 page.on('console', (m) => (m.type() === 'error' || m.type() === 'warning') && errs.push(m.text()));
-await page.goto(`http://localhost:${o.port}/notes`, { waitUntil: 'load' });
+await page.goto(`${base}/notes`, { waitUntil: 'load' });
 if (o.css) await page.addStyleTag({ content: o.css });
 await page.waitForTimeout(3200);
 await page.evaluate(async (mode) => {

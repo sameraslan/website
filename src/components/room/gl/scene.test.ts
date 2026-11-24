@@ -1,6 +1,9 @@
-// The scene description against the live DOM room (gl/__fixtures__/dom-quads.json,
-// dumped by scripts/ui-check/room-dump-quads.mjs): every DOM box has exactly
-// one quad with the same projected corners at two camera poses, and back.
+// The scene description against the CSS 3D room it replaced. The fixture
+// gl/__fixtures__/dom-quads.json was dumped from that DOM room at commit
+// 60e00cc, before the DOM room was removed: the projected corners of every box
+// at two camera poses, the hover lift and caption start of every picture, and
+// what elementFromPoint hit at each picture centre. Every box has exactly one
+// quad with the same projected corners at both poses, and back.
 
 import { describe, expect, it } from 'vitest';
 import { ALBUMS } from '@/lib/room';
@@ -18,6 +21,14 @@ type FPic = { box: number; centre: Pt; hit: string | { fig: number } | { other: 
 
 const F = fixture as unknown as { albums: (string | null)[]; poses: { A: FPose; B: FPose }; boxes: FBox[]; pictures: FPic[] };
 const TOL = 0.75;
+// Picture heights come from the width and height in the art and album data,
+// while the DOM room used the wall-size image files' pixel sizes; the two
+// aspects differ by a fraction of a pixel at hanging size. Pictures (and the
+// captions hung below them) get 1 px: the framed pieces and the window view.
+const PIC_TOL = 1;
+const isPic = (b: { tag: string; cls: string; ctx: string | null }) =>
+  (b.tag === 'figure' && b.cls.split(' ').includes('rs-pc')) || (b.tag === 'img' && (b.ctx ?? '').split(' ').includes('rw-view'));
+const tolOf = (b: FBox) => (isPic(b) ? PIC_TOL : TOL);
 
 const albums = F.albums.map((id) => (id ? (ALBUMS.find((a) => a.id === id) ?? null) : null));
 const cameraOf = (p: FPose) => makeCamera(rigFromCss(p.rig), p.scale, p.root);
@@ -47,9 +58,9 @@ function match() {
   boxes.forEach((b, bi) => {
     sceneA.quads.forEach((_, qi) => {
       const eA = err(projA[qi], b.A);
-      if (eA > TOL) return;
+      if (eA > tolOf(b)) return;
       const eB = err(projB[qi], b.B);
-      if (eB > TOL) return;
+      if (eB > tolOf(b)) return;
       pairs.push({ b: bi, q: qi, e: Math.max(eA, eB), eA, eB });
     });
   });
@@ -86,7 +97,7 @@ describe('scene geometry against the DOM room', () => {
     for (const [bi, p] of M.byBox) {
       const q = sceneA.quads[p.q];
       expect(Math.abs(q.w - boxes[bi].w), desc(boxes[bi])).toBeLessThan(0.05);
-      expect(Math.abs(q.h - boxes[bi].h), desc(boxes[bi])).toBeLessThan(0.05);
+      expect(Math.abs(q.h - boxes[bi].h), desc(boxes[bi])).toBeLessThan(isPic(boxes[bi]) ? PIC_TOL : 0.05);
     }
   });
 
@@ -96,7 +107,7 @@ describe('scene geometry against the DOM room', () => {
       if (!p.hover) continue;
       const q = quadOfBox(p.box);
       expect(q?.picture, desc(F.boxes[p.box])).toBeTruthy();
-      expect(err(corners(q!, q!.picture!.hoverMatrix, camA), p.hover), desc(F.boxes[p.box])).toBeLessThan(TOL);
+      expect(err(corners(q!, q!.picture!.hoverMatrix, camA), p.hover), desc(F.boxes[p.box])).toBeLessThan(PIC_TOL);
       n++;
     }
     expect(n).toBe(F.pictures.length);
@@ -111,7 +122,7 @@ describe('scene geometry against the DOM room', () => {
       const [x, y, z, w] = apply(q.matrix, [c.x, c.y, 0]);
       const at = camA.project([x / w, y / w, z / w]);
       const want = c.align === 'right' ? p.cap.tr : p.cap.tl;
-      expect(Math.hypot(at[0] - want[0], at[1] - want[1]), desc(F.boxes[p.box])).toBeLessThan(TOL);
+      expect(Math.hypot(at[0] - want[0], at[1] - want[1]), desc(F.boxes[p.box])).toBeLessThan(PIC_TOL);
     }
     // Crate captions: bottom-left corner at the anchor.
     const caps = F.boxes.filter(isCap);
@@ -176,6 +187,15 @@ describe('scene structure', () => {
     expect(tabOrder.length).toBe(1 + pieces + 1);
     expect(tabOrder[0]).toEqual({ kind: 'view' });
     expect(tabOrder.filter((t) => t.kind === 'crate').length).toBe(1);
+  });
+
+  it('opens the crate from the front, top and side face of both crates', () => {
+    for (const crate of ['crate1', 'crate2']) {
+      for (const face of [0, 1, 2]) {
+        const q = sceneA.quads.find((x) => x.key === `${crate}:${face}`);
+        expect(q?.pick, `${crate}:${face}`).toEqual({ kind: 'crate' });
+      }
+    }
   });
 
   it('has unique keys', () => {

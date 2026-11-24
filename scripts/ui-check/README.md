@@ -74,24 +74,32 @@ node scripts/ui-check/shot.mjs / check \
 # -> {"bg":"rgb(253, 250, 244)"}
 ```
 
-## Room GPU checks (/notes)
+## Room checks (/notes)
 
-`room-gpu-sweep.mjs` drives the /notes room in a GPU-composited Chromium at a
-real 2x with a Retina laptop screen (the headless shell renders in software
-and never shows tile-memory faults). Its header comment documents every case
-and metric. The cases `--hover-board`, `--fast`, `--tour`, `--frames` and
-`--loadin` use only real mouse input, the page's own mode button, the board's
-on-screen rect and screenshots, so they measure any implementation of the
-room the same way. `--budget <MB>` sets Chrome's GPU tile budget.
+The /notes room is one WebGL canvas under the DOM letter board. Every room
+script takes the page's origin explicitly: `--port <n>` (for
+`http://localhost:<n>`) or `--base <url>` (any origin, production included;
+`room-gl-compare.mjs` takes `--gl-base` and `--dom-base` instead). Scripts
+wait for `.rs-root[data-room="ready"]` (the canvas's first complete frame)
+where they need the room drawn. GPU runs use Playwright's full Chromium
+(`channel: 'chromium'`, ANGLE Metal); the default headless shell draws WebGL
+in software. Each script's header comment lists every flag.
 
 ```
-node scripts/ui-check/room-gpu-sweep.mjs --port 3611 --no-static --viewports 1920x1080 \
-  --live --hover-board --fast --tour --frames --tag base [--budget 512] [--css "..."]
-# -> one line per case; results.json and failing shots in out/gpu-sweep/base/
-```
+# GPU sweep: static states against a software oracle, then real-mouse cases
+node scripts/ui-check/room-gpu-sweep.mjs --port 3611 [--viewports 1440x900] [--dpr 2] \
+  [--live] [--hover-board] [--fast] [--tour] [--frames] [--loadin] [--no-static] [--tag name]
+# -> one line per state; failing shots in out/gpu-sweep/<tag>/
 
-`room-mem-trace.mjs` reports tile memory per layer group from a cc trace
-(`--vp 1920x1080 --budget 4096 [--motion] [--css "..."] --port 3611`).
+# Tile memory per layer group from a cc trace
+node scripts/ui-check/room-mem-trace.mjs --port 3611 [--vp 1920x1080] [--budget 4096] [--motion]
+
+# Canvas room against the CSS 3D room it replaced, same poses
+node scripts/ui-check/room-gl-compare.mjs --gl-base http://localhost:3611 [--dom-base <url>] [--poses A,B,C]
+
+# One shot with optional interaction, console problems and failed requests
+node scripts/ui-check/room-shot.mjs --port 3611 [--viewport 1440x900] [--touch] [--steps '<json>']
+```
 
 ## Output
 
