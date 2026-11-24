@@ -3,8 +3,11 @@
 // whose clip matrix (camera.clip * world) is computed here in double precision;
 // three.js only manages the GL state, programs and textures.
 //
-// Colour: CSS blends sRGB-encoded values, so colour management is off,
-// textures are NoColorSpace and the output is not converted. Every shader
+// Colour: CSS blends sRGB-encoded values, so every colour stays a raw
+// sRGB-encoded number: uniforms are plain numbers, textures are NoColorSpace,
+// the clear colour is given as already in the working space, and the output
+// is not converted. three.js's global ColorManagement is left alone (other
+// three.js pages share it). Every shader
 // works on premultiplied colour; transparent meshes blend with
 // (ONE, ONE_MINUS_SRC_ALPHA).
 //
@@ -37,7 +40,8 @@ export type RoomRenderer = {
   dispose(): void;
 };
 
-const CLEAR = 0x1c140e;
+// #1c140e as raw 0-1 numbers.
+const CLEAR: [number, number, number] = [0x1c / 255, 0x14 / 255, 0x0e / 255];
 const MAX_PIXEL_RATIO = 2;
 const MAX_BUFFER_PIXELS = 9.5e6;
 const HOVER_S = 0.4;
@@ -78,6 +82,9 @@ const pm = (c: Color): V4 => [(c[0] / 255) * c[3], (c[1] / 255) * c[3], (c[2] / 
 const over = (top: V4, bottom: V4): V4 => [0, 1, 2, 3].map((i) => top[i] + bottom[i] * (1 - top[3])) as V4;
 const v4 = (c: V4) => new THREE.Vector4(c[0], c[1], c[2], c[3]);
 const ZERO: V4 = [0, 0, 0, 0];
+// THREE.Vector4() starts at (0, 0, 0, 1); every vec4 uniform starts at zero
+// instead, so an unset border width or colour draws nothing.
+const zero4 = () => new THREE.Vector4(0, 0, 0, 0);
 
 // --- Shaders.
 
@@ -277,10 +284,9 @@ function lerpMat(a: Mat4, b: Mat4, t: number): Mat4 {
 }
 
 export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRendererOptions = {}): RoomRenderer {
-  THREE.ColorManagement.enabled = false;
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true, premultipliedAlpha: true, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-  renderer.setClearColor(CLEAR, 1);
+  renderer.setClearColor(new THREE.Color().setRGB(CLEAR[0], CLEAR[1], CLEAR[2], THREE.LinearSRGBColorSpace), 1);
   renderer.sortObjects = true;
   const maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 
@@ -387,29 +393,29 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
   function surfaceUniforms(): Record<string, THREE.IUniform> {
     return {
       uMVP: { value: new THREE.Matrix4() },
-      uRect: { value: new THREE.Vector4() },
+      uRect: { value: zero4() },
       uSize: { value: new THREE.Vector2() },
-      uBW: { value: new THREE.Vector4() },
-      uBC: { value: [0, 1, 2, 3].map(() => new THREE.Vector4()) },
+      uBW: { value: zero4() },
+      uBC: { value: [0, 1, 2, 3].map(zero4) },
       uRadius: { value: 0 },
       uFill: { value: 0 },
-      uColor: { value: new THREE.Vector4() },
+      uColor: { value: zero4() },
       uTex: { value: null },
       uHasTex: { value: 0 },
       uTexSize: { value: new THREE.Vector2(1, 1) },
       uTexPos: { value: new THREE.Vector2() },
       uTint: { value: new THREE.Vector3(1, 1, 1) },
-      uOverlay: { value: new THREE.Vector4() },
+      uOverlay: { value: zero4() },
       uGrad: { value: null },
       uHasGrad: { value: 0 },
       uImg: { value: new THREE.Vector4(0, 0, 1, 1) },
       uImgAlpha: { value: 1 },
-      uSleeve: { value: new THREE.Vector4() },
-      uSleeveColor: { value: new THREE.Vector4() },
+      uSleeve: { value: zero4() },
+      uSleeveColor: { value: zero4() },
       uFilter: { value: new THREE.Vector2(1, 1) },
-      uInsetC: { value: new THREE.Vector4() },
+      uInsetC: { value: zero4() },
       uInsetW: { value: 0 },
-      uOutlineC: { value: new THREE.Vector4() },
+      uOutlineC: { value: zero4() },
       uOutline: { value: new THREE.Vector2() },
       uOpaque: { value: 0 },
       uBias: { value: 0 },
@@ -526,7 +532,7 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
     const u: Record<string, THREE.IUniform> = {
       uMVP: { value: new THREE.Matrix4() },
       uRect: { value: new THREE.Vector4(x0, y0, x1, y1) },
-      uR: { value: [0, 1, 2, 3].map((i) => (rects[i] ? new THREE.Vector4(...rects[i]) : new THREE.Vector4())) },
+      uR: { value: [0, 1, 2, 3].map((i) => (rects[i] ? new THREE.Vector4(...rects[i]) : zero4())) },
       uN: { value: Math.min(4, rects.length) },
       uSigma: { value: s },
       uColor: { value: v4(pm(color)) },

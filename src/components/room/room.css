@@ -464,6 +464,17 @@
 
 /* Letter board (second stage layer) */
 .rs-root .gp-stage2 { z-index: 1; pointer-events: none; }
+
+/* The room: one WebGL canvas covering the root (the camera maps the room onto
+   the root box), faded in once it has drawn its first complete frame. */
+.rs-root .rs-stage-room { position: absolute; inset: 0; }
+.rs-root .rs-gl { opacity: 0; transition: opacity 0.4s; }
+.rs-root[data-room='ready'] .rs-gl { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .rs-root .rs-gl { transition: none; }
+}
+.rs-root.gp-f-on .rs-stage-room,
+.rs-root.gp-c-on .rs-stage-room { pointer-events: none; }
 .rs-root .gp-stage2 .gp-obj { pointer-events: auto; }
 .rs-root .gp-obj {
   position: absolute;
@@ -775,6 +786,7 @@
     background-blend-mode: normal, multiply, normal;
   }
   .rs-root .rs-stage,
+  .rs-root .rs-stage-room,
   .rs-root .rs-vignette,
   .rs-root .rs-grain,
   .rs-root .gp-ctl { display: none; }

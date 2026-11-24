@@ -16,11 +16,11 @@ import { jost } from './font';
 import { dailySeed, type Album, type RoomPost } from '@/lib/room';
 import { ArtStrip } from './ArtStrip';
 import { FLAT_MEDIA, SCALE_SCRIPT, escapeStep, pickDailyAlbums, shouldStartTour, stageScale, type RoomMode } from './behaviour';
-import { BACK_TO_POSTS, CRATE_TITLE, HOME_LINK, LOOK_AROUND, ROOM_LABEL } from './copy';
+import { BACK_TO_POSTS, CRATE_TITLE, HOME_LINK, LOOK_AROUND } from './copy';
 import { CrateView } from './CrateView';
 import { FocusView, type FocusPiece } from './FocusView';
 import { LetterBoard } from './LetterBoard';
-import { Beams, RoomScene } from './RoomScene';
+import { RoomGl } from './RoomGl';
 
 export type { RoomMode };
 
@@ -43,7 +43,16 @@ function matches(query: string): boolean {
     return false;
   }
 }
-const prefersReducedMotion = () => matches('(prefers-reduced-motion: reduce)');
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+const prefersReducedMotion = () => matches(REDUCED_MOTION);
+function subscribeReducedMotion(onChange: () => void) {
+  const mq = window.matchMedia(REDUCED_MOTION);
+  mq.addEventListener('change', onChange);
+  return () => mq.removeEventListener('change', onChange);
+}
+const serverFalse = () => false;
+// True once hydrated: the server and the hydration render leave the canvas out.
+const clientTrue = () => true;
 
 // Whether the flat page is showing. CSS already draws the right page on first
 // paint; this follows the same query after mount so the room's motion and
@@ -138,6 +147,14 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   const propAnim = useSyncExternalStore(noSubscribe, hasRegisteredProps, serverRegisteredProps);
   // No covers in the (hidden) room on the flat page, so phones never fetch them.
   const albums = flat ? null : dailyAlbums;
+  const reducedMotion = useSyncExternalStore(subscribeReducedMotion, prefersReducedMotion, serverFalse);
+  // The canvas mounts only in the browser and never on the flat page, so
+  // phones never load the renderer and three.js.
+  const hydrated = useSyncExternalStore(noSubscribe, clientTrue, serverFalse);
+  const showRoom = hydrated && !flat;
+  // The canvas has drawn its first complete frame (data-room="ready").
+  const [roomReady, setRoomReady] = useState(false);
+  const onRoomReady = useCallback(() => setRoomReady(true), []);
 
   // Time of the last pointer move, key press or click, for the idle switch.
   const lastActivity = useRef(0);
@@ -240,10 +257,7 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   }, []);
 
   // A press on the room where there is no picture or crate starts the tour.
-  const onRoomPointerDown = useCallback((e: PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    const t = e.target as Element | null;
-    if (t?.closest('figure, [data-crate]')) return;
+  const onPressRoom = useCallback((e: PointerEvent<HTMLDivElement>) => {
     // Keep focus inside the board from dropping to the page on this press, so
     // the switch below can hand it to the mode button.
     if (boardStageRef.current?.contains(document.activeElement)) e.preventDefault();
@@ -288,6 +302,7 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
       onPointerLeave={flat ? undefined : onPointerLeave}
       // The inline script sets --rs-scale on this element before hydration.
       suppressHydrationWarning
+      data-room={roomReady ? 'ready' : undefined}
     >
       <ScaleScript />
       <Link className="gp-home" href="/" inert={covered ? true : undefined}>
@@ -316,21 +331,10 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
           tab order; it is stacked above the room with z-index. */}
       <div ref={boardStageRef} className="rs-stage gp-stage2" inert={covered || !reading ? true : undefined}>
         <Rig>
-          <Beams />
           <LetterBoard posts={posts} onHoverChange={onBoardHover} onFocusIn={onBoardFocus} onFocusOut={onBoardBlur} />
         </Rig>
       </div>
-      <div
-        className="rs-stage rs-stage-room"
-        role="group"
-        aria-label={ROOM_LABEL}
-        inert={covered ? true : undefined}
-        onPointerDown={onRoomPointerDown}
-      >
-        <Rig>
-          <RoomScene albums={albums} onOpen={open} onOpenCrate={openCrate} />
-        </Rig>
-      </div>
+      {showRoom && <RoomGl stage={boardStageRef} albums={albums} reducedMotion={reducedMotion} inert={covered} onReady={onRoomReady} onPressRoom={onPressRoom} />}
 
       <div className="rs-vignette" aria-hidden="true" />
       <svg className="rs-grain" aria-hidden="true" width="100%" height="100%">

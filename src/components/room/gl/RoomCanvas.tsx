@@ -42,6 +42,9 @@ export type RoomCanvasProps = {
   onReady?: () => void;
   // WebGL could not be created, or the context was lost and not restored within 3 s.
   onUnavailable?: (reason: RoomCanvasUnavailable) => void;
+  // After each drawn frame, with that frame's camera (pointer hover re-picks
+  // here while the camera moves under a resting pointer).
+  onFrame?: (camera: Camera) => void;
   className?: string;
   style?: CSSProperties;
   ref?: Ref<RoomCanvasHandle>;
@@ -50,17 +53,17 @@ export type RoomCanvasProps = {
 const LOST_GRACE_MS = 3000;
 const CANVAS_STYLE: CSSProperties = { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', display: 'block' };
 
-export function RoomCanvas({ stage, albums, hoveredKey, ringKey, reducedMotion, onReady, onUnavailable, className, style, ref }: RoomCanvasProps) {
+export function RoomCanvas({ stage, albums, hoveredKey, ringKey, reducedMotion, onReady, onUnavailable, onFrame, className, style, ref }: RoomCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<RoomRenderer | null>(null);
   const cameraRef = useRef<Camera | null>(null);
   const dirty = useRef(true);
   const scene = useMemo(() => buildScene({ albums }), [albums]);
   const sceneRef = useRef(scene);
-  const callbacks = useRef({ onReady, onUnavailable });
+  const callbacks = useRef({ onReady, onUnavailable, onFrame });
   useEffect(() => {
-    callbacks.current = { onReady, onUnavailable };
-  }, [onReady, onUnavailable]);
+    callbacks.current = { onReady, onUnavailable, onFrame };
+  }, [onReady, onUnavailable, onFrame]);
   const live = useRef({ hoveredKey, ringKey, reducedMotion });
 
   useImperativeHandle(
@@ -128,6 +131,7 @@ export function RoomCanvas({ stage, albums, hoveredKey, ringKey, reducedMotion, 
       const camera = makeCamera(rigFromCss(t), scale, { left: rect.left, top: rect.top, width: rect.width, height: rect.height });
       cameraRef.current = camera;
       dirty.current = r.render(camera, now);
+      callbacks.current.onFrame?.(camera);
     };
     const start = () => {
       cancelAnimationFrame(raf);

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Side-by-side check of the WebGL room against the DOM room.
-// Screenshots /notes (the DOM room) and /room-gl-dev (the canvas) in one
-// browser at the same viewport and camera pose, then reports, outside the
+// Screenshots the DOM room (production /notes by default, which still serves
+// it) and the canvas room (local /notes by default) in one browser at the same
+// viewport and camera pose, then reports, outside the
 // letter board, its chains, the ceiling beams and the corner controls (the DOM
 // room draws board and beams in a layer above everything; the canvas
 // depth-tests the beams), the mean absolute difference per channel and the
@@ -9,7 +10,8 @@
 // overall and per region (back, left, right walls, floor, ceiling). Writes a
 // side-by-side crop of the worst region for each run.
 //
-// Usage: node scripts/ui-check/room-gl-compare.mjs [--base http://localhost:3611]
+// Usage: node scripts/ui-check/room-gl-compare.mjs [--dom-base https://www.sameraslan.com]
+//   [--gl-base http://localhost:3611] [--gl-path /notes]
 //   [--viewports 1280x900,1440x900] [--dpr 1,2] [--poses A,B,C] [--sw]
 //   [--out scripts/ui-check/out/room-gl-compare] [--json] [--full]
 // --sw: Playwright's default headless shell (SwiftShader WebGL) instead of
@@ -27,7 +29,9 @@ const opt = (name, def) => {
   return i >= 0 ? args[i + 1] : def;
 };
 const o = {
-  base: opt('base', 'http://localhost:3611'),
+  domBase: opt('dom-base', 'https://www.sameraslan.com'),
+  glBase: opt('gl-base', 'http://localhost:3611'),
+  glPath: opt('gl-path', '/notes'),
   viewports: opt('viewports', '1280x900,1440x900').split(',').map((s) => s.split('x').map(Number)),
   dprs: opt('dpr', '1,2').split(',').map(Number),
   poses: opt('poses', 'A,B,C').split(','),
@@ -209,7 +213,7 @@ try {
       const [dom, gl] = await Promise.all([ctx.newPage(), ctx.newPage()]);
       for (const p of o.poses) {
         // Fresh pages per pose: a pose then starts from the page's first state.
-        await Promise.all([dom.goto(`${o.base}/notes`, { waitUntil: 'load' }), gl.goto(`${o.base}/room-gl-dev`, { waitUntil: 'load' })]);
+        await Promise.all([dom.goto(`${o.domBase}/notes`, { waitUntil: 'load' }), gl.goto(`${o.glBase}${o.glPath}`, { waitUntil: 'load' })]);
         await dom.waitForFunction(() => [...document.querySelectorAll('.rs-stage-room img')].every((i) => i.complete), null, { timeout: 30000 });
         await gl.waitForSelector('.rs-root[data-room="ready"]', { timeout: 30000 });
         await Promise.all([setState(dom, POSES[p]), setState(gl, POSES[p])]);
