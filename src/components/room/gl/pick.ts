@@ -33,11 +33,17 @@ export function hitTest(quads: Quad[], camera: Camera, x: number, y: number, hov
   let best: Hit | null = null;
   for (const q of quads) {
     if (q.pick === 'none' || q.layer !== 'room') continue;
-    const world = hovered && q.key === hovered && q.picture ? q.picture.hoverMatrix : q.matrix;
-    const h = hitQuad(multiply(camera.clip, world), nx, ny);
-    if (!h || h.d <= 0) continue;
-    if (h.u < 0 || h.v < 0 || h.u > q.w || h.v > q.h) continue;
-    if (!best || h.d < best.depth) best = { quad: q, u: h.u, v: h.v, depth: h.d };
+    // The lifted picture takes the pointer where it hangs and where it has
+    // lifted to. Testing only the lifted place would drop the hover whenever
+    // the lift slides the picture out from under a resting pointer, and the
+    // picture would then fall back under it and lift again, without end.
+    const lifted = hovered && q.key === hovered && q.picture ? q.picture.hoverMatrix : null;
+    for (const world of lifted ? [q.matrix, lifted] : [q.matrix]) {
+      const h = hitQuad(multiply(camera.clip, world), nx, ny);
+      if (!h || h.d <= 0) continue;
+      if (h.u < 0 || h.v < 0 || h.u > q.w || h.v > q.h) continue;
+      if (!best || h.d < best.depth) best = { quad: q, u: h.u, v: h.v, depth: h.d };
+    }
   }
   return best;
 }

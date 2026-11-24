@@ -11,7 +11,7 @@ import { HANGING, PLANE_ORDER } from '../layout';
 import fixture from './__fixtures__/dom-quads.json';
 import { clipToViewport, makeCamera, rigFromCss, rigFromNumbers, type Camera, type Rig } from './camera';
 import { apply, type Mat4, type Vec3 } from './mat4';
-import { pick } from './pick';
+import { hitTest, pick } from './pick';
 import { buildScene, type Quad, type Target } from './scene';
 
 type Pt = [number, number];
@@ -152,6 +152,24 @@ describe('scene geometry against the DOM room', () => {
       n++;
     }
     console.log(`pick records checked: ${n}`);
+  });
+
+  // A lifted picture slides sideways on screen. The hover must hold over the
+  // place it hangs as well as the place it lifted to, or a pointer resting near
+  // an edge would make it drop and lift again without end.
+  it('keeps a lifted picture hovered over the place it hangs', () => {
+    let n = 0;
+    for (const q of sceneA.quads) {
+      if (!q.picture || q.picture.hoverMatrix === q.matrix) continue;
+      // Just inside each corner of the picture where it hangs.
+      for (const [u, v] of [[2, 2], [q.w - 2, 2], [q.w - 2, q.h - 2], [2, q.h - 2]] as const) {
+        const [x, y] = camA.project(apply(q.matrix, [u, v, 0]).slice(0, 3) as Vec3);
+        if (hitTest(sceneA.quads, camA, x, y)?.quad.key !== q.key) continue; // covered there, or off screen
+        expect(hitTest(sceneA.quads, camA, x, y, q.key)?.quad.key, q.key).toBe(q.key);
+        n++;
+      }
+    }
+    expect(n).toBeGreaterThan(40);
   });
 });
 
