@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { loadEntries, loadEntry, type Entry } from './content';
+import { loadEntries, loadEntry, parseEntry, type Entry } from './content';
 
 const FIXTURE_DIR = path.join(process.cwd(), 'src', 'content', '__test__');
 
@@ -69,5 +69,29 @@ describe('content loader', () => {
   it('skips files with no frontmatter rather than crashing', async () => {
     const entries = await loadEntries('__test__');
     expect(entries.find((e) => e.slug === 'bad')).toBeUndefined();
+  });
+});
+
+describe('parseEntry date', () => {
+  const withDate = (line: string) => `---\ntitle: "Dated"\n${line}\n---\n\nBody.\n`;
+
+  it('reads a quoted date string as yyyy-mm-dd', () => {
+    expect(parseEntry(withDate('date: "2026-10-18"'), 'd', 'd').date).toBe('2026-10-18');
+  });
+
+  it('normalises an unquoted YAML date (a JS Date) to yyyy-mm-dd', () => {
+    expect(parseEntry(withDate('date: 2026-03-07'), 'd', 'd').date).toBe('2026-03-07');
+  });
+
+  it('ignores a missing or invalid date', () => {
+    expect(parseEntry(withDate('year: 2026'), 'd', 'd').date).toBeUndefined();
+    expect(parseEntry(withDate('date: "October 18"'), 'd', 'd').date).toBeUndefined();
+    expect(parseEntry(withDate('date: "2026-02-30"'), 'd', 'd').date).toBeUndefined();
+  });
+
+  it('cannot catch an unquoted impossible date: YAML rolls it over to a real one', () => {
+    // The YAML parser turns 2026-02-30 into 2 March before parseEntry sees it.
+    // Writing the date quoted ("2026-02-30") avoids this: it is then dropped.
+    expect(parseEntry(withDate('date: 2026-02-30'), 'd', 'd').date).toBe('2026-03-02');
   });
 });

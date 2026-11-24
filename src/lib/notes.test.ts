@@ -57,10 +57,13 @@ describe('unlisted notes', () => {
     }
   });
 
-  it('keeps notes out of src/content and has no /notes index page', async () => {
+  it('keeps notes out of src/content and serves the /notes index with noindex, nofollow', async () => {
     expect(NOTES_DIR.startsWith(path.join(SRC, 'content'))).toBe(false);
+    const indexPage = path.join(SRC, 'app', 'notes', 'page.tsx');
+    expect(existsSync(indexPage)).toBe(true);
+    const mod = await import(/* @vite-ignore */ pathToFileURL(indexPage).href);
+    expect(mod.metadata.robots).toEqual({ index: false, follow: false });
     expect(existsSync(path.join(SRC, 'app', '(pages)', 'notes', 'page.tsx'))).toBe(false);
-    expect(existsSync(path.join(SRC, 'app', 'notes', 'page.tsx'))).toBe(false);
   });
 
   it('is absent from the nav and footer links', () => {
@@ -98,6 +101,13 @@ describe('unlisted notes', () => {
       const out = await fs.readFile(file, 'utf-8');
       for (const slug of slugs) expect(out, file).not.toContain(slug);
     }
+  });
+
+  it('leaves the /notes index out of the sitemap', async () => {
+    const sitemap = path.join(SRC, 'app', 'sitemap.ts');
+    expect(existsSync(sitemap)).toBe(true);
+    const urls = (JSON.parse(await routeOutput(sitemap)) as { url: string }[]).map((e) => new URL(e.url).pathname);
+    for (const p of urls) expect(p === '/notes' || p.startsWith('/notes/'), p).toBe(false);
   });
 
   it('is not linked from any other source or public file', async () => {

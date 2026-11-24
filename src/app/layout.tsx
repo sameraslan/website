@@ -2,6 +2,7 @@ import './globals.css';
 import { newsreader, cormorant, ibmPlexMono } from '@/lib/fonts';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SiteFooter } from '@/components/layout/SiteFooter';
+import { ChromeGate } from '@/components/layout/ChromeGate';
 import { siteConfig } from '@/lib/site-config';
 
 export const metadata = {
@@ -29,7 +30,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-paper text-ink antialiased min-h-screen flex flex-col">
         <SiteHeader />
         <main className="flex-1">{children}</main>
-        <SiteFooter />
+        <ChromeGate>
+          <SiteFooter />
+        </ChromeGate>
       </body>
     </html>
   );
