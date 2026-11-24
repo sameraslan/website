@@ -11,7 +11,7 @@
 //
 // Usage: node scripts/ui-check/room-gl-compare.mjs [--base http://localhost:3611]
 //   [--viewports 1280x900,1440x900] [--dpr 1,2] [--poses A,B,C] [--sw]
-//   [--out scripts/ui-check/out/room-gl-compare] [--json]
+//   [--out scripts/ui-check/out/room-gl-compare] [--json] [--full]
 // --sw: Playwright's default headless shell (SwiftShader WebGL) instead of
 // the GPU build of Chromium.
 import { chromium } from 'playwright';
@@ -34,6 +34,8 @@ const o = {
   out: opt('out', path.join(__dirname, 'out', 'room-gl-compare')),
   sw: args.includes('--sw'),
   json: args.includes('--json'),
+  // Also write the full DOM shot, canvas shot and their difference (x4).
+  full: args.includes('--full'),
 };
 
 const POSES = {
@@ -126,9 +128,12 @@ async function compare(dom, gl, w, h, dpr) {
   for (const [name, re] of Object.entries(REGIONS)) regions[name] = await polygons(gl, re.source);
   const B = 8;
   const stats = {};
-  const bump = (name, d, blockD, n) => {
-    const s = (stats[name] ??= { sum: [0, 0, 0], px: 0, blocks: 0, b12: 0, b32: 0, box: [Infinity, Infinity, -Infinity, -Infinity], err: 0 });
-    for (let c = 0; c < 3; c++) s.sum[c] += d[c];
+  const bump = (name, d, blockD, n, sd) => {
+    const s = (stats[name] ??= { sum: [0, 0, 0], signed: [0, 0, 0], px: 0, blocks: 0, b12: 0, b32: 0, box: [Infinity, Infinity, -Infinity, -Infinity], err: 0 });
+    for (let c = 0; c < 3; c++) {
+      s.sum[c] += d[c];
+      s.signed[c] += sd[c];
+    }
     s.px += n;
     s.blocks++;
     if (blockD > 12) s.b12++;
@@ -157,7 +162,7 @@ async function compare(dom, gl, w, h, dpr) {
       const blockD = Math.max(...[0, 1, 2].map((c) => Math.abs(ma[c] - mb[c]) / n));
       const region = Object.keys(regions).find((r) => regions[r].some((p) => inPoly(cx, cy, p))) ?? 'other';
       for (const name of ['all', region]) {
-        bump(name, d, blockD, n);
+        bump(name, d, blockD, n, [0, 1, 2].map((c) => mb[c] - ma[c]));
         const s = stats[name];
         s.err += d[0] + d[1] + d[2];
         s.box = [Math.min(s.box[0], bx), Math.min(s.box[1], by), Math.max(s.box[2], bx + B), Math.max(s.box[3], by + B)];
@@ -168,6 +173,8 @@ async function compare(dom, gl, w, h, dpr) {
   for (const [name, s] of Object.entries(stats)) {
     table[name] = {
       mad: s.sum.map((x) => +(x / s.px).toFixed(2)),
+      // Mean of canvas minus DOM: a lighting or colour offset shows here.
+      bias: s.signed.map((x) => +(x / s.px).toFixed(2)),
       b12: +((100 * s.b12) / s.blocks).toFixed(1),
       b32: +((100 * s.b32) / s.blocks).toFixed(1),
       blocks: s.blocks,
@@ -210,13 +217,19 @@ try {
         const name = `${w}x${h}@${dpr}-${p}`;
         const r = await compare(dom, gl, w, h, dpr);
         if (r.box) await crop(r.a, r.b, r.box, path.join(o.out, `${name}-${r.worst}.png`));
+        if (o.full) {
+          const d = Buffer.alloc(r.a.data.length);
+          for (let i = 0; i < d.length; i++) d[i] = Math.min(255, 4 * Math.abs(r.a.data[i] - r.b.data[i]));
+          const save = (data, suffix) => sharp(data, { raw: { width: r.a.w, height: r.a.h, channels: 3 } }).png().toFile(path.join(o.out, `${name}-${suffix}.png`));
+          await Promise.all([save(r.a.data, 'dom'), save(r.b.data, 'gl'), save(d, 'diff')]);
+        }
         results.push({ name, worst: r.worst, table: r.table });
         const all = r.table.all;
         console.log(
           `${name.padEnd(16)} mad ${all.mad.join('/')}  >12 ${all.b12}%  >32 ${all.b32}%  worst ${r.worst}  ` +
             Object.entries(r.table)
               .filter(([n]) => n !== 'all')
-              .map(([n, t]) => `${n} ${t.mad.join('/')} ${t.b12}%/${t.b32}%`)
+              .map(([n, t]) => `${n} ${t.mad.join('/')} (${t.bias.join('/')}) ${t.b12}%/${t.b32}%`)
               .join('  ')
         );
       }

@@ -15,7 +15,7 @@
 import * as THREE from 'three';
 import type { Camera } from './camera';
 import { multiply, translate, type Mat4 } from './mat4';
-import { gradientScale, paintGradients } from './gradient-canvas';
+import { gradientScale, isHardEdged, paintGradients } from './gradient-canvas';
 import type { Color, Gradient, Paint, Shadow } from './paint';
 import type { Quad, Scene } from './scene';
 
@@ -44,6 +44,10 @@ const HOVER_S = 0.4;
 // Shadows and glows sit this far (CSS px) behind their own box, in its plane:
 // behind the box, in front of the surface the box hangs on (1 px or more away).
 const SHADOW_Z = -0.5;
+// Mipmap level bias: Chrome draws a 3D layer from a raster made at about the
+// screen scale, which stays sharper than a trilinear mipmap at grazing angles.
+const TILED_LOD_BIAS = 0;
+const IMAGE_LOD_BIAS = -1;
 const RING = { width: 3, offset: 4, color: [214, 166, 80, 1] as Color };
 
 // --- Easing (CSS cubic-bezier).
@@ -117,6 +121,7 @@ uniform float uInsetW;
 uniform vec4 uOutlineC;
 uniform vec2 uOutline;
 uniform float uOpaque;
+uniform float uBias;
 
 // Antialiased coverage of the rectangle r = (x0, y0, x1, y1).
 float cov(vec2 p, vec4 r) {
@@ -136,7 +141,7 @@ vec3 filt(vec3 c) {
   return clamp(o, 0.0, 1.0);
 }
 vec4 sampleImage(vec2 uv) {
-  vec4 t = texture2D(uTex, uv);
+  vec4 t = texture2D(uTex, uv, uBias);
   vec3 c = t.a > 0.0 ? t.rgb / t.a : vec3(0.0);
   return vec4(filt(c) * t.a, t.a);
 }
@@ -151,7 +156,7 @@ void main() {
     col = uColor;
   } else if (uFill == 2) {
     vec4 base = uColor;
-    if (uHasTex > 0.5) base = vec4(texture2D(uTex, (pp - uTexPos) / uTexSize).rgb * uTint, 1.0);
+    if (uHasTex > 0.5) base = vec4(texture2D(uTex, (pp - uTexPos) / uTexSize, uBias).rgb * uTint, 1.0);
     base = over(uOverlay, base);
     if (uHasGrad > 0.5) base = over(texture2D(uGrad, pp / ps), base);
     col = base;
@@ -353,8 +358,11 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
       t.colorSpace = THREE.NoColorSpace;
       t.flipY = false;
       t.premultiplyAlpha = true;
-      t.generateMipmaps = true;
-      t.minFilter = THREE.LinearMipmapLinearFilter;
+      // Hard-edged layers (stripes, straps) keep their colours at grazing
+      // angles as the DOM room does: no mipmaps, so they are not averaged away.
+      const hard = isHardEdged(layers);
+      t.generateMipmaps = !hard;
+      t.minFilter = hard ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
       t.magFilter = THREE.LinearFilter;
       t.anisotropy = maxAniso;
       t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
@@ -404,6 +412,7 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
       uOutlineC: { value: new THREE.Vector4() },
       uOutline: { value: new THREE.Vector2() },
       uOpaque: { value: 0 },
+      uBias: { value: 0 },
     };
   }
 
@@ -460,12 +469,14 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
       u.uOverlay.value.copy(v4(f.overlays.reduceRight<V4>((acc, c) => over(pm(c), acc), ZERO)));
       src = f.texture;
       loadTexture(src, 'tiled');
+      u.uBias.value = TILED_LOD_BIAS;
       opaque = !paint.radius;
     } else if (f.kind === 'gradient') {
       opaque = !paint.radius && f.layers.some((g) => g.stops.every((s) => s.color[3] >= 1));
     } else if (f.kind === 'image') {
       src = f.src;
       loadTexture(src, 'image');
+      u.uBias.value = IMAGE_LOD_BIAS;
       if (f.filter) u.uFilter.value.set(f.filter.brightness, f.filter.saturate);
     } else if (f.kind === 'picture') {
       if (f.mat) u.uColor.value.copy(v4(pm(f.mat)));
@@ -480,6 +491,7 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
       if (f.filter) u.uFilter.value.set(f.filter.brightness, f.filter.saturate);
       src = f.source.src;
       if (src) loadTexture(src, 'image');
+      u.uBias.value = IMAGE_LOD_BIAS;
       opaque = true;
     }
     const layers = gradientsOf(paint);
