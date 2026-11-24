@@ -119,10 +119,14 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   const mode: RoomMode = flat ? 'read' : roomMode;
   const [focused, setFocused] = useState<FocusPiece | null>(null);
   const [crateOpen, setCrateOpen] = useState(false);
-  // Pointer over the board: pauses the tour and brings the board forward.
+  // Pointer over the board in reading mode: brings the board forward and holds
+  // off the idle switch to the tour.
   const [overBoard, setOverBoard] = useState(false);
-  // Keyboard focus inside the board: also pauses the tour.
+  // Keyboard focus inside the board: also holds off the idle switch.
   const boardFocused = useRef(false);
+  // The board layer, inert while looking around the room, and the mode button.
+  const boardStageRef = useRef<HTMLDivElement>(null);
+  const modeButtonRef = useRef<HTMLButtonElement>(null);
   // On a switch between the room and the flat page, pointerleave may never
   // fire, so the hover flag is cleared here (the focus flag in the idle effect).
   const [prevFlat, setPrevFlat] = useState(flat);
@@ -240,6 +244,9 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
     if (e.button !== 0) return;
     const t = e.target as Element | null;
     if (t?.closest('figure, [data-crate]')) return;
+    // Keep focus inside the board from dropping to the page on this press, so
+    // the switch below can hand it to the mode button.
+    if (boardStageRef.current?.contains(document.activeElement)) e.preventDefault();
     setMode('explore');
   }, []);
 
@@ -247,10 +254,9 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
     lastActivity.current = Date.now();
     setOverBoard(over);
   }, []);
-  // Keyboard focus moving into the board returns to reading mode and holds it.
+  // The board is inert outside reading mode, so focus only enters it while reading.
   const onBoardFocus = useCallback(() => {
     boardFocused.current = true;
-    setMode('read');
   }, []);
   const onBoardBlur = useCallback(() => {
     boardFocused.current = false;
@@ -266,10 +272,18 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   const reading = mode === 'read';
   useScrollLock(flat && covered);
 
+  // Looking around the room takes the board away and makes it inert. Focus
+  // inside the board at that moment moves to the mode button ("Back to the
+  // posts"), before the browser drops it from the now inert board.
+  useLayoutEffect(() => {
+    if (mode !== 'explore') return;
+    if (boardStageRef.current?.contains(document.activeElement)) modeButtonRef.current?.focus({ preventScroll: true });
+  }, [mode]);
+
   return (
     <div
       ref={rootRef}
-      className={`rs-root gn-${mode} gp-f-${focused ? 'on' : 'off'}${crateOpen ? ' gp-c-on' : ''}${overBoard ? ' gp-hold' : ''}${propAnim ? ' rs-pa' : ''} ${jost.variable}`}
+      className={`rs-root gn-${mode} gp-f-${focused ? 'on' : 'off'}${crateOpen ? ' gp-c-on' : ''}${overBoard ? ' gp-over' : ''}${propAnim ? ' rs-pa' : ''} ${jost.variable}`}
       onPointerMove={flat ? undefined : onPointerMove}
       onPointerLeave={flat ? undefined : onPointerLeave}
       // The inline script sets --rs-scale on this element before hydration.
@@ -300,7 +314,7 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
       </div>
       {/* The board layer comes first in the DOM so the title and posts lead the
           tab order; it is stacked above the room with z-index. */}
-      <div className="rs-stage gp-stage2" inert={covered ? true : undefined}>
+      <div ref={boardStageRef} className="rs-stage gp-stage2" inert={covered || !reading ? true : undefined}>
         <Rig>
           <Beams />
           <LetterBoard posts={posts} onHoverChange={onBoardHover} onFocusIn={onBoardFocus} onFocusOut={onBoardBlur} />
@@ -327,7 +341,7 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
       </svg>
 
       <div className="gp-ctl" inert={covered ? true : undefined}>
-        <button type="button" className={`gp-btn ${reading ? 'gp-look' : 'gp-back'}`} onClick={() => setMode(reading ? 'explore' : 'read')}>
+        <button ref={modeButtonRef} type="button" className={`gp-btn ${reading ? 'gp-look' : 'gp-back'}`} onClick={() => setMode(reading ? 'explore' : 'read')}>
           {reading ? LOOK_AROUND : BACK_TO_POSTS}
         </button>
       </div>

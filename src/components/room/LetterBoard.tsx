@@ -7,8 +7,8 @@ import { BYLINE, NEWER_POSTS, OLDER_POSTS, PAGER_LABEL, POSTS_NAV_LABEL, TAGLINE
 
 // The felt letter board: blog name, tagline, one page of posts, byline and pager.
 // Plain text throughout, so it paints before any artwork and stays selectable.
-// onHoverChange reports the pointer entering and leaving the board (it pauses
-// the room tour); onFocusIn fires when keyboard focus moves into the board and
+// onHoverChange reports the pointer entering and leaving the board (in reading
+// mode it brings the board forward and holds off the room tour); onFocusIn fires when keyboard focus moves into the board and
 // onFocusOut when it leaves the board altogether.
 export function LetterBoard({
   posts,

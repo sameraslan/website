@@ -77,6 +77,7 @@
 @media (prefers-reduced-motion: no-preference) {
   .rs-root.gn-explore .rs-sway { animation: gn-tour 44s ease-in-out 2; }
 }
+/* gp-hold: the tour is paused. */
 .rs-root.gp-hold .rs-sway,
 .rs-root.gp-f-on .rs-sway,
 .rs-root.gp-c-on .rs-sway { animation-play-state: paused; }
@@ -486,17 +487,29 @@
   background-size: auto, 300px;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4), 0 22px 34px -12px rgba(0, 0, 0, 0.8);
 }
+/* Looking around the room, the board and its chains step back and fade out,
+   then turn hidden; back in reading mode they are visible at once and fade in. */
 .rs-root .gp-board,
-.rs-root .gp-bd-chain { transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.rs-root .gp-bd-chain {
+  transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.45s ease, visibility 0s linear 0s;
+}
 .rs-root .gp-bd-chain { transform: translateZ(-196px); }
 .rs-root.gn-explore .gp-board,
-.rs-root.gn-explore .gp-bd-chain { transform: translateZ(-480px); }
-.rs-root .gp-board:hover,
-.rs-root.gp-hold .gp-board,
-.rs-root.gp-hold .gp-bd-chain { transform: translateZ(-166px); }
+.rs-root.gn-explore .gp-bd-chain {
+  transform: translateZ(-480px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.45s ease, visibility 0s linear 0.45s;
+}
+.rs-root.gn-read .gp-board:hover,
+.rs-root.gn-read.gp-over .gp-board,
+.rs-root.gn-read.gp-over .gp-bd-chain { transform: translateZ(-166px); }
 @media (prefers-reduced-motion: reduce) {
   .rs-root .gp-board,
   .rs-root .gp-bd-chain,
+  .rs-root.gn-explore .gp-board,
+  .rs-root.gn-explore .gp-bd-chain,
   .rs-root .gp-obj,
   .rs-root .rs-pc { transition: none; }
 }
