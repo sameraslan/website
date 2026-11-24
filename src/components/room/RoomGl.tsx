@@ -89,6 +89,7 @@ export function RoomGl({
   reducedMotion,
   inert,
   onReady,
+  onUnavailable,
   onPressRoom,
   onOpen,
   onOpenCrate,
@@ -101,6 +102,8 @@ export function RoomGl({
   inert: boolean;
   // The canvas has drawn its first complete frame.
   onReady: () => void;
+  // WebGL could not be created, or its context was lost for good.
+  onUnavailable: () => void;
   // A primary-button press on the room that hits no target.
   onPressRoom: (e: PointerEvent<HTMLDivElement>) => void;
   onOpen: (piece: FocusPiece) => void;
@@ -111,9 +114,6 @@ export function RoomGl({
   const handle = useRef<RoomCanvasHandle>(null);
   const scene = useMemo(() => buildScene({ albums }), [albums]);
   const groupRef = useRef<HTMLDivElement>(null);
-  // WebGL could not be created, or its context was lost for good: the canvas
-  // is hidden.
-  const [glUnavailable, setGlUnavailable] = useState(false);
 
   // Scripts and checks read the canvas's camera and scene through this.
   useEffect(() => {
@@ -336,20 +336,18 @@ export function RoomGl({
         onPointerDown={onPointerDown}
         onClick={onClick}
       >
-        {!glUnavailable && (
-          <RoomCanvas
-            ref={handle}
-            className="rs-gl"
-            stage={stage}
-            scene={scene}
-            hoveredKey={hot && hot.target.kind !== 'crate' ? hot.key : null}
-            ringKey={focusHot ? (quadOf.get(targetId(focusHot.target))?.key ?? null) : null}
-            reducedMotion={reducedMotion}
-            onReady={onReady}
-            onUnavailable={() => setGlUnavailable(true)}
-            onFrame={onFrame}
-          />
-        )}
+        <RoomCanvas
+          ref={handle}
+          className="rs-gl"
+          stage={stage}
+          scene={scene}
+          hoveredKey={hot && hot.target.kind !== 'crate' ? hot.key : null}
+          ringKey={focusHot ? (quadOf.get(targetId(focusHot.target))?.key ?? null) : null}
+          reducedMotion={reducedMotion}
+          onReady={onReady}
+          onUnavailable={onUnavailable}
+          onFrame={onFrame}
+        />
         <ul className="rs-proxies">
           {proxies.map((p) => (
             <li key={p.id}>

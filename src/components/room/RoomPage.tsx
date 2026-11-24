@@ -6,6 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import { jost } from './font';
 import { dailySeed, type Album, type RoomPost } from '@/lib/room';
 import { ArtStrip } from './ArtStrip';
+import { forceFlatPage } from './flat-fallback';
 import { FLAT_MEDIA, SCALE_SCRIPT, escapeStep, pickDailyAlbums, shouldStartTour, stageScale, type RoomMode } from './behaviour';
 import { BACK_TO_POSTS, CRATE_TITLE, HOME_LINK, LOOK_AROUND } from './copy';
 import { CrateView } from './CrateView';
@@ -102,7 +103,15 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
   const [roomMode, setMode] = useState<RoomMode>('read');
-  const flat = useSyncExternalStore(subscribeFlat, isFlat, serverFlat);
+  const flatQuery = useSyncExternalStore(subscribeFlat, isFlat, serverFlat);
+  // WebGL is not there (no context, or lost for good): the page stays the flat
+  // page from then on, as on a phone.
+  const [noGl, setNoGl] = useState(false);
+  const flat = flatQuery || noGl;
+  const onGlUnavailable = useCallback(() => {
+    forceFlatPage();
+    setNoGl(true);
+  }, []);
   // The flat page has no tour: it always reads.
   const mode: RoomMode = flat ? 'read' : roomMode;
   const [focused, setFocused] = useState<FocusPiece | null>(null);
@@ -322,6 +331,7 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
           reducedMotion={reducedMotion}
           inert={covered}
           onReady={onRoomReady}
+          onUnavailable={onGlUnavailable}
           onPressRoom={onPressRoom}
           onOpen={open}
           onOpenCrate={openCrate}

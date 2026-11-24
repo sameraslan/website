@@ -51,6 +51,20 @@ export type RoomCanvasProps = {
 };
 
 const LOST_GRACE_MS = 3000;
+
+// Whether the browser can create a WebGL 2 context, tried on a throwaway
+// canvas, so a browser without one never loads three.js (whose own failure
+// would also log an error).
+function canCreateWebGl2(): boolean {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    if (!gl) return false;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+}
 const CANVAS_STYLE: CSSProperties = { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', display: 'block' };
 
 export function RoomCanvas({ stage, scene, hoveredKey, ringKey, reducedMotion, onReady, onUnavailable, onFrame, className, style, ref }: RoomCanvasProps) {
@@ -143,6 +157,11 @@ export function RoomCanvas({ stage, scene, hoveredKey, ringKey, reducedMotion, o
         start();
       }
     };
+
+    if (!canCreateWebGl2()) {
+      callbacks.current.onUnavailable?.('no-webgl');
+      return;
+    }
 
     import('./renderer').then(({ createRoomRenderer }) => {
       if (cancelled) return;
