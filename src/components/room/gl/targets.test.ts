@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { makeCamera, rigFromNumbers } from './camera';
 import { translate } from './mat4';
 import { buildScene } from './scene';
-import { captionTransform, crateIndex, projectedBox, targetQuads } from './targets';
+import { captionTransform, clampBox, crateIndex, projectedBox, targetQuads } from './targets';
 
 describe('targetQuads', () => {
   const scene = buildScene({});
@@ -50,5 +50,15 @@ describe('projectedBox', () => {
     expect(box.top).toBeCloseTo(y0, 6);
     expect(box.width).toBeCloseTo(x1 - x0, 6);
     expect(box.height).toBeCloseTo(y1 - y0, 6);
+  });
+});
+
+describe('clampBox', () => {
+  it('cuts a box to the area', () => {
+    expect(clampBox({ left: -20, top: 100, width: 120, height: 900 }, 1440, 900)).toEqual({ left: 0, top: 100, width: 100, height: 800 });
+  });
+  it('puts a box wholly outside at the nearest edge, 1 x 1', () => {
+    expect(clampBox({ left: 1600, top: -300, width: 100, height: 100 }, 1440, 900)).toEqual({ left: 1439, top: 0, width: 1, height: 1 });
+    expect(clampBox({ left: -300, top: 400, width: 100, height: 100 }, 1440, 900)).toEqual({ left: 0, top: 400, width: 1, height: 1 });
   });
 });

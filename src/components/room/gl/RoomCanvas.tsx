@@ -6,7 +6,8 @@
 // and draws a frame only when one of them changed, the scene, hover or ring
 // changed, or the renderer asked for one (a texture arrived, an animation is
 // running). Nothing runs while the document is hidden. three.js and the
-// renderer load in their own chunk through a dynamic import().
+// renderer load in their own chunk through a dynamic import(); if that chunk
+// fails to load, the canvas reports itself unavailable.
 // The canvas must cover the .rs-root box exactly (the camera maps the room
 // onto that box).
 
@@ -37,10 +38,14 @@ export type RoomCanvasProps = {
   hoveredKey: string | null;
   ringKey: string | null;
   reducedMotion: boolean;
+  // The first frame with the walls, floor and wood textures in has been
+  // drawn (pictures may still be loading). Fires once.
+  onShown?: () => void;
   // Every texture and picture is in and a full frame has been drawn (again
   // after each new album list).
   onReady?: () => void;
-  // WebGL could not be created, or the context was lost and not restored within 3 s.
+  // WebGL could not be created (or its code did not load), or the context was
+  // lost and not restored within 3 s of the page being visible.
   onUnavailable?: (reason: RoomCanvasUnavailable) => void;
   // After each drawn frame, with that frame's camera (pointer hover re-picks
   // here while the camera moves under a resting pointer).
@@ -67,16 +72,16 @@ function canCreateWebGl2(): boolean {
 }
 const CANVAS_STYLE: CSSProperties = { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', display: 'block' };
 
-export function RoomCanvas({ stage, scene, hoveredKey, ringKey, reducedMotion, onReady, onUnavailable, onFrame, className, style, ref }: RoomCanvasProps) {
+export function RoomCanvas({ stage, scene, hoveredKey, ringKey, reducedMotion, onShown, onReady, onUnavailable, onFrame, className, style, ref }: RoomCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<RoomRenderer | null>(null);
   const cameraRef = useRef<Camera | null>(null);
   const dirty = useRef(true);
   const sceneRef = useRef(scene);
-  const callbacks = useRef({ onReady, onUnavailable, onFrame });
+  const callbacks = useRef({ onShown, onReady, onUnavailable, onFrame });
   useEffect(() => {
-    callbacks.current = { onReady, onUnavailable, onFrame };
-  }, [onReady, onUnavailable, onFrame]);
+    callbacks.current = { onShown, onReady, onUnavailable, onFrame };
+  }, [onShown, onReady, onUnavailable, onFrame]);
   const live = useRef({ hoveredKey, ringKey, reducedMotion });
 
   useImperativeHandle(
@@ -113,6 +118,7 @@ export function RoomCanvas({ stage, scene, hoveredKey, ringKey, reducedMotion, o
     let cancelled = false;
     let raf = 0;
     let lostTimer = 0;
+    let lost = false;
     let lastKey = '';
     let lastSize = '';
     const offs: (() => void)[] = [];
@@ -150,7 +156,14 @@ export function RoomCanvas({ stage, scene, hoveredKey, ringKey, reducedMotion, o
       cancelAnimationFrame(raf);
       if (!document.hidden) raf = requestAnimationFrame(frame);
     };
+    // While the context is lost, the grace period runs only while the page is
+    // visible (a hidden tab may lose its context and get it back on return).
+    const armLostTimer = () => {
+      window.clearTimeout(lostTimer);
+      if (lost && !document.hidden) lostTimer = window.setTimeout(() => callbacks.current.onUnavailable?.('context-lost'), LOST_GRACE_MS);
+    };
     const onVisibility = () => {
+      armLostTimer();
       if (document.hidden) cancelAnimationFrame(raf);
       else {
         dirty.current = true;
@@ -177,13 +190,15 @@ export function RoomCanvas({ stage, scene, hoveredKey, ringKey, reducedMotion, o
         r.onInvalidate(() => {
           dirty.current = true;
         }),
+        r.onShown(() => callbacks.current.onShown?.()),
         r.onReady(() => callbacks.current.onReady?.()),
         r.onContextLost(() => {
-          window.clearTimeout(lostTimer);
-          lostTimer = window.setTimeout(() => callbacks.current.onUnavailable?.('context-lost'), LOST_GRACE_MS);
+          lost = true;
+          armLostTimer();
         }),
         r.onContextRestored(() => {
-          window.clearTimeout(lostTimer);
+          lost = false;
+          armLostTimer();
           dirty.current = true;
         })
       );
@@ -192,6 +207,8 @@ export function RoomCanvas({ stage, scene, hoveredKey, ringKey, reducedMotion, o
       r.setRing(live.current.ringKey);
       document.addEventListener('visibilitychange', onVisibility);
       start();
+    }, () => {
+      if (!cancelled) callbacks.current.onUnavailable?.('no-webgl');
     });
 
     return () => {

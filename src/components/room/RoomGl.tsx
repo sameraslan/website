@@ -5,9 +5,13 @@
 // (picked in JS against the scene), the DOM captions in their own stage layer,
 // clicks that open a picture or the crate, and one visually hidden button per
 // target (ul.rs-proxies) for the keyboard and screen readers. The canvas follows the camera
-// rig of the board stage, so board, captions and room share one camera.
+// rig of the board stage. The caption stage and its rig are rendered by the
+// page from the server render on, next to the board stage, so both rigs start
+// their load-in animation together; the captions go into it through a portal.
+// Board, captions and room share one camera.
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type Ref, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import type { Album } from '@/lib/room';
 import { ROOM_LABEL } from './copy';
 import type { FocusPiece } from './FocusView';
@@ -16,15 +20,17 @@ import type { Mat4 } from './gl/mat4';
 import { hitTest } from './gl/pick';
 import { RoomCanvas, type RoomCanvasHandle } from './gl/RoomCanvas';
 import { buildScene, type Caption, type Scene, type Target } from './gl/scene';
-import { captionTransform, crateIndex, projectedBox, targetQuads } from './gl/targets';
+import { captionTransform, clampBox, crateIndex, projectedBox, targetQuads } from './gl/targets';
 
 // One camera rig: dolly > sway > cam > room. Every stage layer uses the same one.
-export function Rig({ children }: { children?: ReactNode }) {
+export function Rig({ children, roomRef }: { children?: ReactNode; roomRef?: Ref<HTMLDivElement> }) {
   return (
     <div className="rs-dolly">
       <div className="rs-sway">
         <div className="rs-cam">
-          <div className="rs-room">{children}</div>
+          <div className="rs-room" ref={roomRef}>
+            {children}
+          </div>
         </div>
       </div>
     </div>
@@ -85,9 +91,11 @@ type CapState = {
 
 export function RoomGl({
   stage,
+  captionRoom,
   albums,
   reducedMotion,
   inert,
+  onShown,
   onReady,
   onUnavailable,
   onPressRoom,
@@ -97,10 +105,14 @@ export function RoomGl({
 }: {
   // The board stage, whose rig the canvas follows.
   stage: RefObject<HTMLElement | null>;
+  // The .rs-room of the caption stage's rig, where the captions go.
+  captionRoom: HTMLElement | null;
   albums: Album[] | null;
   reducedMotion: boolean;
   inert: boolean;
-  // The canvas has drawn its first complete frame.
+  // The canvas has drawn its first frame with the walls, floor and wood in.
+  onShown: () => void;
+  // The canvas has drawn a frame with every texture and picture in.
   onReady: () => void;
   // WebGL could not be created, or its context was lost for good.
   onUnavailable: () => void;
@@ -238,7 +250,9 @@ export function RoomGl({
 
   // --- Keyboard proxies: one button per target in the tab order (an album
   // slot without an album has none). A focused proxy takes its target's
-  // screen box, so magnifiers and focus-following tools land on it.
+  // screen box, so magnifiers and focus-following tools land on it, cut to
+  // the root's box: a focused element that runs past the window edge would
+  // make the browser scroll the root.
   const quadOf = useMemo(() => targetQuads(scene), [scene]);
   const proxies = useMemo(
     () =>
@@ -267,7 +281,7 @@ export function RoomGl({
     const q = f && h?.scene().quads.find((x) => x.key === f.quad);
     if (!f || !cam || !q) return;
     const m = h?.quadMatrix(q.key) ?? q.matrix;
-    const b = projectedBox(cam, m, q.w, q.h);
+    const b = clampBox(projectedBox(cam, m, q.w, q.h), cam.root.width, cam.root.height);
     Object.assign(f.el.style, { left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px` });
   }, []);
   const onProxyFocus = (el: HTMLButtonElement, target: Target, quad: string) => {
@@ -344,6 +358,7 @@ export function RoomGl({
           hoveredKey={hot && hot.target.kind !== 'crate' ? hot.key : null}
           ringKey={focusHot ? (quadOf.get(targetId(focusHot.target))?.key ?? null) : null}
           reducedMotion={reducedMotion}
+          onShown={onShown}
           onReady={onReady}
           onUnavailable={onUnavailable}
           onFrame={onFrame}
@@ -368,10 +383,9 @@ export function RoomGl({
           ))}
         </ul>
       </div>
-      {/* Captions: under the board layer, over the canvas. */}
-      <div className="rs-stage gp-stage-cap" aria-hidden="true">
-        <Rig>
-          {caps.items.map((c, i) => (
+      {captionRoom &&
+        createPortal(
+          caps.items.map((c, i) => (
             <div
               key={i}
               ref={(el) => {
@@ -382,9 +396,9 @@ export function RoomGl({
             >
               {c?.text}
             </div>
-          ))}
-        </Rig>
-      </div>
+          )),
+          captionRoom
+        )}
     </>
   );
 }

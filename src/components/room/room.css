@@ -11,6 +11,8 @@
   inset: 0;
   height: 100dvh;
   overflow: hidden;
+  /* clip also stops focus from scrolling the root (hidden still allows it). */
+  overflow: clip;
   container-type: size;
   background: #1c140e;
   color: #f4ead6;
@@ -212,10 +214,11 @@
 .rs-root .gp-stage2 { z-index: 1; pointer-events: none; }
 
 /* The room: one WebGL canvas covering the root (the camera maps the room onto
-   the root box), faded in once it has drawn its first complete frame. */
+   the root box), faded in once it has drawn a frame with its walls, floor and
+   wood (data-room is 'shown', then 'ready' once every picture is in). */
 .rs-root .rs-stage-room { position: absolute; inset: 0; }
 .rs-root .rs-gl { opacity: 0; transition: opacity 0.4s; }
-.rs-root[data-room='ready'] .rs-gl { opacity: 1; }
+.rs-root[data-room] .rs-gl { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   .rs-root .rs-gl { transition: none; }
 }

@@ -60,4 +60,17 @@ export function projectedBox(camera: Camera, matrix: Mat4, w: number, h: number)
   return { left, top, width: Math.max(...xs) - left, height: Math.max(...ys) - top };
 }
 
+// `box` cut to the 0..width x 0..height area. A box with less than 1 px
+// inside it becomes a 1 x 1 box at the nearest point inside.
+export function clampBox(box: Box, width: number, height: number): Box {
+  const left = Math.max(0, box.left);
+  const top = Math.max(0, box.top);
+  const right = Math.min(width, box.left + box.width);
+  const bottom = Math.min(height, box.top + box.height);
+  if (right - left >= 1 && bottom - top >= 1) return { left, top, width: right - left, height: bottom - top };
+  const x = Math.min(Math.max(0, left), Math.max(0, width - 1));
+  const y = Math.min(Math.max(0, top), Math.max(0, height - 1));
+  return { left: x, top: y, width: 1, height: 1 };
+}
+
 export const sameTarget = (a: Target | null, b: Target | null) => (a && b ? targetId(a) === targetId(b) : a === b);

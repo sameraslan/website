@@ -71,6 +71,11 @@ function hasRegisteredProps() {
 }
 const serverRegisteredProps = () => false;
 
+// Set when WebGL turned out not to be there. forceFlatPage changes the shared
+// stylesheet for the rest of the session, so a later mount of the page (after
+// a client-side navigation away and back) starts as the flat page too.
+let glGone = false;
+
 // While a dialog is open on the flat page, the page behind must not scroll.
 // The body is pinned in place and the scroll position put back on close.
 function useScrollLock(locked: boolean) {
@@ -104,13 +109,21 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   const frame = useRef(0);
   const [roomMode, setMode] = useState<RoomMode>('read');
   const flatQuery = useSyncExternalStore(subscribeFlat, isFlat, serverFlat);
-  // WebGL is not there (no context, or lost for good): the page stays the flat
-  // page from then on, as on a phone.
-  const [noGl, setNoGl] = useState(false);
+  // WebGL is not there (no context, its code did not load, or the context was
+  // lost for good): the page stays the flat page from then on, as on a phone.
+  const [noGl, setNoGl] = useState(() => glGone);
   const flat = flatQuery || noGl;
+  const homeRef = useRef<HTMLAnchorElement>(null);
+  const modeButtonRef = useRef<HTMLButtonElement>(null);
   const onGlUnavailable = useCallback(() => {
+    // Focus in the room or on the mode button would be lost when they are
+    // hidden; it moves to the home link, the first thing on the flat page.
+    const active = document.activeElement;
+    const inRoom = !!active && (active === modeButtonRef.current || !!active.closest('.rs-stage-room'));
+    glGone = true;
     forceFlatPage();
     setNoGl(true);
+    if (inRoom) homeRef.current?.focus({ preventScroll: true });
   }, []);
   // The flat page has no tour: it always reads.
   const mode: RoomMode = flat ? 'read' : roomMode;
@@ -121,9 +134,10 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   const [overBoard, setOverBoard] = useState(false);
   // Keyboard focus inside the board: also holds off the idle switch.
   const boardFocused = useRef(false);
-  // The board layer, inert while looking around the room, and the mode button.
+  // The board layer, inert while looking around the room.
   const boardStageRef = useRef<HTMLDivElement>(null);
-  const modeButtonRef = useRef<HTMLButtonElement>(null);
+  // The .rs-room of the caption layer's rig, which RoomGl fills with captions.
+  const [captionRoom, setCaptionRoom] = useState<HTMLDivElement | null>(null);
   // On a switch between the room and the flat page, pointerleave may never
   // fire, so the hover flag is cleared here (the focus flag in the idle effect).
   const [prevFlat, setPrevFlat] = useState(flat);
@@ -140,9 +154,13 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   // phones never load the renderer and three.js.
   const hydrated = useSyncExternalStore(noSubscribe, clientTrue, serverFalse);
   const showRoom = hydrated && !flat;
-  // The canvas has drawn its first complete frame (data-room="ready").
-  const [roomReady, setRoomReady] = useState(false);
-  const onRoomReady = useCallback(() => setRoomReady(true), []);
+  // How far the canvas is (the root's data-room): 'shown' once it has drawn a
+  // frame with the walls, floor and wood in (the canvas fades in then, and
+  // pictures appear as their images arrive), 'ready' once every texture and
+  // picture is in.
+  const [roomState, setRoomState] = useState<'shown' | 'ready' | null>(null);
+  const onRoomShown = useCallback(() => setRoomState((s) => s ?? 'shown'), []);
+  const onRoomReady = useCallback(() => setRoomState('ready'), []);
   // A target in the room is hovered or has keyboard focus: the tour holds.
   const [roomHold, setRoomHold] = useState(false);
 
@@ -292,10 +310,10 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
       onPointerLeave={flat ? undefined : onPointerLeave}
       // The inline script sets --rs-scale on this element before hydration.
       suppressHydrationWarning
-      data-room={roomReady ? 'ready' : undefined}
+      data-room={roomState ?? undefined}
     >
       <ScaleScript />
-      <Link className="gp-home" href="/" inert={covered ? true : undefined}>
+      <Link ref={homeRef} className="gp-home" href="/" inert={covered ? true : undefined}>
         {HOME_LINK}
       </Link>
       {/* The flat page for phones and touch screens: the board, the art in one
@@ -327,9 +345,11 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
       {showRoom && (
         <RoomGl
           stage={boardStageRef}
+          captionRoom={captionRoom}
           albums={albums}
           reducedMotion={reducedMotion}
           inert={covered}
+          onShown={onRoomShown}
           onReady={onRoomReady}
           onUnavailable={onGlUnavailable}
           onPressRoom={onPressRoom}
@@ -338,6 +358,11 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
           onHoldChange={setRoomHold}
         />
       )}
+      {/* Captions: under the board layer, over the canvas. Rendered with the
+          board stage so the two rigs start their load-in animation together. */}
+      <div className="rs-stage gp-stage-cap" aria-hidden="true">
+        <Rig roomRef={setCaptionRoom} />
+      </div>
 
       <div className="rs-vignette" aria-hidden="true" />
       <svg className="rs-grain" aria-hidden="true" width="100%" height="100%">

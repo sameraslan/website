@@ -13,7 +13,10 @@
 //
 // Rendering is on demand: render() draws one frame and says whether an
 // animation (hover lift, cover fade) still needs frames; onInvalidate fires
-// when something outside a render (a texture arriving) needs one.
+// when something outside a render (a texture arriving) needs one. onShown
+// fires once, after the first frame drawn with every surface texture (walls,
+// floor, wood) in; onReady fires after a frame drawn with every texture in,
+// pictures included (again after each new scene).
 
 import * as THREE from 'three';
 import type { Camera } from './camera';
@@ -33,6 +36,7 @@ export type RoomRenderer = {
   setReducedMotion(reduced: boolean): void;
   quadMatrix(key: string): Mat4 | null;
   onInvalidate(cb: () => void): () => void;
+  onShown(cb: () => void): () => void;
   onReady(cb: () => void): () => void;
   onContextLost(cb: () => void): () => void;
   onContextRestored(cb: () => void): () => void;
@@ -268,7 +272,7 @@ type Item = {
   fade: number;
 };
 
-type TexEntry = { tex: THREE.Texture | null; state: 'loading' | 'ok' | 'error'; bytes: number; fadeStart: number | null | undefined };
+type TexEntry = { tex: THREE.Texture | null; kind: 'tiled' | 'image'; state: 'loading' | 'ok' | 'error'; bytes: number; fadeStart: number | null | undefined };
 
 type HoverAnim = { from: Mat4; to: 'rest' | 'hover'; start: number | null };
 
@@ -284,7 +288,7 @@ function lerpMat(a: Mat4, b: Mat4, t: number): Mat4 {
 }
 
 export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRendererOptions = {}): RoomRenderer {
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true, premultipliedAlpha: true, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true, premultipliedAlpha: true });
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   renderer.setClearColor(new THREE.Color().setRGB(CLEAR[0], CLEAR[1], CLEAR[2], THREE.LinearSRGBColorSpace), 1);
   renderer.sortObjects = true;
@@ -297,7 +301,7 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
   geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0]), 3));
   geometry.setIndex([0, 1, 2, 2, 1, 3]);
 
-  const listeners = { invalidate: new Set<() => void>(), ready: new Set<() => void>(), lost: new Set<() => void>(), restored: new Set<() => void>() };
+  const listeners = { invalidate: new Set<() => void>(), shown: new Set<() => void>(), ready: new Set<() => void>(), lost: new Set<() => void>(), restored: new Set<() => void>() };
   const emit = (set: Set<() => void>) => set.forEach((cb) => cb());
   const sub = (set: Set<() => void>, cb: () => void) => {
     set.add(cb);
@@ -314,6 +318,7 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
   let hovered: string | null = null;
   let ringKey: string | null = null;
   let readyPending = false;
+  let shownPending = true;
   let disposed = false;
 
   // --- Textures.
@@ -321,10 +326,12 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
   function loadTexture(url: string, kind: 'tiled' | 'image'): TexEntry {
     const have = textures.get(url);
     if (have) return have;
-    const entry: TexEntry = { tex: null, state: 'loading', bytes: 0, fadeStart: undefined };
+    const entry: TexEntry = { tex: null, kind, state: 'loading', bytes: 0, fadeStart: undefined };
     textures.set(url, entry);
     const img = new Image();
     img.decoding = 'async';
+    // Surfaces first: the canvas is shown once they are in.
+    img.fetchPriority = kind === 'tiled' ? 'high' : 'low';
     img.src = url;
     img
       .decode()
@@ -657,10 +664,13 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
     emit(listeners.invalidate);
   }
 
-  function allSettled(): boolean {
+  // Whether every texture the items wait for (only the tiled surface ones
+  // with `tiledOnly`) has loaded or failed.
+  function allSettled(tiledOnly = false): boolean {
     for (const it of items) {
       if (!it.src) continue;
       const e = textures.get(it.src);
+      if (tiledOnly && e?.kind !== 'tiled') continue;
       if (!e || e.state === 'loading') return false;
     }
     return true;
@@ -705,6 +715,10 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
       }
     }
     renderer.render(scene3, cam3);
+    if (shownPending && items.length && allSettled(true)) {
+      shownPending = false;
+      emit(listeners.shown);
+    }
     if (readyPending && allSettled()) {
       readyPending = false;
       emit(listeners.ready);
@@ -740,6 +754,7 @@ export function createRoomRenderer(canvas: HTMLCanvasElement, options: RoomRende
     },
     quadMatrix: (key) => current.get(key) ?? quads.get(key)?.matrix ?? null,
     onInvalidate: (cb) => sub(listeners.invalidate, cb),
+    onShown: (cb) => sub(listeners.shown, cb),
     onReady: (cb) => sub(listeners.ready, cb),
     onContextLost: (cb) => sub(listeners.lost, cb),
     onContextRestored: (cb) => sub(listeners.restored, cb),
