@@ -74,6 +74,25 @@ node scripts/ui-check/shot.mjs / check \
 # -> {"bg":"rgb(253, 250, 244)"}
 ```
 
+## Room GPU checks (/notes)
+
+`room-gpu-sweep.mjs` drives the /notes room in a GPU-composited Chromium at a
+real 2x with a Retina laptop screen (the headless shell renders in software
+and never shows tile-memory faults). Its header comment documents every case
+and metric. The cases `--hover-board`, `--fast`, `--tour`, `--frames` and
+`--loadin` use only real mouse input, the page's own mode button, the board's
+on-screen rect and screenshots, so they measure any implementation of the
+room the same way. `--budget <MB>` sets Chrome's GPU tile budget.
+
+```
+node scripts/ui-check/room-gpu-sweep.mjs --port 3611 --no-static --viewports 1920x1080 \
+  --live --hover-board --fast --tour --frames --tag base [--budget 512] [--css "..."]
+# -> one line per case; results.json and failing shots in out/gpu-sweep/base/
+```
+
+`room-mem-trace.mjs` reports tile memory per layer group from a cc trace
+(`--vp 1920x1080 --budget 4096 [--motion] [--css "..."] --port 3611`).
+
 ## Output
 
 `scripts/ui-check/out/` is gitignored; screenshots are throwaway artifacts,
