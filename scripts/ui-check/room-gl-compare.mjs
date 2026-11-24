@@ -47,7 +47,7 @@ const POSES = {
 // Region of each block, by the scene quads that make the room's shell.
 const REGIONS = {
   back: /^plane:(rs-back-|rc-)/,
-  left: /^plane:rw-/,
+  left: /^plane:rw-(?!view)/,
   right: /^plane:rs-right$/,
   floor: /^plane:rs-floor$/,
   ceiling: /^plane:rs-ceil$/,
