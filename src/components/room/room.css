@@ -1,5 +1,8 @@
-/* The /notes room, ported from the approved mock (PostBoard). Every rule is
-   scoped under .rs-root so nothing reaches other pages.
+/* The /notes room. The room itself is one WebGL canvas (gl/RoomCanvas); these
+   rules lay out what stays in the DOM: the CSS camera rig the canvas reads,
+   the letter board and its chains, the captions, the keyboard proxies, the
+   dialogs, the controls, the vignette and grain, and the flat page for phones.
+   Every rule is scoped under .rs-root so nothing reaches other pages.
    3D rule: never put overflow, filter, opacity below 1, mix-blend-mode,
    clip-path or mask on an element that has 3D-positioned children. */
 
@@ -8,6 +11,8 @@
   inset: 0;
   height: 100dvh;
   overflow: hidden;
+  /* clip also stops focus from scrolling the root (hidden still allows it). */
+  overflow: clip;
   container-type: size;
   background: #1c140e;
   color: #f4ead6;
@@ -77,19 +82,19 @@
 @media (prefers-reduced-motion: no-preference) {
   .rs-root.gn-explore .rs-sway { animation: gn-tour 44s ease-in-out 2; }
 }
+/* gp-hold: the tour is paused. */
 .rs-root.gp-hold .rs-sway,
 .rs-root.gp-f-on .rs-sway,
 .rs-root.gp-c-on .rs-sway { animation-play-state: paused; }
 
-/* GPU tile memory. A transform transition or animation on the camera runs on
-   Chrome's compositor, which then rasterizes every plane of the room at the
-   animation's maximum scale (the stage scale) instead of its ideal scale: over
-   twice the tile memory. Past the GPU budget Chrome leaves walls unrasterized
-   (blank or black) while the camera moves. So where the browser registers these
-   properties (RoomPage then adds .rs-pa), the parallax and the tour animate the
-   numbers below on the main thread instead, and the transforms only follow them.
-   Not inherited, so a pointer move restyles the rig and not the whole room (a
-   restyle repaints every plane whose background mixes a gradient and an image). */
+/* Camera motion on the main thread. A transform transition or animation on
+   the rig runs on Chrome's compositor, which rasterizes the 3D layers above it
+   (the board and the captions) at the animation's maximum scale, and the
+   canvas, which reads the rig's computed transforms every frame, would follow
+   a copy of the motion that the compositor runs ahead of. So where the browser
+   registers these properties (RoomPage then adds .rs-pa), the load-in, the
+   parallax and the tour animate the numbers below instead, and the transforms
+   only follow them. Not inherited, so a pointer move restyles the rig alone. */
 @property --mx { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --my { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --amp { syntax: '<number>'; inherits: false; initial-value: 1; }
@@ -97,10 +102,16 @@
 @property --rs-tx { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --rs-ty { syntax: '<number>'; inherits: false; initial-value: 0; }
 @property --rs-tz { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --rs-dz { syntax: '<number>'; inherits: false; initial-value: 0; }
 .rs-root .rs-stage,
 .rs-root .rs-dolly,
 .rs-root .rs-sway,
 .rs-root .rs-cam { --mx: inherit; --my: inherit; --amp: inherit; }
+/* The same load-in as rs-dolly, as a number: translateZ in px. */
+@keyframes rs-dolly-p {
+  from { --rs-dz: -320; }
+  to { --rs-dz: 0; }
+}
 /* The same tour as gn-tour, as numbers: rotateY in deg, translate3d in px. */
 @keyframes gn-tour-p {
   0%, 100% { --rs-tr: 0; --rs-tx: 0; --rs-ty: 0; --rs-tz: 0; }
@@ -109,6 +120,10 @@
   75% { --rs-tr: -3; --rs-tx: 24; --rs-ty: 0; --rs-tz: 50; }
 }
 @media (prefers-reduced-motion: no-preference) {
+  .rs-root.rs-pa .rs-dolly {
+    transform: translateZ(calc(var(--rs-dz) * 1px));
+    animation-name: rs-dolly-p;
+  }
   .rs-root.rs-pa .rs-cam {
     transition: --mx 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), --my 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), --amp 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
@@ -118,272 +133,6 @@
     animation-name: gn-tour-p;
   }
 }
-
-/* Surfaces */
-.rs-root .rs-plane { position: absolute; transform-style: preserve-3d; }
-.rs-root .rc-stone {
-  background-color: #b9ad98;
-  background-image: linear-gradient(#e9dcc6, #e9dcc6), url(/images/room/textures/wall-stone.webp);
-  background-size: auto, 620px 620px;
-  background-blend-mode: multiply, normal;
-}
-.rs-root .rc-reveal {
-  background-color: #8f8371;
-  background-image: linear-gradient(rgba(70, 46, 22, 0.38), rgba(70, 46, 22, 0.38)), linear-gradient(#e9dcc6, #e9dcc6),
-    url(/images/room/textures/wall-stone.webp);
-  background-size: auto, auto, 620px 620px;
-  background-blend-mode: normal, multiply, normal;
-}
-.rs-root .rc-reveal-lit {
-  background-color: #c9b596;
-  background-image: linear-gradient(rgba(255, 196, 120, 0.3), rgba(255, 196, 120, 0.3)), linear-gradient(#e9dcc6, #e9dcc6),
-    url(/images/room/textures/wall-stone.webp);
-  background-size: auto, auto, 620px 620px;
-  background-blend-mode: normal, multiply, normal;
-}
-.rs-root .rc-timber {
-  background-color: #4a3524;
-  background-image: linear-gradient(#c9a57c, #c9a57c), url(/images/room/textures/wall-timber.webp);
-  background-size: auto, 620px 620px;
-  background-blend-mode: multiply, normal;
-}
-.rs-root .rc-ceilwood {
-  background-color: #2b3026;
-  background-image: linear-gradient(#7f8c72, #7f8c72), url(/images/room/textures/wall-timber.webp);
-  background-size: auto, 520px 520px;
-  background-blend-mode: multiply, normal;
-}
-.rs-root .rc-planks {
-  background-color: #6b4a30;
-  background-image: url(/images/room/textures/floor-rustic-planks.webp);
-  background-size: 480px 480px;
-}
-.rs-root .rc-beam {
-  background-color: #3a2a1c;
-  background-image: linear-gradient(#c7a985, #c7a985), url(/images/room/textures/beam-timber.webp);
-  background-size: auto, 512px 512px;
-  background-blend-mode: multiply, normal;
-}
-.rs-root .rc-beam-under {
-  background-color: #22170e;
-  background-image: linear-gradient(#7a6450, #7a6450), url(/images/room/textures/beam-timber.webp);
-  background-size: auto, 512px 512px;
-  background-blend-mode: multiply, normal;
-}
-.rs-root .rc-oak {
-  background-color: #9a7648;
-  background-image: linear-gradient(#c9a274, #c9a274), url(/images/room/textures/wood-oak.webp);
-  background-size: auto, 420px 420px;
-  background-blend-mode: multiply, normal;
-}
-.rs-root .rc-oak-top {
-  background-color: #b08a58;
-  background-image: linear-gradient(#e3c193, #e3c193), url(/images/room/textures/wood-oak.webp);
-  background-size: auto, 420px 420px;
-  background-blend-mode: multiply, normal;
-}
-.rs-root .rc-oak-dark {
-  background-color: #5e4329;
-  background-image: linear-gradient(#8a6844, #8a6844), url(/images/room/textures/wood-oak.webp);
-  background-size: auto, 420px 420px;
-  background-blend-mode: multiply, normal;
-}
-.rs-root .rc-oak-deep {
-  background-color: #3d2a18;
-  background-image: linear-gradient(#5f462c, #5f462c), url(/images/room/textures/wood-oak.webp);
-  background-size: auto, 420px 420px;
-  background-blend-mode: multiply, normal;
-}
-.rs-root .rc-trunk {
-  background-color: #5a2f1c;
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0) 56px, #1c120b 56px 72px, rgba(0, 0, 0, 0) 72px 228px, #1c120b 228px 244px, rgba(0, 0, 0, 0) 244px),
-    url(/images/room/textures/wood-walnut.webp);
-  background-size: auto, 360px 360px;
-}
-.rs-root .rc-trunk-side {
-  background-color: #3a1f12;
-  background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(/images/room/textures/wood-walnut.webp);
-  background-size: auto, 360px 360px;
-}
-
-/* Planes (room geometry) */
-.rs-root .rs-back-l { left: -650px; top: -640px; width: 780px; height: 1020px; transform: translateZ(-1000px); }
-.rs-root .rs-back-t { left: 130px; top: -640px; width: 380px; height: 250px; transform: translateZ(-1000px); background-position: 0 0, -780px 0; }
-.rs-root .rs-back-b { left: 130px; top: 50px; width: 380px; height: 330px; transform: translateZ(-1000px); background-position: 0 0, -780px -690px; }
-.rs-root .rs-back-r { left: 510px; top: -640px; width: 140px; height: 1020px; transform: translateZ(-1000px); background-position: 0 0, -1160px 0; }
-.rs-root .rw-la { left: -280px; top: -640px; width: 560px; height: 1020px; transform: translate3d(-650px, 0, 120px) rotateY(90deg); }
-.rs-root .rw-lt { left: -190px; top: -640px; width: 380px; height: 230px; transform: translate3d(-650px, 0, -350px) rotateY(90deg); background-position: 0 0, -560px 0; }
-.rs-root .rw-lb { left: -190px; top: 30px; width: 380px; height: 350px; transform: translate3d(-650px, 0, -350px) rotateY(90deg); background-position: 0 0, -560px -670px; }
-.rs-root .rw-lc { left: -230px; top: -640px; width: 460px; height: 1020px; transform: translate3d(-650px, 0, -770px) rotateY(90deg); background-position: 0 0, -940px 0; }
-.rs-root .rw-reveal {
-  background-color: #3a2a1c;
-  background-image: linear-gradient(rgba(30, 18, 8, 0.4), rgba(30, 18, 8, 0.4)), linear-gradient(#c9a57c, #c9a57c),
-    url(/images/room/textures/wall-timber.webp);
-  background-size: auto, auto, 620px 620px;
-  background-blend-mode: normal, multiply, normal;
-}
-.rs-root .rw-reveal-lit {
-  background-color: #8a6c4c;
-  background-image: linear-gradient(rgba(255, 236, 196, 0.28), rgba(255, 236, 196, 0.28)), linear-gradient(#c9a57c, #c9a57c),
-    url(/images/room/textures/wall-timber.webp);
-  background-size: auto, auto, 620px 620px;
-  background-blend-mode: normal, multiply, normal;
-}
-.rs-root .rw-jamb-n { left: -710px; top: -410px; width: 60px; height: 440px; transform: translateZ(-160px); }
-.rs-root .rw-jamb-f { left: -710px; top: -410px; width: 60px; height: 440px; transform: translateZ(-540px); }
-.rs-root .rw-head { left: -710px; top: -190px; width: 60px; height: 380px; transform: translate3d(0, -410px, -350px) rotateX(-90deg); }
-.rs-root .rw-sill { left: -710px; top: -190px; width: 84px; height: 380px; transform: translate3d(0, 30px, -350px) rotateX(90deg); }
-.rs-root .rw-frame {
-  left: -190px;
-  top: -410px;
-  width: 380px;
-  height: 440px;
-  box-sizing: border-box;
-  border: 18px solid #3b2819;
-  transform: translate3d(-706px, 0, -350px) rotateY(90deg);
-  pointer-events: none;
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35);
-}
-.rs-root .rw-view { left: -750px; top: -960px; width: 1500px; height: 1190px; transform: translate3d(-1250px, 0, -1600px) rotateY(90deg); pointer-events: none; }
-.rs-root .rw-view img { display: block; width: 100%; height: auto; filter: brightness(1.1) saturate(1.05); transform: scaleX(-1); }
-.rs-root .rw-glow { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; transform: translateZ(1px); }
-.rs-root .rw-wains {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 320px;
-  pointer-events: none;
-  transform: translateZ(2px);
-  background-color: #55744f;
-  background-image: url(/images/room/textures/wall-timber.webp);
-  background-size: 310px 310px;
-  background-blend-mode: multiply;
-}
-.rs-root .rw-rail {
-  position: absolute;
-  left: 0;
-  bottom: 308px;
-  width: 100%;
-  height: 12px;
-  pointer-events: none;
-  transform: translateZ(3px);
-  background: linear-gradient(180deg, #6f8f66, #3f5a3b);
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
-}
-.rs-root .rw-shaft {
-  position: absolute;
-  pointer-events: none;
-  transform-origin: 0 0;
-  filter: blur(14px);
-  background-repeat: no-repeat;
-  background-image: linear-gradient(rgba(255, 240, 205, 0.3), rgba(255, 240, 205, 0.3)), linear-gradient(rgba(255, 240, 205, 0.3), rgba(255, 240, 205, 0.3)),
-    linear-gradient(rgba(255, 240, 205, 0.3), rgba(255, 240, 205, 0.3)), linear-gradient(rgba(255, 240, 205, 0.3), rgba(255, 240, 205, 0.3));
-}
-.rs-root .rw-shaft-b {
-  left: 804px;
-  top: 300px;
-  width: 380px;
-  height: 400px;
-  transform: translateZ(2px) skewX(4.6deg);
-  background-size: 178px 212px, 178px 212px, 178px 164px, 178px 164px;
-  background-position: 0 0, 202px 0, 0 236px, 202px 236px;
-}
-.rs-root .rw-shaft-l {
-  left: 318px;
-  top: 498px;
-  width: 400px;
-  height: 380px;
-  transform: translateZ(2px) skewY(6.8deg);
-  background-size: 212px 178px, 164px 178px, 212px 178px, 164px 178px;
-  background-position: 0 0, 236px 0, 0 202px, 236px 202px;
-}
-.rs-root .rs-right { left: -700px; top: -640px; width: 1400px; height: 1020px; transform: translate3d(650px, 0, -300px) rotateY(-90deg); }
-.rs-root .rs-floor { left: -650px; top: -700px; width: 1300px; height: 1400px; transform: translate3d(0, 380px, -300px) rotateX(90deg); }
-.rs-root .rs-ceil { left: -650px; top: -700px; width: 1300px; height: 1400px; transform: translate3d(0, -640px, -300px) rotateX(-90deg); }
-.rs-root .rc-jamb-l { left: -30px; top: -390px; width: 60px; height: 440px; transform: translate3d(130px, 0, -1030px) rotateY(90deg); }
-.rs-root .rc-jamb-r { left: -30px; top: -390px; width: 60px; height: 440px; transform: translate3d(510px, 0, -1030px) rotateY(-90deg); }
-.rs-root .rc-head { left: 130px; top: -420px; width: 380px; height: 60px; transform: translateZ(-1030px) rotateX(-90deg); }
-.rs-root .rc-sill { left: 130px; top: 20px; width: 380px; height: 60px; transform: translateZ(-1030px) rotateX(90deg); }
-.rs-root .rc-frame {
-  left: 130px;
-  top: -390px;
-  width: 380px;
-  height: 440px;
-  box-sizing: border-box;
-  border: 18px solid #3b2819;
-  transform: translateZ(-1056px);
-  pointer-events: none;
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35);
-}
-.rs-root .rc-mullion-v { position: absolute; left: 50%; top: 0; width: 14px; height: 100%; margin-left: -7px; background: #3b2819; }
-.rs-root .rc-mullion-h { position: absolute; left: 0; top: 44%; width: 100%; height: 14px; background: #3b2819; }
-.rs-root .rc-unit { left: -270px; top: -180px; width: 540px; height: 560px; transform: translate3d(-320px, 0, -630px) rotateY(90deg); pointer-events: none; }
-.rs-root .rc-unit figure { pointer-events: auto; }
-.rs-root .rs-shade { position: absolute; inset: 0; pointer-events: none; transform: translateZ(1px); }
-
-/* Pictures */
-.rs-root .rs-pc {
-  position: absolute;
-  margin: 0;
-  box-sizing: border-box;
-  transform: translateZ(4px);
-  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.55), 0 20px 34px -8px rgba(0, 0, 0, 0.7);
-  cursor: zoom-in;
-}
-.rs-root .rs-pc img { display: block; width: 100%; height: auto; }
-.rs-root .rs-pc figcaption {
-  position: absolute;
-  left: 0;
-  top: 100%;
-  margin-top: 10px;
-  padding: 7px 12px;
-  white-space: nowrap;
-  font: 500 22px/1.2 var(--font-newsreader), Georgia, serif;
-  color: #f4ead6;
-  background: rgba(28, 20, 14, 0.92);
-  opacity: 0;
-  transition: opacity 0.25s;
-  pointer-events: none;
-}
-.rs-root .rs-pc:hover { transform: translateZ(54px); }
-.rs-root .rs-pc:hover figcaption { opacity: 1; }
-.rs-root .rs-pc:focus { outline: none; }
-.rs-root .rs-pc:focus-visible { outline: 3px solid var(--gn-accent); outline-offset: 4px; }
-.rs-root .rs-pc:focus-visible figcaption { opacity: 1; }
-/* The narrow strip right of the back window meets the right wall, which would
-   hide a caption running rightwards; these captions run leftwards instead. */
-.rs-root .rs-back-r figcaption { left: auto; right: 0; }
-.rs-root .rw-vg { box-shadow: none; }
-.rs-root .rw-vg img { filter: brightness(1.12) saturate(1.06); }
-.rs-root .rw-vg figcaption { left: 560px; top: 540px; margin-top: 0; font-size: 40px; }
-.rs-root .rs-black { padding: 14px; background: #f3ede0; border: 9px solid #141113; }
-.rs-root .rs-oak { padding: 12px; background: #f3ede0; border: 8px solid #a2764a; }
-.rs-root .rs-gilt { border: 12px solid; border-color: #d2ad5c #94702b #7f5e22 #bd9645; }
-.rs-root .rs-thin { border: 4px solid #efe8d8; }
-.rs-root .rs-sl { border-radius: 2px; outline: 1px solid rgba(255, 255, 255, 0.1); outline-offset: -1px; }
-.rs-root .rs-lean { transform-origin: 50% 100%; transform: translateZ(58px) rotateX(14deg); }
-.rs-root .rs-lean2 { transform-origin: 50% 100%; transform: translateZ(98px) rotateX(13deg); }
-.rs-root .rs-lean3 { transform-origin: 50% 100%; transform: translateZ(138px) rotateX(12deg); }
-.rs-root .rs-lean:hover { transform: translateZ(120px) rotateX(6deg); }
-.rs-root .rs-lean2:hover { transform: translateZ(150px) rotateX(6deg); }
-.rs-root .rs-lean3:hover { transform: translateZ(184px) rotateX(6deg); }
-.rs-root .rc-on { transform-origin: 50% 100%; transform: translateZ(-22px) rotateX(7deg); }
-.rs-root .rc-on:hover { transform: translateZ(28px) rotateX(2deg); }
-.rs-root .rc-rug { position: absolute; display: block; height: auto; transform: translateZ(1px); box-shadow: 0 0 14px rgba(0, 0, 0, 0.45); }
-
-/* Album sleeves: an empty dark square until the daily covers are chosen and loaded. */
-.rs-root .rs-sleeve { display: block; aspect-ratio: 1; background: #17110c; }
-.rs-root .rs-sleeve img { opacity: 0; transition: opacity 0.6s ease; }
-.rs-root .rs-sleeve img.is-loaded { opacity: 1; }
-@media (prefers-reduced-motion: reduce) {
-  .rs-root .rs-sleeve img { transition: none; }
-}
-
-/* Boxes (furniture, beams) */
-.rs-root .rs-box { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
-.rs-root .rs-face { position: absolute; left: 0; top: 0; }
 
 /* Focused view */
 .rs-root.gp-f-on .rs-stage { pointer-events: none; }
@@ -463,6 +212,52 @@
 
 /* Letter board (second stage layer) */
 .rs-root .gp-stage2 { z-index: 1; pointer-events: none; }
+
+/* The room: one WebGL canvas covering the root (the camera maps the room onto
+   the root box), faded in once it has drawn a frame with its walls, floor and
+   wood (data-room is 'shown', then 'ready' once every picture is in). */
+.rs-root .rs-stage-room { position: absolute; inset: 0; }
+.rs-root .rs-gl { opacity: 0; transition: opacity 0.4s; }
+.rs-root[data-room] .rs-gl { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .rs-root .rs-gl { transition: none; }
+}
+/* Captions of the hovered or focused picture or crate, placed by script in
+   the frame of what they caption. */
+.rs-root .gp-stage-cap { pointer-events: none; }
+.rs-root .gp-cap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  padding: 7px 12px;
+  white-space: nowrap;
+  font: 500 22px/1.2 var(--font-newsreader), Georgia, serif;
+  color: #f4ead6;
+  background: rgba(28, 20, 14, 0.92);
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+.rs-root .gp-cap.is-on { opacity: 1; }
+/* Keyboard and screen reader stand-ins for the room's targets: invisible,
+   focusable, and placed over their target while focused. */
+.rs-root .rs-proxies { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; pointer-events: none; }
+.rs-root .rs-proxy {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  opacity: 0;
+  pointer-events: none;
+}
+.rs-root.gp-f-on .rs-stage-room,
+.rs-root.gp-c-on .rs-stage-room { pointer-events: none; }
 .rs-root .gp-stage2 .gp-obj { pointer-events: auto; }
 .rs-root .gp-obj {
   position: absolute;
@@ -486,19 +281,30 @@
   background-size: auto, 300px;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4), 0 22px 34px -12px rgba(0, 0, 0, 0.8);
 }
+/* Looking around the room, the board and its chains step back and fade out,
+   then turn hidden; back in reading mode they are visible at once and fade in. */
 .rs-root .gp-board,
-.rs-root .gp-bd-chain { transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.rs-root .gp-bd-chain {
+  transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.45s ease, visibility 0s linear 0s;
+}
 .rs-root .gp-bd-chain { transform: translateZ(-196px); }
 .rs-root.gn-explore .gp-board,
-.rs-root.gn-explore .gp-bd-chain { transform: translateZ(-480px); }
-.rs-root .gp-board:hover,
-.rs-root.gp-hold .gp-board,
-.rs-root.gp-hold .gp-bd-chain { transform: translateZ(-166px); }
+.rs-root.gn-explore .gp-bd-chain {
+  transform: translateZ(-480px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.45s ease, visibility 0s linear 0.45s;
+}
+.rs-root.gn-read .gp-board:hover,
+.rs-root.gn-read.gp-over .gp-board,
+.rs-root.gn-read.gp-over .gp-bd-chain { transform: translateZ(-166px); }
 @media (prefers-reduced-motion: reduce) {
   .rs-root .gp-board,
   .rs-root .gp-bd-chain,
-  .rs-root .gp-obj,
-  .rs-root .rs-pc { transition: none; }
+  .rs-root.gn-explore .gp-board,
+  .rs-root.gn-explore .gp-bd-chain,
+  .rs-root .gp-obj { transition: none; }
 }
 .rs-root .gp-bd-felt {
   position: relative;
@@ -581,26 +387,6 @@
 }
 .rs-root .gp-bd-pg:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
 .rs-root .gp-bd-pg:focus-visible { outline: 2px solid #f2c864; outline-offset: 4px; }
-
-/* Record crates in the room: the faces are the control; caption as on pictures. */
-.rs-root .rc-crate-face { cursor: pointer; }
-.rs-root .rc-crate-front:focus { outline: none; }
-.rs-root .rc-crate-front:focus-visible { outline: 3px solid var(--gn-accent); outline-offset: 4px; }
-.rs-root .rc-crate-cap {
-  position: absolute;
-  left: 0;
-  top: 0;
-  padding: 7px 12px;
-  white-space: nowrap;
-  font: 500 22px/1.2 var(--font-newsreader), Georgia, serif;
-  color: #f4ead6;
-  background: rgba(28, 20, 14, 0.92);
-  opacity: 0;
-  transition: opacity 0.25s;
-  pointer-events: none;
-}
-.rs-root .rc-crate.is-hot .rc-crate-cap,
-.rs-root .rc-crate-front:focus-visible ~ .rc-crate-cap { opacity: 1; }
 
 /* Controls over the room: the tour button (bottom right) and the home link. */
 .rs-root .gp-ctl { position: absolute; z-index: 6; right: clamp(16px, 2.5vw, 36px); bottom: clamp(16px, 2.5vw, 36px); }
@@ -735,10 +521,6 @@
 }
 .rs-root .rs-grain { position: absolute; z-index: 2; inset: 0; opacity: 0.14; mix-blend-mode: soft-light; pointer-events: none; }
 
-/* The room's images sit in <picture> (the file loads only where the room is
-   drawn); the wrapper takes no box, so layout is as with a bare <img>. */
-.rs-root picture { display: contents; }
-
 /* The flat page: phones, touch screens and windows 760px wide or less. No 3D,
    normal document scrolling. Keep the query in step with FLAT_MEDIA in
    behaviour.ts. Hidden subtrees use display: none, so the hidden board's h1
@@ -762,6 +544,7 @@
     background-blend-mode: normal, multiply, normal;
   }
   .rs-root .rs-stage,
+  .rs-root .rs-stage-room,
   .rs-root .rs-vignette,
   .rs-root .rs-grain,
   .rs-root .gp-ctl { display: none; }

@@ -1,6 +1,11 @@
 #!/usr/bin/env node
-// GPU sweep of the /notes room, to catch planes that Chrome's GPU compositor
-// leaves unrasterized (blank or black patches) or drops.
+// GPU sweep of the /notes room, to catch parts of the room that the GPU path
+// leaves blank or black, or a board that vanishes, while the camera moves.
+// The room is one WebGL canvas under the DOM letter board; every state waits
+// for .rs-root[data-room="ready"] (a frame drawn with every texture and
+// picture in), with a 15 s fallback for builds that do not set it. The root's
+// data-room is "shown" from the first frame drawn with the walls, floor and wood
+// in (the canvas fades in over 0.4 s then) until it turns "ready".
 //
 // Browsers:
 //   gpu: Playwright's full Chromium in new headless mode (channel 'chromium'),
@@ -28,10 +33,40 @@
 // window corner to corner (tour running in explore) with 10 shots mid-motion,
 // then one 2s after it stops. Fails when any shot has flat dark > 1.2%.
 //
+// The cases below use only real input, the page's own mode button (its label
+// says which mode is on), the board's on-screen rect and screenshots, so they
+// measure any implementation of the room the same way. "Board present" is the
+// count of gold title pixels (near #f2c864) inside the board rect, as a ratio
+// to the median of three settled at-rest shots; a vanished board scores ~0.
+// A shot fails when the ratio is below 0.6 or flat dark (outside the board,
+// when one is visible) is above 1.2%.
+//
+// --hover-board: reading mode; the mouse enters and leaves the board 12 times
+//   (all four sides, 2 to 40 steps per move), shots ~80, 250 and 700 ms after
+//   each enter and each leave.
+// --fast: per mode, 40 quick moves between seeded random points (2-4 steps,
+//   30-60 ms apart), a shot every 4th move mid-motion and one 2s after
+//   (board ratio in reading mode only).
+// --tour: starts the tour with the button, mouse parked bottom centre, a shot
+//   every 2s for 46s (one 44s cycle); flat dark over the frame.
+// --frames: requestAnimationFrame deltas during a 6s smooth mouse loop in
+//   reading mode and 10s of the tour (median, p95, max, share over 25 ms).
+//   Headless may not pace frames like a real display; informational only.
+// --loadin: reloads and shoots 0.3, 0.8, 1.5, 2.2, 3.0 and 4.0s after the
+//   navigation commits (--css is injected before first paint here), and
+//   reports the ms from the commit to data-room="shown" and to "ready". Only
+//   shots taken at least 0.4 s (the fade) after "shown" count towards
+//   pass/fail; earlier ones are listed as "not shown yet". If "shown" comes
+//   after the last timed shot, one more shot is taken once the fade is done.
+//   When everything is in by the first drawn frame, the page goes straight to
+//   "ready" (printed as shown "with ready"). On a build that never sets
+//   data-room, every timed shot counts.
+//
 // Usage:
-//   node scripts/ui-check/room-gpu-sweep.mjs [--port 3477] [--viewports 800x600,1440x900,1506x812,1920x1080]
+//   node scripts/ui-check/room-gpu-sweep.mjs (--port <n> | --base <url>) [--viewports 800x600,1440x900,1506x812,1920x1080]
 //     [--dpr 2] [--modes read,explore] [--grid full|corners] [--times 0,11,22,33]
 //     [--css "<css injected in both>"] [--settle 1500] [--live] [--no-static]
+//     [--hover-board] [--fast] [--tour] [--frames] [--loadin] [--seed 7]
 //     [--budget <MB>] [--screen 3456x2234] [--tag name] [--save fail|all|none]
 // Prints one line per state and a summary; shots go to out/gpu-sweep/<tag>/.
 // Exit code 1 when any state fails.
@@ -46,7 +81,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
   const o = {
-    port: 3477,
+    port: null,
+    base: null,
     viewports: '800x600,1440x900,1506x812,1920x1080',
     dpr: 2,
     modes: 'read,explore',
@@ -55,6 +91,12 @@ function parseArgs(argv) {
     css: '',
     settle: 1500,
     live: false,
+    hoverBoard: false,
+    fast: false,
+    tour: false,
+    frames: false,
+    loadin: false,
+    seed: 7,
     static: true,
     budget: null,
     screen: '3456x2234',
@@ -65,6 +107,7 @@ function parseArgs(argv) {
     const a = argv[i];
     const v = () => argv[++i];
     if (a === '--port') o.port = Number(v());
+    else if (a === '--base') o.base = v().replace(/\/+$/, '');
     else if (a === '--viewports') o.viewports = v();
     else if (a === '--dpr') o.dpr = Number(v());
     else if (a === '--modes') o.modes = v();
@@ -73,6 +116,12 @@ function parseArgs(argv) {
     else if (a === '--css') o.css = v();
     else if (a === '--settle') o.settle = Number(v());
     else if (a === '--live') o.live = true;
+    else if (a === '--hover-board') o.hoverBoard = true;
+    else if (a === '--fast') o.fast = true;
+    else if (a === '--tour') o.tour = true;
+    else if (a === '--frames') o.frames = true;
+    else if (a === '--loadin') o.loadin = true;
+    else if (a === '--seed') o.seed = Number(v());
     else if (a === '--no-static') o.static = false;
     else if (a === '--budget') o.budget = Number(v());
     else if (a === '--screen') o.screen = v();
@@ -80,6 +129,8 @@ function parseArgs(argv) {
     else if (a === '--save') o.save = v();
     else throw new Error(`Unknown flag ${a}`);
   }
+  if (!o.base && !o.port) throw new Error('Give --port <n> (http://localhost:<n>) or --base <url>');
+  o.base ??= `http://localhost:${o.port}`;
   return o;
 }
 
@@ -144,14 +195,9 @@ async function flatDark(buf, ex) {
 async function settlePage(page, css) {
   await page.goto(page.__url, { waitUntil: 'load' });
   if (css) await page.addStyleTag({ content: css });
+  // The canvas's first complete frame (all textures and pictures in), or 15 s.
+  await page.waitForSelector('.rs-root[data-room="ready"]', { timeout: 15000 }).catch(() => null);
   await page.waitForTimeout(3200); // dolly in (2.8s), covers after hydration
-  // Room images only (the flat page's lazy strip images never load while hidden).
-  await page.evaluate(async () => {
-    const imgs = [...document.querySelectorAll('.rs-stage img')];
-    const all = Promise.all(imgs.map((i) => (i.complete ? null : new Promise((r) => { i.addEventListener('load', r); i.addEventListener('error', r); }))))
-      .then(() => Promise.all(imgs.map((i) => i.decode().catch(() => null))));
-    await Promise.race([all, new Promise((r) => setTimeout(r, 15000))]);
-  });
 }
 
 function watch(page, problems, label) {
@@ -168,7 +214,7 @@ async function openGpu(o, w, h, problems) {
     if (o.budget) args.push(`--force-gpu-mem-available-mb=${o.budget}`);
     const browser = await chromium.launch({ channel: 'chromium', args });
     const page = await (await browser.newContext({ viewport: null })).newPage();
-    page.__url = `http://localhost:${o.port}/notes`;
+    page.__url = `${o.base}/notes`;
     await page.goto('about:blank');
     const [iw, ih, dpr] = await page.evaluate(() => [innerWidth, innerHeight, devicePixelRatio]);
     if (iw === w && ih === h && dpr === o.dpr) {
@@ -213,6 +259,114 @@ const boardRect = (page) =>
     return [r.left, r.top, r.right, r.bottom];
   });
 
+// --- Implementation-agnostic helpers (real input, the mode button, the board rect, screenshots).
+
+const BOARD_MIN = 0.6;
+const wait = (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
+const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+
+// Seeded PRNG (mulberry32), so --fast replays the same path.
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// The board's on-screen rect (CSS px), or null when no board is visible.
+const visibleBoard = (page) =>
+  page.evaluate(() => {
+    for (const el of [document.querySelector('.gp-stage2 .gp-board'), ...document.querySelectorAll('.gp-board')]) {
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (r.width > 4 && r.height > 4 && cs.display !== 'none' && cs.visibility !== 'hidden' && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight) return [r.left, r.top, r.right, r.bottom];
+    }
+    return null;
+  });
+
+const union = (a, b) => (a && b ? [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])] : a || b);
+const devRect = (r, dpr) => r && [r[0] - 8, r[1] - 8, r[2] + 8, r[3] + 8].map((v) => v * dpr);
+const poke = (page) => page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift' })));
+
+// Gold title pixels (near #f2c864) inside the device-px rect r.
+async function goldCount(buf, r) {
+  if (!r) return 0;
+  const { data, info } = await raw(buf);
+  const { width: w, height: h } = info;
+  const [x0, y0] = [Math.max(0, Math.floor(r[0])), Math.max(0, Math.floor(r[1]))];
+  const [x1, y1] = [Math.min(w, Math.ceil(r[2])), Math.min(h, Math.ceil(r[3]))];
+  let n = 0;
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const k = (y * w + x) * 3;
+      const [R, G, B] = [data[k], data[k + 1], data[k + 2]];
+      if (R > 170 && G > 120 && B < 150 && R - B > 80 && R - G > 10 && R - G < 90) n++;
+    }
+  }
+  return n;
+}
+
+// A fast screenshot: CDP capture with optimizeForSpeed (page.screenshot takes
+// ~1s at 2880x1800, too slow for shots 80 ms after a move).
+async function fastShot(page) {
+  page.__cdp ??= await page.context().newCDPSession(page);
+  const { data } = await page.__cdp.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true });
+  return Buffer.from(data, 'base64');
+}
+
+// A screenshot with the board rect around it (union of before and after).
+async function snap(page) {
+  const r0 = await visibleBoard(page);
+  const buf = await fastShot(page);
+  const r1 = await visibleBoard(page);
+  return { buf, rect: union(r0, r1) };
+}
+
+// Board ratio (when ref is given) and flat dark outside the board.
+async function measure(shot, dpr, ref) {
+  const ex = devRect(shot.rect, dpr);
+  const dark = await flatDark(shot.buf, ex);
+  const board = ref ? +((await goldCount(shot.buf, ex)) / ref).toFixed(2) : null;
+  return { dark, board };
+}
+
+// Puts the page in a mode with a real click on its own button. With restart, a
+// tour that is already running is stopped and started again from its beginning.
+async function switchMode(page, mode, restart = false) {
+  const reading = async () => /look around/i.test(await page.locator('.gp-ctl button').innerText());
+  if (restart && mode === 'explore' && !(await reading())) {
+    await page.click('.gp-ctl button');
+    await page.waitForTimeout(800);
+  }
+  if ((mode === 'read') !== (await reading())) await page.click('.gp-ctl button');
+  return Date.now();
+}
+
+// Gold count of the board at rest (median of three settled shots), mouse parked.
+async function boardRef(page, w, h, dpr) {
+  await page.mouse.move(w / 2, h - 4, { steps: 5 });
+  await page.waitForTimeout(1500);
+  const counts = [];
+  for (let i = 0; i < 3; i++) {
+    const s = await snap(page);
+    counts.push(await goldCount(s.buf, devRect(s.rect, dpr)));
+    await poke(page);
+    await page.waitForTimeout(300);
+  }
+  return { ref: median(counts), counts };
+}
+
+function frameStats(d) {
+  const s = [...d].sort((a, b) => a - b);
+  if (!s.length) return { n: 0 };
+  const q = (p) => +s[Math.min(s.length - 1, Math.floor(p * s.length))].toFixed(1);
+  return { n: s.length, median: q(0.5), p95: q(0.95), max: +s[s.length - 1].toFixed(1), over25: +((100 * s.filter((v) => v > 25).length) / s.length).toFixed(1) };
+}
+
 async function main() {
   const o = parseArgs(process.argv.slice(2));
   const outDir = path.join(__dirname, 'out', 'gpu-sweep', o.tag);
@@ -239,10 +393,13 @@ async function main() {
           await p.close();
           proved = true;
         }
-        const ps = await (await sw.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: o.dpr })).newPage();
-        ps.__url = pg.__url;
-        watch(ps, problems, 'sw');
-        await Promise.all([settlePage(pg, o.css), settlePage(ps, o.css)]);
+        // The software page is the oracle for the static states only.
+        const ps = o.static ? await (await sw.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: o.dpr })).newPage() : null;
+        if (ps) {
+          ps.__url = pg.__url;
+          watch(ps, problems, 'sw');
+        }
+        await Promise.all([settlePage(pg, o.css), ps && settlePage(ps, o.css)]);
 
         if (o.static) {
           const grid = o.grid === 'corners' ? GRID_CORNERS : GRID_FULL;
@@ -306,7 +463,239 @@ async function main() {
             await pg.mouse.move(w / 2, h - 2);
           }
         }
-        await ps.context().close();
+
+        if (o.hoverBoard) {
+          // Reading mode: the real mouse enters and leaves the board 12 times.
+          await switchMode(pg, 'read');
+          const { ref, counts } = await boardRef(pg, w, h, o.dpr);
+          const sides = ['left', 'top', 'right', 'bottom'];
+          const steps = [3, 25, 2, 15, 4, 40, 2, 10, 3, 30, 4, 20];
+          const rnd = rng(o.seed);
+          const outside = (r, side) => {
+            const cx = (r[0] + r[2]) / 2 + (rnd() - 0.5) * (r[2] - r[0]) * 0.6;
+            const cy = (r[1] + r[3]) / 2 + (rnd() - 0.5) * (r[3] - r[1]) * 0.6;
+            if (side === 'left') return [Math.max(4, r[0] - 80), cy];
+            if (side === 'right') return [Math.min(w - 4, r[2] + 80), cy];
+            if (side === 'top') return [cx, Math.max(4, r[1] - 60)];
+            return [cx, Math.min(h - 4, r[3] + 60)];
+          };
+          const shots = [];
+          let worst = null, worstKey = Infinity;
+          // Shoots ~80, 250 and 700 ms after a move ends and scores the shots.
+          const burst = async (label) => {
+            const t0 = Date.now();
+            const got = [];
+            for (const at of [80, 250, 700]) {
+              await wait(at - (Date.now() - t0));
+              got.push([Date.now() - t0, await snap(pg)]);
+            }
+            for (const [ms, s] of got) {
+              const m = await measure(s, o.dpr, ref);
+              shots.push({ at: `${label} +${ms}ms`, ...m });
+              const key = Math.min(m.board, 2) - m.dark;
+              if (key < worstKey) { worstKey = key; worst = s.buf; }
+            }
+          };
+          let r = await visibleBoard(pg);
+          let [px, py] = outside(r, sides[0]);
+          await pg.mouse.move(px, py, { steps: 8 });
+          await pg.waitForTimeout(700);
+          for (let i = 0; i < 12; i++) {
+            r = (await visibleBoard(pg)) || r;
+            const ix = r[0] + (0.25 + 0.5 * rnd()) * (r[2] - r[0]);
+            const iy = r[1] + (0.25 + 0.5 * rnd()) * (r[3] - r[1]);
+            await pg.mouse.move(ix, iy, { steps: steps[i] });
+            await burst(`enter#${i} from ${sides[i % 4]} (${steps[i]} steps)`);
+            r = (await visibleBoard(pg)) || r;
+            [px, py] = outside(r, sides[(i + 1) % 4]);
+            await pg.mouse.move(px, py, { steps: steps[(i + 5) % 12] });
+            await burst(`leave#${i} to ${sides[(i + 1) % 4]} (${steps[(i + 5) % 12]} steps)`);
+            await poke(pg);
+          }
+          const minBoard = Math.min(...shots.map((s) => s.board));
+          const missing = shots.filter((s) => s.board < BOARD_MIN).length;
+          const maxDark = Math.max(...shots.map((s) => s.dark));
+          const fail = missing > 0 || maxDark > FLAT_DARK_MAX;
+          const name = `hover-board ${vps}`;
+          results.push({ name, ref, restCounts: counts, minBoard, missing, maxDark, shots, fail });
+          console.log(`${fail ? 'FAIL' : 'ok  '} ${name.padEnd(34)} board ratio min ${minBoard} (${missing} of ${shots.length} shots below ${BOARD_MIN}; rest gold px ${counts.join('/')})  flat dark max ${maxDark}%`);
+          await save(name, [['worst', worst]], fail);
+          await pg.mouse.move(w / 2, h - 4);
+        }
+
+        if (o.fast) {
+          for (const mode of o.modes.split(',')) {
+            await switchMode(pg, mode, true);
+            const { ref } = mode === 'read' ? await boardRef(pg, w, h, o.dpr) : { ref: null };
+            const rnd = rng(o.seed + (mode === 'read' ? 0 : 1));
+            const pending = [];
+            for (let i = 0; i < 40; i++) {
+              const mv = pg.mouse.move(4 + rnd() * (w - 8), 4 + rnd() * (h - 8), { steps: 2 + Math.floor(rnd() * 3) });
+              if (i % 4 === 3) pending.push(snap(pg)); // mid-motion, while the moves go on
+              await mv;
+              await wait(30 + rnd() * 30);
+              if (mode === 'read' && i % 10 === 9) await poke(pg);
+            }
+            const shots = await Promise.all(pending);
+            await pg.waitForTimeout(2000);
+            const afterShot = await snap(pg);
+            const ms = [];
+            let worst = null, worstKey = Infinity;
+            for (const s of shots) {
+              const m = await measure(s, o.dpr, ref);
+              ms.push(m);
+              const key = Math.min(m.board ?? 1, 2) - m.dark;
+              if (key < worstKey) { worstKey = key; worst = s.buf; }
+            }
+            const after = await measure(afterShot, o.dpr, ref);
+            const all = [...ms, after];
+            const maxDark = Math.max(...all.map((m) => m.dark));
+            const boards = ref ? all.map((m) => m.board) : [];
+            const minBoard = boards.length ? Math.min(...boards) : null;
+            const missing = boards.filter((b) => b < BOARD_MIN).length;
+            const fail = maxDark > FLAT_DARK_MAX || missing > 0;
+            const name = `fast ${mode} ${vps}`;
+            results.push({ name, ref, mid: ms, after, minBoard, missing, maxDark, fail });
+            console.log(`${fail ? 'FAIL' : 'ok  '} ${name.padEnd(34)} flat dark mid-motion [${ms.map((m) => m.dark).join(' ')}] after ${after.dark}${ref ? `  board ratio min ${minBoard} (${missing} of ${boards.length} below ${BOARD_MIN})` : ''}`);
+            await save(name, [['worst-mid', worst], ['after', afterShot.buf]], fail);
+          }
+          await pg.mouse.move(w / 2, h - 4);
+        }
+
+        if (o.tour) {
+          // The tour from its start, mouse parked on a bare spot, one shot every 2s.
+          const t0 = await switchMode(pg, 'explore', true);
+          await pg.mouse.move(w / 2, h - 4, { steps: 4 });
+          const vals = [];
+          let worst = null, worstV = -1;
+          for (let k = 1; k <= 23; k++) {
+            await wait(t0 + 2000 * k - Date.now());
+            const s = await snap(pg);
+            const { dark } = await measure(s, o.dpr, null);
+            vals.push(dark);
+            if (dark > worstV) { worstV = dark; worst = s.buf; }
+          }
+          const max = Math.max(...vals);
+          const fail = max > FLAT_DARK_MAX;
+          const name = `tour ${vps}`;
+          results.push({ name, every2s: vals, max, fail });
+          console.log(`${fail ? 'FAIL' : 'ok  '} ${name.padEnd(34)} flat dark every 2s [${vals.join(' ')}] max ${max}`);
+          await save(name, [['worst', worst]], fail);
+        }
+
+        if (o.frames) {
+          const start = () =>
+            pg.evaluate(() => {
+              window.__ft = [];
+              window.__ftOn = true;
+              let last = performance.now();
+              const tick = (t) => {
+                window.__ft.push(t - last);
+                last = t;
+                if (window.__ftOn) requestAnimationFrame(tick);
+              };
+              requestAnimationFrame(tick);
+            });
+          const stop = () => pg.evaluate(() => { window.__ftOn = false; return window.__ft.slice(1); });
+          // (a) Reading mode, a smooth 6s mouse loop (two laps of an ellipse).
+          await switchMode(pg, 'read');
+          await pg.mouse.move(w / 2 + 0.42 * w, h / 2, { steps: 10 });
+          await pg.waitForTimeout(1000);
+          await start();
+          const t0 = Date.now();
+          let lastPoke = t0;
+          while (Date.now() - t0 < 6000) {
+            const th = (2 * Math.PI * (Date.now() - t0)) / 3000;
+            await pg.mouse.move(w / 2 + 0.42 * w * Math.cos(th), h / 2 + 0.4 * h * Math.sin(th));
+            await wait(16);
+            if (Date.now() - lastPoke > 2000) { await poke(pg); lastPoke = Date.now(); }
+          }
+          const a = frameStats(await stop());
+          // (b) 10s of the tour, mouse parked.
+          await switchMode(pg, 'explore', true);
+          await pg.mouse.move(w / 2, h - 4, { steps: 4 });
+          await start();
+          await pg.waitForTimeout(10000);
+          const b = frameStats(await stop());
+          const fmt = (s) => `n ${s.n} median ${s.median} p95 ${s.p95} max ${s.max} ms, ${s.over25}% > 25ms`;
+          const name = `frames ${vps}`;
+          results.push({ name, sweep: a, tour: b, fail: false });
+          console.log(`info ${name.padEnd(34)} sweep: ${fmt(a)} | tour: ${fmt(b)}`);
+        }
+
+        if (o.loadin) {
+          // A fresh load; shots during the load-in, --css in place before first paint.
+          if (o.css) {
+            await pg.addInitScript((css) => {
+              const add = () => {
+                if (!document.head) return false;
+                const st = document.createElement('style');
+                st.textContent = css;
+                document.head.append(st);
+                return true;
+              };
+              if (!add()) document.addEventListener('readystatechange', function f() { if (add()) document.removeEventListener('readystatechange', f); });
+            }, o.css);
+          }
+          // The wall-clock time each data-room value first appears.
+          await pg.addInitScript(() => {
+            window.__roomMarks = {};
+            new MutationObserver(() => {
+              const v = document.querySelector('.rs-root')?.getAttribute('data-room');
+              if (v && !window.__roomMarks[v]) window.__roomMarks[v] = Date.now();
+            }).observe(document, { attributes: true, subtree: true, attributeFilter: ['data-room'] });
+          });
+          const FADE_MS = 400;
+          const marks = async () => (await pg.evaluate(() => window.__roomMarks).catch(() => null)) || {};
+          await pg.mouse.move(w / 2, h - 4);
+          await pg.goto(pg.__url, { waitUntil: 'commit' });
+          const t0 = Date.now();
+          const vals = [];
+          let worst = null, worstV = -1, judged = 0;
+          const shoot = async () => {
+            const s = await snap(pg);
+            const at = Date.now();
+            const { dark } = await measure(s, o.dpr, null);
+            const m = await marks();
+            // Counted once the room is shown and faded in, or always when the
+            // page never sets data-room (checked after the timed shots).
+            return { at, dark, buf: s.buf, counts: m.shown ? at >= m.shown + FADE_MS : m.ready ? at >= m.ready + FADE_MS : null };
+          };
+          const shots = [];
+          for (const at of [300, 800, 1500, 2200, 3000, 4000]) {
+            await wait(t0 + at - Date.now());
+            shots.push(await shoot());
+          }
+          let m = await marks();
+          if (!m.shown && !m.ready) {
+            await pg.waitForSelector('.rs-root[data-room]', { timeout: 20000 }).catch(() => null);
+            m = await marks();
+            const since = m.shown ?? m.ready;
+            if (since) {
+              await wait(since + FADE_MS + 100 - Date.now());
+              shots.push(await shoot());
+            }
+          }
+          if (m.shown || m.ready) {
+            await pg.waitForSelector('.rs-root[data-room="ready"]', { timeout: 20000 }).catch(() => null);
+            m = await marks();
+          }
+          const attr = !!(m.shown || m.ready);
+          for (const s of shots) {
+            const counts = attr ? s.counts === true : true;
+            vals.push(`${s.at - t0}ms:${s.dark}${counts ? '' : ' (not shown yet)'}`);
+            if (!counts) continue;
+            judged++;
+            if (s.dark > worstV) { worstV = s.dark; worst = s.buf; }
+          }
+          const ms = (v) => (v ? `${v - t0}ms` : 'never');
+          const fail = worstV > FLAT_DARK_MAX;
+          const name = `loadin ${vps}`;
+          results.push({ name, shots: vals, shownMs: m.shown ? m.shown - t0 : null, readyMs: m.ready ? m.ready - t0 : null, judged, max: worstV, fail });
+          console.log(`${fail ? 'FAIL' : 'ok  '} ${name.padEnd(34)} shown ${attr ? (m.shown ? ms(m.shown) : 'with ready') : 'no data-room'} ready ${attr ? ms(m.ready) : '-'} | flat dark [${vals.join(' ')}]`);
+          if (worst) await save(name, [['worst', worst]], fail);
+        }
+        await ps?.context().close();
       } finally {
         await gpu.close();
       }

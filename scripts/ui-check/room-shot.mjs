@@ -3,7 +3,7 @@
 // optional interaction first, plus console errors, warnings and failed requests.
 //
 // Usage:
-//   node scripts/ui-check/room-shot.mjs [--port 3477] [--path /notes]
+//   node scripts/ui-check/room-shot.mjs (--port <n> | --base <url>) [--path /notes]
 //     [--browser chromium|webkit|firefox] [--viewport 1440x900] [--wait ms]
 //     [--reduced-motion] [--name shot] [--mouse x,y] [--hover "<css>"]
 //     [--click "<css>"] [--key Escape] [--eval "<js>"] [--steps '<json>']
@@ -42,7 +42,8 @@ const OUT_DIR = path.join(__dirname, 'out');
 
 function parseArgs(argv) {
   const o = {
-    port: 3477,
+    port: null,
+    base: null,
     path: '/notes',
     browser: 'chromium',
     viewport: '1440x900',
@@ -66,6 +67,7 @@ function parseArgs(argv) {
       return v;
     };
     if (a === '--port') o.port = Number(next());
+    else if (a === '--base') o.base = next().replace(/\/+$/, '');
     else if (a === '--path') o.path = next();
     else if (a === '--browser') o.browser = next();
     else if (a === '--viewport') o.viewport = o.viewportSet = next();
@@ -90,6 +92,8 @@ function parseArgs(argv) {
     else if (a === '--requests') o.requests = next();
     else throw new Error(`Unknown flag ${a}`);
   }
+  if (!o.base && !o.port) throw new Error('Give --port <n> (http://localhost:<n>) or --base <url>');
+  o.base ??= `http://localhost:${o.port}`;
   return o;
 }
 
@@ -143,7 +147,7 @@ async function main() {
       if (res.status() >= 400) problems.push(`[http ${res.status()}] ${res.url()}`);
     });
 
-    await page.goto(`http://localhost:${o.port}${o.path}`, { waitUntil: 'load' });
+    await page.goto(`${o.base}${o.path}`, { waitUntil: 'load' });
     await page.waitForTimeout(o.wait);
 
     if (o.mouse) {

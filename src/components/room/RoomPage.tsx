@@ -2,25 +2,17 @@
 
 import './room.css';
 import Link from 'next/link';
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type PointerEvent,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from 'react';
 import { jost } from './font';
 import { dailySeed, type Album, type RoomPost } from '@/lib/room';
 import { ArtStrip } from './ArtStrip';
+import { forceFlatPage } from './flat-fallback';
 import { FLAT_MEDIA, SCALE_SCRIPT, escapeStep, pickDailyAlbums, shouldStartTour, stageScale, type RoomMode } from './behaviour';
-import { BACK_TO_POSTS, CRATE_TITLE, HOME_LINK, LOOK_AROUND, ROOM_LABEL } from './copy';
+import { BACK_TO_POSTS, CRATE_TITLE, HOME_LINK, LOOK_AROUND } from './copy';
 import { CrateView } from './CrateView';
 import { FocusView, type FocusPiece } from './FocusView';
 import { LetterBoard } from './LetterBoard';
-import { Beams, RoomScene } from './RoomScene';
+import { RoomGl, Rig } from './RoomGl';
 
 export type { RoomMode };
 
@@ -43,7 +35,16 @@ function matches(query: string): boolean {
     return false;
   }
 }
-const prefersReducedMotion = () => matches('(prefers-reduced-motion: reduce)');
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+const prefersReducedMotion = () => matches(REDUCED_MOTION);
+function subscribeReducedMotion(onChange: () => void) {
+  const mq = window.matchMedia(REDUCED_MOTION);
+  mq.addEventListener('change', onChange);
+  return () => mq.removeEventListener('change', onChange);
+}
+const serverFalse = () => false;
+// True once hydrated: the server and the hydration render leave the canvas out.
+const clientTrue = () => true;
 
 // Whether the flat page is showing. CSS already draws the right page on first
 // paint; this follows the same query after mount so the room's motion and
@@ -57,9 +58,10 @@ const isFlat = () => matches(FLAT_MEDIA);
 const serverFlat = () => false;
 
 // Whether the browser registered the @property rules in room.css (a registered
-// property computes to its initial value). Then the camera animates those
-// numbers on the main thread (.rs-pa), which keeps Chrome's tile memory in
-// budget; elsewhere it keeps the plain transform transition and animation.
+// property computes to its initial value). Then the camera (load-in, parallax,
+// tour) animates those numbers on the main thread (.rs-pa); elsewhere it keeps
+// the plain transform transition and animation. The inline scale script adds
+// the same class before first paint.
 function hasRegisteredProps() {
   try {
     return getComputedStyle(document.documentElement).getPropertyValue('--rs-tr').trim() !== '';
@@ -68,6 +70,11 @@ function hasRegisteredProps() {
   }
 }
 const serverRegisteredProps = () => false;
+
+// Set when WebGL turned out not to be there. forceFlatPage changes the shared
+// stylesheet for the rest of the session, so a later mount of the page (after
+// a client-side navigation away and back) starts as the flat page too.
+let glGone = false;
 
 // While a dialog is open on the flat page, the page behind must not scroll.
 // The body is pinned in place and the scroll position put back on close.
@@ -97,32 +104,40 @@ function ScaleScript() {
   return keep ? <script dangerouslySetInnerHTML={{ __html: SCALE_SCRIPT }} /> : null;
 }
 
-// One camera rig: dolly > sway > cam > room. Both stage layers use the same one.
-function Rig({ children }: { children: ReactNode }) {
-  return (
-    <div className="rs-dolly">
-      <div className="rs-sway">
-        <div className="rs-cam">
-          <div className="rs-room">{children}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function RoomPage({ posts }: { posts: RoomPost[] }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
   const [roomMode, setMode] = useState<RoomMode>('read');
-  const flat = useSyncExternalStore(subscribeFlat, isFlat, serverFlat);
+  const flatQuery = useSyncExternalStore(subscribeFlat, isFlat, serverFlat);
+  // WebGL is not there (no context, its code did not load, or the context was
+  // lost for good): the page stays the flat page from then on, as on a phone.
+  const [noGl, setNoGl] = useState(() => glGone);
+  const flat = flatQuery || noGl;
+  const homeRef = useRef<HTMLAnchorElement>(null);
+  const modeButtonRef = useRef<HTMLButtonElement>(null);
+  const onGlUnavailable = useCallback(() => {
+    // Focus in the room or on the mode button would be lost when they are
+    // hidden; it moves to the home link, the first thing on the flat page.
+    const active = document.activeElement;
+    const inRoom = !!active && (active === modeButtonRef.current || !!active.closest('.rs-stage-room'));
+    glGone = true;
+    forceFlatPage();
+    setNoGl(true);
+    if (inRoom) homeRef.current?.focus({ preventScroll: true });
+  }, []);
   // The flat page has no tour: it always reads.
   const mode: RoomMode = flat ? 'read' : roomMode;
   const [focused, setFocused] = useState<FocusPiece | null>(null);
   const [crateOpen, setCrateOpen] = useState(false);
-  // Pointer over the board: pauses the tour and brings the board forward.
+  // Pointer over the board in reading mode: brings the board forward and holds
+  // off the idle switch to the tour.
   const [overBoard, setOverBoard] = useState(false);
-  // Keyboard focus inside the board: also pauses the tour.
+  // Keyboard focus inside the board: also holds off the idle switch.
   const boardFocused = useRef(false);
+  // The board layer, inert while looking around the room.
+  const boardStageRef = useRef<HTMLDivElement>(null);
+  // The .rs-room of the caption layer's rig, which RoomGl fills with captions.
+  const [captionRoom, setCaptionRoom] = useState<HTMLDivElement | null>(null);
   // On a switch between the room and the flat page, pointerleave may never
   // fire, so the hover flag is cleared here (the focus flag in the idle effect).
   const [prevFlat, setPrevFlat] = useState(flat);
@@ -134,6 +149,20 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   const propAnim = useSyncExternalStore(noSubscribe, hasRegisteredProps, serverRegisteredProps);
   // No covers in the (hidden) room on the flat page, so phones never fetch them.
   const albums = flat ? null : dailyAlbums;
+  const reducedMotion = useSyncExternalStore(subscribeReducedMotion, prefersReducedMotion, serverFalse);
+  // The canvas mounts only in the browser and never on the flat page, so
+  // phones never load the renderer and three.js.
+  const hydrated = useSyncExternalStore(noSubscribe, clientTrue, serverFalse);
+  const showRoom = hydrated && !flat;
+  // How far the canvas is (the root's data-room): 'shown' once it has drawn a
+  // frame with the walls, floor and wood in (the canvas fades in then, and
+  // pictures appear as their images arrive), 'ready' once every texture and
+  // picture is in.
+  const [roomState, setRoomState] = useState<'shown' | 'ready' | null>(null);
+  const onRoomShown = useCallback(() => setRoomState((s) => s ?? 'shown'), []);
+  const onRoomReady = useCallback(() => setRoomState('ready'), []);
+  // A target in the room is hovered or has keyboard focus: the tour holds.
+  const [roomHold, setRoomHold] = useState(false);
 
   // Time of the last pointer move, key press or click, for the idle switch.
   const lastActivity = useRef(0);
@@ -236,10 +265,10 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   }, []);
 
   // A press on the room where there is no picture or crate starts the tour.
-  const onRoomPointerDown = useCallback((e: PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    const t = e.target as Element | null;
-    if (t?.closest('figure, [data-crate]')) return;
+  const onPressRoom = useCallback((e: PointerEvent<HTMLDivElement>) => {
+    // Keep focus inside the board from dropping to the page on this press, so
+    // the switch below can hand it to the mode button.
+    if (boardStageRef.current?.contains(document.activeElement)) e.preventDefault();
     setMode('explore');
   }, []);
 
@@ -247,10 +276,9 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
     lastActivity.current = Date.now();
     setOverBoard(over);
   }, []);
-  // Keyboard focus moving into the board returns to reading mode and holds it.
+  // The board is inert outside reading mode, so focus only enters it while reading.
   const onBoardFocus = useCallback(() => {
     boardFocused.current = true;
-    setMode('read');
   }, []);
   const onBoardBlur = useCallback(() => {
     boardFocused.current = false;
@@ -266,17 +294,26 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
   const reading = mode === 'read';
   useScrollLock(flat && covered);
 
+  // Looking around the room takes the board away and makes it inert. Focus
+  // inside the board at that moment moves to the mode button ("Back to the
+  // posts"), before the browser drops it from the now inert board.
+  useLayoutEffect(() => {
+    if (mode !== 'explore') return;
+    if (boardStageRef.current?.contains(document.activeElement)) modeButtonRef.current?.focus({ preventScroll: true });
+  }, [mode]);
+
   return (
     <div
       ref={rootRef}
-      className={`rs-root gn-${mode} gp-f-${focused ? 'on' : 'off'}${crateOpen ? ' gp-c-on' : ''}${overBoard ? ' gp-hold' : ''}${propAnim ? ' rs-pa' : ''} ${jost.variable}`}
+      className={`rs-root gn-${mode} gp-f-${focused ? 'on' : 'off'}${crateOpen ? ' gp-c-on' : ''}${overBoard ? ' gp-over' : ''}${roomHold && mode === 'explore' ? ' gp-hold' : ''}${propAnim ? ' rs-pa' : ''} ${jost.variable}`}
       onPointerMove={flat ? undefined : onPointerMove}
       onPointerLeave={flat ? undefined : onPointerLeave}
       // The inline script sets --rs-scale on this element before hydration.
       suppressHydrationWarning
+      data-room={roomState ?? undefined}
     >
       <ScaleScript />
-      <Link className="gp-home" href="/" inert={covered ? true : undefined}>
+      <Link ref={homeRef} className="gp-home" href="/" inert={covered ? true : undefined}>
         {HOME_LINK}
       </Link>
       {/* The flat page for phones and touch screens: the board, the art in one
@@ -300,22 +337,31 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
       </div>
       {/* The board layer comes first in the DOM so the title and posts lead the
           tab order; it is stacked above the room with z-index. */}
-      <div className="rs-stage gp-stage2" inert={covered ? true : undefined}>
+      <div ref={boardStageRef} className="rs-stage gp-stage2" inert={covered || !reading ? true : undefined}>
         <Rig>
-          <Beams />
           <LetterBoard posts={posts} onHoverChange={onBoardHover} onFocusIn={onBoardFocus} onFocusOut={onBoardBlur} />
         </Rig>
       </div>
-      <div
-        className="rs-stage rs-stage-room"
-        role="group"
-        aria-label={ROOM_LABEL}
-        inert={covered ? true : undefined}
-        onPointerDown={onRoomPointerDown}
-      >
-        <Rig>
-          <RoomScene albums={albums} onOpen={open} onOpenCrate={openCrate} />
-        </Rig>
+      {showRoom && (
+        <RoomGl
+          stage={boardStageRef}
+          captionRoom={captionRoom}
+          albums={albums}
+          reducedMotion={reducedMotion}
+          inert={covered}
+          onShown={onRoomShown}
+          onReady={onRoomReady}
+          onUnavailable={onGlUnavailable}
+          onPressRoom={onPressRoom}
+          onOpen={open}
+          onOpenCrate={openCrate}
+          onHoldChange={setRoomHold}
+        />
+      )}
+      {/* Captions: under the board layer, over the canvas. Rendered with the
+          board stage so the two rigs start their load-in animation together. */}
+      <div className="rs-stage gp-stage-cap" aria-hidden="true">
+        <Rig roomRef={setCaptionRoom} />
       </div>
 
       <div className="rs-vignette" aria-hidden="true" />
@@ -327,7 +373,7 @@ export function RoomPage({ posts }: { posts: RoomPost[] }) {
       </svg>
 
       <div className="gp-ctl" inert={covered ? true : undefined}>
-        <button type="button" className={`gp-btn ${reading ? 'gp-look' : 'gp-back'}`} onClick={() => setMode(reading ? 'explore' : 'read')}>
+        <button ref={modeButtonRef} type="button" className={`gp-btn ${reading ? 'gp-look' : 'gp-back'}`} onClick={() => setMode(reading ? 'explore' : 'read')}>
           {reading ? LOOK_AROUND : BACK_TO_POSTS}
         </button>
       </div>

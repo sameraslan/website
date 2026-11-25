@@ -11,10 +11,6 @@ export type RoomMode = 'read' | 'explore';
 // 3D room. CSS decides it (room.css uses this same query); JS reads it after
 // mount only to keep the tour, idle timer, parallax and stage scale off.
 export const FLAT_MEDIA = '(max-width: 760px), (pointer: coarse)';
-// The complement of FLAT_MEDIA, for <source media> on the room's images, so
-// the flat page never downloads them. Written without level 4 `not` so older
-// Safari parses it; the .01px closes the gap above 760px at fractional widths.
-export const ROOM_MEDIA = '(min-width: 760.01px) and (pointer: fine), (min-width: 760.01px) and (pointer: none)';
 
 export const STAGE_W = 1280;
 export const STAGE_H = 900;
@@ -35,8 +31,12 @@ export function stageScale(w: number, h: number): number {
 
 // Runs inline, right after the room root opens, so the first paint already has
 // the right scale in every browser. Without JS the stage stays at scale 1.
-// On the flat page there is no stage to scale, so it does nothing.
-export const SCALE_SCRIPT = `(function(){try{if(window.matchMedia&&window.matchMedia('${FLAT_MEDIA}').matches)return;var r=document.currentScript&&document.currentScript.parentNode;if(!r||!r.style)return;var b=r.getBoundingClientRect(),w=b.width||window.innerWidth,h=b.height||window.innerHeight;if(w>0&&h>0)r.style.setProperty('--rs-scale',String(${SCALE_EXPR}))}catch(e){}})();`;
+// It also adds .rs-pa where the browser registered room.css's @property rules
+// (a registered property computes to its initial value), so the load-in dolly
+// starts as the number animation and is not restarted when React adds the
+// same class after hydration. On the flat page there is no stage, so it does
+// nothing.
+export const SCALE_SCRIPT = `(function(){try{if(window.matchMedia&&window.matchMedia('${FLAT_MEDIA}').matches)return;var r=document.currentScript&&document.currentScript.parentNode;if(!r||!r.style)return;try{if(getComputedStyle(document.documentElement).getPropertyValue('--rs-tr').trim()!=='')r.classList.add('rs-pa')}catch(e){}var b=r.getBoundingClientRect(),w=b.width||window.innerWidth,h=b.height||window.innerHeight;if(w>0&&h>0)r.style.setProperty('--rs-scale',String(${SCALE_EXPR}))}catch(e){}})();`;
 
 export const IDLE_MS = 10_000;
 

@@ -5,7 +5,7 @@ import { ART, artSrc, type ArtPiece } from '@/lib/room';
 import { ART_STRIP_LABEL } from './copy';
 import type { FocusPiece } from './FocusView';
 import { STRIP_ART_IDS } from './layout';
-import { artFocus } from './RoomScene';
+import { artFocus } from './pieces';
 
 const ART_BY_ID = new Map(ART.map((a) => [a.id, a]));
 const STRIP: ArtPiece[] = STRIP_ART_IDS.flatMap((id) => {

@@ -15,7 +15,6 @@ export const HOME_LINK = '← sameraslan.com';
 export const POSTS_NAV_LABEL = 'Posts';
 export const PAGER_LABEL = 'More posts';
 export const ROOM_LABEL = 'A cabin room hung with paintings and album covers';
-export const EMPTY_SLEEVE_LABEL = 'Album sleeve';
 export const CRATE_OPEN_LABEL = 'Open the record crate';
 export const CRATE_GRID_LABEL = 'All albums, by artist';
 export const ART_STRIP_LABEL = 'Art on the walls';
